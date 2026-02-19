@@ -2,11 +2,24 @@ package main
 
 import t "github.com/darrenburns/terma"
 
+type IntralineStyleMode int
+
+const (
+	IntralineStyleModeBackground IntralineStyleMode = iota
+	IntralineStyleModeUnderline
+)
+
 // ThemePalette stores all styles needed by the diff renderer for one theme.
 type ThemePalette struct {
-	roleStyles   map[TokenRole]t.SpanStyle
-	lineStyles   map[RenderedLineKind]t.Style
-	gutterStyles map[RenderedLineKind]t.Style
+	roleStyles      map[TokenRole]t.SpanStyle
+	lineStyles      map[RenderedLineKind]t.Style
+	gutterStyles    map[RenderedLineKind]t.Style
+	intralineStyles map[intralineStyleKey]t.SpanStyle
+}
+
+type intralineStyleKey struct {
+	mark IntralineMarkKind
+	mode IntralineStyleMode
 }
 
 func NewThemePalette(theme t.ThemeData) ThemePalette {
@@ -20,6 +33,8 @@ func NewThemePalette(theme t.ThemeData) ThemePalette {
 	headerBg := theme.Background.Blend(theme.Primary, 0.11)
 	lineNumberFg := theme.TextMuted.Blend(theme.TextDisabled, 0.35)
 	hatchFg := theme.Background.Blend(theme.TextDisabled, 0.26)
+	addIntralineBg := theme.Background.Blend(theme.Success, 0.28)
+	removeIntralineBg := theme.Background.Blend(theme.Error, 0.28)
 
 	return ThemePalette{
 		roleStyles: map[TokenRole]t.SpanStyle{
@@ -54,6 +69,18 @@ func NewThemePalette(theme t.ThemeData) ThemePalette {
 			RenderedLineAdd:     {BackgroundColor: addBg.Darken(gutterDarkenAmount)},
 			RenderedLineRemove:  {BackgroundColor: removeBg.Darken(gutterDarkenAmount)},
 		},
+		intralineStyles: map[intralineStyleKey]t.SpanStyle{
+			{mark: IntralineMarkAdd, mode: IntralineStyleModeBackground}:    {Background: addIntralineBg},
+			{mark: IntralineMarkRemove, mode: IntralineStyleModeBackground}: {Background: removeIntralineBg},
+			{mark: IntralineMarkAdd, mode: IntralineStyleModeUnderline}: {
+				Underline:      t.UnderlineSingle,
+				UnderlineColor: theme.Success,
+			},
+			{mark: IntralineMarkRemove, mode: IntralineStyleModeUnderline}: {
+				Underline:      t.UnderlineSingle,
+				UnderlineColor: theme.Error,
+			},
+		},
 	}
 }
 
@@ -69,5 +96,13 @@ func (p ThemePalette) LineStyleForKind(kind RenderedLineKind) (t.Style, bool) {
 
 func (p ThemePalette) GutterStyleForKind(kind RenderedLineKind) (t.Style, bool) {
 	style, ok := p.gutterStyles[kind]
+	return style, ok
+}
+
+func (p ThemePalette) IntralineOverlayStyle(mark IntralineMarkKind, mode IntralineStyleMode) (t.SpanStyle, bool) {
+	if mark == IntralineMarkNone {
+		return t.SpanStyle{}, false
+	}
+	style, ok := p.intralineStyles[intralineStyleKey{mark: mark, mode: mode}]
 	return style, ok
 }

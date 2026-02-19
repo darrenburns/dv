@@ -238,6 +238,10 @@ func TestDiffApp_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	signs := findPaletteItemByLabel(level.Items, "Toggle +/- symbols")
 	require.True(tt, signs.IsSelectable())
 
+	intraline := findPaletteItemByLabel(level.Items, "Toggle intraline style")
+	require.True(tt, intraline.IsSelectable())
+	require.Equal(tt, "[i]", intraline.Hint)
+
 	divider := findPaletteItemByLabel(level.Items, "Focus divider")
 	require.True(tt, divider.IsSelectable())
 	require.Equal(tt, "[d]", divider.Hint)
@@ -292,6 +296,7 @@ func TestDiffApp_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 	wrapIdx := -1
 	layoutModeIdx := -1
 	signsIdx := -1
+	intralineIdx := -1
 	themeIdx := -1
 
 	for idx, item := range level.Items {
@@ -310,6 +315,8 @@ func TestDiffApp_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 			layoutModeIdx = idx
 		case item.Label == "Toggle +/- symbols":
 			signsIdx = idx
+		case item.Label == "Toggle intraline style":
+			intralineIdx = idx
 		case item.Label == "Theme":
 			themeIdx = idx
 		}
@@ -323,7 +330,8 @@ func TestDiffApp_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 	require.Greater(tt, wrapIdx, appearanceDivider)
 	require.Greater(tt, layoutModeIdx, wrapIdx)
 	require.Greater(tt, signsIdx, layoutModeIdx)
-	require.Greater(tt, themeIdx, signsIdx)
+	require.Greater(tt, intralineIdx, signsIdx)
+	require.Greater(tt, themeIdx, intralineIdx)
 }
 
 func TestDiffApp_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
@@ -337,6 +345,7 @@ func TestDiffApp_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 	require.True(tt, keybindIsHidden(keybinds, "ctrl+l"))
 	require.True(tt, keybindIsHidden(keybinds, "w"))
 	require.True(tt, keybindIsHidden(keybinds, "v"))
+	require.True(tt, keybindIsHidden(keybinds, "i"))
 	require.True(tt, keybindIsHidden(keybinds, "ctrl+b"))
 	require.False(tt, keybindIsHidden(keybinds, "ctrl+p"))
 	require.True(tt, keybindIsHidden(keybinds, "ctrl+t"))
@@ -363,6 +372,14 @@ func TestDiffApp_KeybindsIncludeSideBySideToggle(tt *testing.T) {
 	keybind, ok := findKeybindByKey(app.Keybinds(), "v")
 	require.True(tt, ok)
 	require.Equal(tt, "Toggle side-by-side", keybind.Name)
+	require.True(tt, keybind.Hidden)
+}
+
+func TestDiffApp_KeybindsIncludeIntralineStyleToggle(tt *testing.T) {
+	app := NewDiffApp(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "i")
+	require.True(tt, ok)
+	require.Equal(tt, "Toggle intraline style", keybind.Name)
 	require.True(tt, keybind.Hidden)
 }
 
@@ -1243,6 +1260,47 @@ func TestDiffApp_ToggleDiffChangeSigns(tt *testing.T) {
 
 	app.toggleDiffChangeSigns()
 	require.True(tt, app.diffHideChangeSigns)
+}
+
+func TestDiffApp_DefaultIntralineStyleModeIsBackground(tt *testing.T) {
+	app := NewDiffApp(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	widget := app.buildRightPane(theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok := column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+	view, ok := scrollable.Child.(DiffView)
+	require.True(tt, ok)
+	require.Equal(tt, IntralineStyleModeBackground, view.IntralineStyle)
+}
+
+func TestDiffApp_ToggleDiffIntralineStyle(tt *testing.T) {
+	app := NewDiffApp(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+
+	app.toggleDiffIntralineStyle()
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
+
+	app.toggleDiffIntralineStyle()
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+}
+
+func TestDiffApp_CommandPaletteIntralineStyleActionTogglesMode(tt *testing.T) {
+	app := NewDiffApp(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	item := findPaletteItemByLabel(level.Items, "Toggle intraline style")
+	require.True(tt, item.IsSelectable())
+	require.NotNil(tt, item.Action)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+
+	item.Action()
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
 }
 
 func TestDiffApp_FocusDividerNoopWhenSidebarHidden(tt *testing.T) {

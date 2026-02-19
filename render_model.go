@@ -49,10 +49,20 @@ const (
 
 const diffTabWidth = 4
 
+// IntralineMarkKind identifies per-grapheme change highlighting within +/- lines.
+type IntralineMarkKind int
+
+const (
+	IntralineMarkNone IntralineMarkKind = iota
+	IntralineMarkAdd
+	IntralineMarkRemove
+)
+
 // RenderedSegment is a tokenized text fragment with semantic styling.
 type RenderedSegment struct {
-	Text string
-	Role TokenRole
+	Text      string
+	Role      TokenRole
+	Intraline IntralineMarkKind
 }
 
 // RenderedDiffLine is a single display line in the custom diff viewer.
@@ -237,32 +247,14 @@ func buildRenderLines(file *DiffFile, lexer chroma.Lexer) []RenderedDiffLine {
 			" ",
 			[]RenderedSegment{{Text: hunk.Header, Role: TokenRoleDiffHunkHeader}},
 		))
-
-		for _, line := range hunk.Lines {
-			rendered := RenderedDiffLine{
-				Prefix:  " ",
-				OldLine: line.OldLine,
-				NewLine: line.NewLine,
+		blocks := buildHunkRenderBlocks(hunk, lexer)
+		for _, block := range blocks {
+			if block.Shared != nil {
+				lines = append(lines, *block.Shared)
+				continue
 			}
-			switch line.Kind {
-			case DiffLineContext:
-				rendered.Kind = RenderedLineContext
-				rendered.Prefix = " "
-				rendered = newRenderedLine(rendered.Kind, rendered.OldLine, rendered.NewLine, rendered.Prefix, lineSegmentsForCode(line.Content, lexer))
-			case DiffLineAdd:
-				rendered.Kind = RenderedLineAdd
-				rendered.Prefix = "+"
-				rendered = newRenderedLine(rendered.Kind, rendered.OldLine, rendered.NewLine, rendered.Prefix, lineSegmentsForCode(line.Content, lexer))
-			case DiffLineRemove:
-				rendered.Kind = RenderedLineRemove
-				rendered.Prefix = "-"
-				rendered = newRenderedLine(rendered.Kind, rendered.OldLine, rendered.NewLine, rendered.Prefix, lineSegmentsForCode(line.Content, lexer))
-			default:
-				rendered.Kind = RenderedLineMeta
-				rendered.Prefix = " "
-				rendered = newRenderedLine(rendered.Kind, 0, 0, rendered.Prefix, []RenderedSegment{{Text: line.Content, Role: TokenRoleDiffMeta}})
-			}
-			lines = append(lines, rendered)
+			lines = append(lines, block.Removes...)
+			lines = append(lines, block.Adds...)
 		}
 	}
 
@@ -293,63 +285,200 @@ func buildSideBySideRows(file *DiffFile, lexer chroma.Lexer) []SideBySideRendere
 			[]RenderedSegment{{Text: hunk.Header, Role: TokenRoleDiffHunkHeader}},
 		)
 		rows = append(rows, SideBySideRenderedRow{Shared: &header})
-
-		for idx := 0; idx < len(hunk.Lines); {
-			line := hunk.Lines[idx]
-			switch line.Kind {
-			case DiffLineContext:
-				rendered := renderedLineFromDiffLine(line, lexer)
-				rows = append(rows, SideBySideRenderedRow{
-					Left:  leftCellFromRenderedLine(rendered),
-					Right: rightCellFromRenderedLine(rendered),
-				})
-				idx++
-			case DiffLineRemove:
-				removeLines := make([]RenderedDiffLine, 0, 4)
-				for idx < len(hunk.Lines) && hunk.Lines[idx].Kind == DiffLineRemove {
-					removeLines = append(removeLines, renderedLineFromDiffLine(hunk.Lines[idx], lexer))
-					idx++
+		blocks := buildHunkRenderBlocks(hunk, lexer)
+		for _, block := range blocks {
+			if block.Shared != nil {
+				if block.Shared.Kind == RenderedLineContext {
+					rows = append(rows, SideBySideRenderedRow{
+						Left:  leftCellFromRenderedLine(*block.Shared),
+						Right: rightCellFromRenderedLine(*block.Shared),
+					})
+					continue
 				}
+				copyLine := *block.Shared
+				rows = append(rows, SideBySideRenderedRow{Shared: &copyLine})
+				continue
+			}
 
-				addLines := make([]RenderedDiffLine, 0, 4)
-				addIdx := idx
-				for addIdx < len(hunk.Lines) && hunk.Lines[addIdx].Kind == DiffLineAdd {
-					addLines = append(addLines, renderedLineFromDiffLine(hunk.Lines[addIdx], lexer))
-					addIdx++
-				}
-				if len(addLines) > 0 {
-					idx = addIdx
-				}
-
-				rowCount := max(len(removeLines), len(addLines))
+			if len(block.Removes) > 0 {
+				rowCount := max(len(block.Removes), len(block.Adds))
 				for pairIdx := 0; pairIdx < rowCount; pairIdx++ {
 					row := SideBySideRenderedRow{}
-					if pairIdx < len(removeLines) {
-						row.Left = leftCellFromRenderedLine(removeLines[pairIdx])
+					if pairIdx < len(block.Removes) {
+						row.Left = leftCellFromRenderedLine(block.Removes[pairIdx])
 					}
-					if pairIdx < len(addLines) {
-						row.Right = rightCellFromRenderedLine(addLines[pairIdx])
+					if pairIdx < len(block.Adds) {
+						row.Right = rightCellFromRenderedLine(block.Adds[pairIdx])
 					}
 					rows = append(rows, row)
 				}
-			case DiffLineAdd:
-				addLines := make([]RenderedDiffLine, 0, 4)
-				for idx < len(hunk.Lines) && hunk.Lines[idx].Kind == DiffLineAdd {
-					addLines = append(addLines, renderedLineFromDiffLine(hunk.Lines[idx], lexer))
-					idx++
-				}
-				for _, addLine := range addLines {
-					rows = append(rows, SideBySideRenderedRow{Right: rightCellFromRenderedLine(addLine)})
-				}
-			default:
-				rendered := renderedLineFromDiffLine(line, lexer)
-				copyLine := rendered
-				rows = append(rows, SideBySideRenderedRow{Shared: &copyLine})
-				idx++
+				continue
+			}
+
+			for _, addLine := range block.Adds {
+				rows = append(rows, SideBySideRenderedRow{Right: rightCellFromRenderedLine(addLine)})
 			}
 		}
 	}
 	return rows
+}
+
+type hunkRenderedBlock struct {
+	Shared  *RenderedDiffLine
+	Removes []RenderedDiffLine
+	Adds    []RenderedDiffLine
+}
+
+func buildHunkRenderBlocks(hunk DiffHunk, lexer chroma.Lexer) []hunkRenderedBlock {
+	blocks := make([]hunkRenderedBlock, 0, len(hunk.Lines))
+	for idx := 0; idx < len(hunk.Lines); {
+		line := hunk.Lines[idx]
+		switch line.Kind {
+		case DiffLineContext:
+			rendered := renderedLineFromDiffLine(line, lexer)
+			blocks = append(blocks, hunkRenderedBlock{Shared: &rendered})
+			idx++
+		case DiffLineRemove:
+			removes := make([]RenderedDiffLine, 0, 4)
+			for idx < len(hunk.Lines) && hunk.Lines[idx].Kind == DiffLineRemove {
+				removes = append(removes, renderedLineFromDiffLine(hunk.Lines[idx], lexer))
+				idx++
+			}
+
+			adds := make([]RenderedDiffLine, 0, 4)
+			for idx < len(hunk.Lines) && hunk.Lines[idx].Kind == DiffLineAdd {
+				adds = append(adds, renderedLineFromDiffLine(hunk.Lines[idx], lexer))
+				idx++
+			}
+
+			markIntralinePairedLines(removes, adds)
+			blocks = append(blocks, hunkRenderedBlock{
+				Removes: removes,
+				Adds:    adds,
+			})
+		case DiffLineAdd:
+			adds := make([]RenderedDiffLine, 0, 4)
+			for idx < len(hunk.Lines) && hunk.Lines[idx].Kind == DiffLineAdd {
+				adds = append(adds, renderedLineFromDiffLine(hunk.Lines[idx], lexer))
+				idx++
+			}
+			blocks = append(blocks, hunkRenderedBlock{Adds: adds})
+		default:
+			rendered := renderedLineFromDiffLine(line, lexer)
+			blocks = append(blocks, hunkRenderedBlock{Shared: &rendered})
+			idx++
+		}
+	}
+	return blocks
+}
+
+func markIntralinePairedLines(removes []RenderedDiffLine, adds []RenderedDiffLine) {
+	if len(removes) == 0 || len(adds) == 0 {
+		return
+	}
+
+	pairCount := min(len(removes), len(adds))
+	for idx := 0; idx < pairCount; idx++ {
+		removeMask, addMask, ok := intralinePairMasks(removes[idx], adds[idx])
+		if !ok {
+			break
+		}
+		removes[idx] = markLineIntraline(removes[idx], removeMask, IntralineMarkRemove)
+		adds[idx] = markLineIntraline(adds[idx], addMask, IntralineMarkAdd)
+	}
+}
+
+const intralineSuppressChangedRatio = 0.70
+
+func intralinePairMasks(removeLine RenderedDiffLine, addLine RenderedDiffLine) (removeMask []bool, addMask []bool, ok bool) {
+	removeText := renderedLineText(removeLine)
+	addText := renderedLineText(addLine)
+	removeGraphemeCount := len(splitGraphemes(removeText))
+	addGraphemeCount := len(splitGraphemes(addText))
+	// Empty vs non-empty is a hard divergence signal for run-wise pairing.
+	if (removeGraphemeCount == 0) != (addGraphemeCount == 0) {
+		return nil, nil, false
+	}
+	removeMask, addMask, ok = intralineChangeMasks(removeText, addText)
+	if !ok {
+		return nil, nil, false
+	}
+	if shouldSuppressIntralineMasks(removeMask, addMask) {
+		return nil, nil, false
+	}
+	return removeMask, addMask, true
+}
+
+func shouldSuppressIntralineMasks(oldMask []bool, newMask []bool) bool {
+	oldChanged, oldTotal := maskStats(oldMask)
+	newChanged, newTotal := maskStats(newMask)
+	if oldTotal == 0 || newTotal == 0 {
+		return false
+	}
+	oldRatio := float64(oldChanged) / float64(oldTotal)
+	newRatio := float64(newChanged) / float64(newTotal)
+	return oldRatio >= intralineSuppressChangedRatio && newRatio >= intralineSuppressChangedRatio
+}
+
+func maskStats(mask []bool) (changed int, total int) {
+	total = len(mask)
+	for _, value := range mask {
+		if value {
+			changed++
+		}
+	}
+	return changed, total
+}
+
+func markLineIntraline(line RenderedDiffLine, mask []bool, mark IntralineMarkKind) RenderedDiffLine {
+	if mark == IntralineMarkNone || len(mask) == 0 || len(line.Segments) == 0 {
+		return line
+	}
+	line.Segments = markSegmentsForIntraline(line.Segments, mask, mark)
+	return line
+}
+
+func markSegmentsForIntraline(segments []RenderedSegment, mask []bool, mark IntralineMarkKind) []RenderedSegment {
+	if len(segments) == 0 {
+		return segments
+	}
+	marked := make([]RenderedSegment, 0, len(segments))
+	graphemeIdx := 0
+	for _, segment := range segments {
+		remaining := segment.Text
+		for len(remaining) > 0 {
+			grapheme, _ := ansi.FirstGraphemeCluster(remaining, ansi.GraphemeWidth)
+			if grapheme == "" {
+				break
+			}
+
+			intraline := IntralineMarkNone
+			if graphemeIdx < len(mask) && mask[graphemeIdx] {
+				intraline = mark
+			}
+			appendSegmentWithMark(&marked, segment.Role, intraline, grapheme)
+			graphemeIdx++
+			remaining = remaining[len(grapheme):]
+		}
+	}
+	return marked
+}
+
+func appendSegmentWithMark(segments *[]RenderedSegment, role TokenRole, intraline IntralineMarkKind, text string) {
+	if text == "" {
+		return
+	}
+	existing := *segments
+	if len(existing) > 0 && existing[len(existing)-1].Role == role && existing[len(existing)-1].Intraline == intraline {
+		existing[len(existing)-1].Text += text
+		*segments = existing
+		return
+	}
+	*segments = append(existing, RenderedSegment{
+		Text:      text,
+		Role:      role,
+		Intraline: intraline,
+	})
 }
 
 func renderedLineFromDiffLine(line DiffLine, lexer chroma.Lexer) RenderedDiffLine {
@@ -600,13 +729,18 @@ func appendRoleText(segments *[]RenderedSegment, role TokenRole, text string) {
 	if text == "" {
 		return
 	}
-	existing := *segments
-	if len(existing) > 0 && existing[len(existing)-1].Role == role {
-		existing[len(existing)-1].Text += text
-		*segments = existing
-		return
+	appendSegmentWithMark(segments, role, IntralineMarkNone, text)
+}
+
+func renderedLineText(line RenderedDiffLine) string {
+	if len(line.Segments) == 0 {
+		return ""
 	}
-	*segments = append(existing, RenderedSegment{Text: text, Role: role})
+	var builder strings.Builder
+	for _, segment := range line.Segments {
+		builder.WriteString(segment.Text)
+	}
+	return builder.String()
 }
 
 func tokenRoleFromChroma(token chroma.TokenType) TokenRole {

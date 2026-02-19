@@ -458,3 +458,71 @@ func TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors(tt *testi
 	require.Equal(tt, theme.SecondaryText, style.ForegroundColor.ColorAt(1, 1, 0, 0))
 	require.Equal(tt, theme.SecondaryBg, style.BackgroundColor.ColorAt(1, 1, 0, 0))
 }
+
+func TestStyleForSegment_AppliesBackgroundIntralineOverlay(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	view := DiffView{
+		Palette:        NewThemePalette(theme),
+		IntralineStyle: IntralineStyleModeBackground,
+	}
+	segment := RenderedSegment{Text: "x", Role: TokenRoleSyntaxString, Intraline: IntralineMarkAdd}
+
+	base := view.styleForRole(segment.Role)
+	style := view.styleForSegment(segment)
+	overlay, ok := view.Palette.IntralineOverlayStyle(IntralineMarkAdd, IntralineStyleModeBackground)
+	require.True(tt, ok)
+	require.True(tt, overlay.Background.IsSet())
+
+	require.NotNil(tt, style.BackgroundColor)
+	require.Equal(tt, overlay.Background, style.BackgroundColor.ColorAt(1, 1, 0, 0))
+
+	require.NotNil(tt, base.ForegroundColor)
+	require.NotNil(tt, style.ForegroundColor)
+	require.Equal(
+		tt,
+		base.ForegroundColor.ColorAt(1, 1, 0, 0),
+		style.ForegroundColor.ColorAt(1, 1, 0, 0),
+	)
+}
+
+func TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	view := DiffView{
+		Palette:        NewThemePalette(theme),
+		IntralineStyle: IntralineStyleModeUnderline,
+	}
+	segment := RenderedSegment{Text: "x", Role: TokenRoleSyntaxKeyword, Intraline: IntralineMarkRemove}
+
+	base := view.styleForRole(segment.Role)
+	style := view.styleForSegment(segment)
+
+	require.Equal(tt, t.UnderlineSingle, style.Underline)
+	require.Equal(tt, theme.Error, style.UnderlineColor)
+	require.NotNil(tt, base.ForegroundColor)
+	require.NotNil(tt, style.ForegroundColor)
+	require.Equal(
+		tt,
+		base.ForegroundColor.ColorAt(1, 1, 0, 0),
+		style.ForegroundColor.ColorAt(1, 1, 0, 0),
+	)
+}
+
+func TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	view := DiffView{
+		Palette:        NewThemePalette(theme),
+		IntralineStyle: IntralineStyleModeUnderline,
+	}
+	segment := RenderedSegment{Text: "x", Role: TokenRoleSyntaxPlain, Intraline: IntralineMarkNone}
+
+	base := view.styleForRole(segment.Role)
+	style := view.styleForSegment(segment)
+
+	require.Equal(tt, base, style)
+}
