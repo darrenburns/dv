@@ -14,6 +14,7 @@ A beautiful, snappy, and highly interactive tool for exploring diffs without lea
 - Command palette
 - Synchronised scrolling
 - Intraline diff highlighting
+- Supports piped input
 
 ## Installation
 
@@ -95,7 +96,7 @@ You can also use:
 - `--config /path/to/config.yaml` to load an explicit file path.
 - `--no-config` to disable config loading for a run.
 
-Example config:
+Example config file:
 
 ```yaml
 view: split
