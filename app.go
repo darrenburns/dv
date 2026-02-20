@@ -413,7 +413,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "p", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
 		{Key: "[", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
 		{Key: "/", Name: "Filter files", Action: a.openTreeFilter, Hidden: !showFilterFiles},
-		{Key: "ctrl+b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
+		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
 		{Key: "s", Name: "Switch section", Action: a.switchSectionFocus, Hidden: true},
@@ -424,7 +424,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "i", Name: "Toggle intraline style", Action: a.toggleDiffIntralineStyle, Hidden: true},
 		{Key: "d", Name: "Focus divider", Action: a.focusDivider, Hidden: true},
 		{Key: "ctrl+p", Name: "Command palette", Action: a.togglePalette},
-		{Key: "ctrl+t", Name: "Theme menu", Action: a.openThemePalette, Hidden: true},
+		{Key: "t", Name: "Theme menu", Action: a.openThemePalette, Hidden: true},
 		{Key: "q", Name: "Quit", Action: t.Quit},
 	}
 }
@@ -511,7 +511,7 @@ func (a *Dv) buildHeader(theme t.ThemeData) t.Widget {
 	}
 
 	rightWidget := t.Text{
-		Content: themeDisplayName(t.CurrentThemeName()) + " [^t]",
+		Content: themeDisplayName(t.CurrentThemeName()) + " [t]",
 		Style: t.Style{
 			Padding:         t.EdgeInsetsXY(1, 0),
 			ForegroundColor: theme.SecondaryText,
@@ -551,7 +551,7 @@ func (a *Dv) buildHeader(theme t.ThemeData) t.Widget {
 	return t.Row{
 		Style: t.Style{
 			Width:   t.Flex(1),
-			Padding: t.EdgeInsetsXY(1, 0),
+			Padding: t.EdgeInsets{Left: 1},
 			BackgroundColor: t.NewGradient(
 				theme.Surface,
 				theme.Surface,
@@ -2084,7 +2084,7 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		t.CommandPaletteItem{
 			Label:      "Toggle sidebar",
 			FilterText: "Toggle sidebar layout panel",
-			Hint:       "[ctrl+b]",
+			Hint:       "[b]",
 			Action:     a.paletteAction(a.toggleSidebar),
 		},
 		t.CommandPaletteItem{
@@ -2129,6 +2129,7 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		},
 		t.CommandPaletteItem{
 			Label:         "Theme",
+			Hint:          "[t]",
 			ChildrenTitle: diffThemesPalette,
 			Children:      a.themeItems,
 		},

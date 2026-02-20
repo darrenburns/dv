@@ -355,7 +355,7 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 
 	sidebar := findPaletteItemByLabel(level.Items, "Toggle sidebar")
 	require.True(tt, sidebar.IsSelectable())
-	require.Equal(tt, "[ctrl+b]", sidebar.Hint)
+	require.Equal(tt, "[b]", sidebar.Hint)
 
 	wrap := findPaletteItemByLabel(level.Items, "Toggle line wrap")
 	require.True(tt, wrap.IsSelectable())
@@ -476,14 +476,14 @@ func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 	require.True(tt, keybindIsHidden(keybinds, "w"))
 	require.True(tt, keybindIsHidden(keybinds, "v"))
 	require.True(tt, keybindIsHidden(keybinds, "i"))
-	require.True(tt, keybindIsHidden(keybinds, "ctrl+b"))
+	require.True(tt, keybindIsHidden(keybinds, "b"))
 	require.False(tt, keybindIsHidden(keybinds, "ctrl+p"))
-	require.True(tt, keybindIsHidden(keybinds, "ctrl+t"))
+	require.True(tt, keybindIsHidden(keybinds, "t"))
 }
 
 func TestDv_KeybindsIncludeSidebarToggle(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
-	keybind, ok := findKeybindByKey(app.Keybinds(), "ctrl+b")
+	keybind, ok := findKeybindByKey(app.Keybinds(), "b")
 	require.True(tt, ok)
 	require.Equal(tt, "Toggle sidebar", keybind.Name)
 	require.True(tt, keybind.Hidden)
@@ -539,7 +539,7 @@ func TestDv_KeybindsIncludeSideBySideSplitShiftShortcuts(tt *testing.T) {
 
 func TestDv_KeybindsIncludeThemeMenuShortcut(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
-	keybind, ok := findKeybindByKey(app.Keybinds(), "ctrl+t")
+	keybind, ok := findKeybindByKey(app.Keybinds(), "t")
 	require.True(tt, ok)
 	require.Equal(tt, "Theme menu", keybind.Name)
 	require.True(tt, keybind.Hidden)
@@ -574,7 +574,7 @@ func TestDv_ThemeMenuShortcutOpensThemesSubmenu(tt *testing.T) {
 		{Label: "Nested action", Action: func() {}},
 	})
 
-	keybind, ok := findKeybindByKey(app.Keybinds(), "ctrl+t")
+	keybind, ok := findKeybindByKey(app.Keybinds(), "t")
 	require.True(tt, ok)
 	require.NotNil(tt, keybind.Action)
 	keybind.Action()
@@ -1712,10 +1712,10 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	texts := rowTextContents(row)
 	text := strings.Join(texts, " ")
 	require.NotContains(tt, text, "Mode:")
-	require.Contains(tt, text, "[^t]")
+	require.Contains(tt, text, "[t]")
 	require.Contains(tt, text, "unified [v]")
 	branchIdx := indexOfTextContaining(texts, "feature/layout-mode")
-	themeIdx := indexOfTextContaining(texts, "[^t]")
+	themeIdx := indexOfTextContaining(texts, "[t]")
 	modeIdx := indexOfTextContaining(texts, "unified [v]")
 	require.GreaterOrEqual(tt, branchIdx, 0)
 	require.GreaterOrEqual(tt, themeIdx, 0)
@@ -1730,7 +1730,7 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	text = strings.Join(texts, " ")
 	require.Contains(tt, text, "side-by-side [v]")
 	branchIdx = indexOfTextContaining(texts, "feature/layout-mode")
-	themeIdx = indexOfTextContaining(texts, "[^t]")
+	themeIdx = indexOfTextContaining(texts, "[t]")
 	modeIdx = indexOfTextContaining(texts, "side-by-side [v]")
 	require.GreaterOrEqual(tt, branchIdx, 0)
 	require.GreaterOrEqual(tt, themeIdx, 0)
