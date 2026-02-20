@@ -82,7 +82,7 @@ dv --view split --sidebar=false --theme catppuccin --intraline-style underline -
 Default path:
 
 ```text
-<XDG_CONFIG_HOME>/dv/config.yaml
+$XDG_CONFIG_HOME/dv/config.yaml
 ```
 
 This path is resolved using `xdg.ConfigHome` via the `github.com/adrg/xdg` package.
