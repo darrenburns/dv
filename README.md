@@ -2,7 +2,7 @@
 
 A beautiful, snappy, and highly interactive tool for exploring diffs without leaving your terminal.
 
-<img width="1576" height="980" alt="image" src="https://github.com/user-attachments/assets/de6de789-e739-41fc-9952-5bf63488b391" />
+<img width="1678" height="1014" alt="image" src="https://github.com/user-attachments/assets/49404305-f003-418f-8c42-c6bebe271d69" />
 
 ## Highlights
 
