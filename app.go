@@ -765,7 +765,52 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 		spans = append(spans, statSpans...)
 	}
 
-	return t.Text{Spans: spans, Style: style}
+	current, total, hasPosition := a.viewerFilePosition()
+	if !hasPosition {
+		return t.Text{Spans: spans, Style: style}
+	}
+
+	return t.Row{
+		Style: t.Style{
+			Padding:         style.Padding,
+			BackgroundColor: style.BackgroundColor,
+			ForegroundColor: style.ForegroundColor,
+		},
+		Children: []t.Widget{
+			t.Text{
+				Spans: spans,
+				Style: t.Style{
+					ForegroundColor: theme.Text,
+					Bold:            true,
+				},
+			},
+			t.Spacer{Width: t.Flex(1)},
+			t.Text{
+				Content: fmt.Sprintf("%d/%d", current, total),
+				Style: t.Style{
+					ForegroundColor: theme.TextMuted,
+				},
+			},
+		},
+	}
+}
+
+func (a *Dv) viewerFilePosition() (current int, total int, ok bool) {
+	if a.activeKind != DiffTreeNodeFile || a.activePath == "" {
+		return 0, 0, false
+	}
+
+	state := a.sectionState(a.activeSection)
+	if state == nil || len(state.orderedFilePaths) == 0 {
+		return 0, 0, false
+	}
+
+	index := indexOfPath(state.orderedFilePaths, a.activePath)
+	if index < 0 {
+		return 0, 0, false
+	}
+
+	return index + 1, len(state.orderedFilePaths), true
 }
 
 func (a *Dv) buildHeaderModeIndicator(theme t.ThemeData) t.Widget {

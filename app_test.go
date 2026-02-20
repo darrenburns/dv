@@ -1029,18 +1029,28 @@ func TestDv_ViewerTitleIncludesLineStats(tt *testing.T) {
 	require.Equal(tt, "a.txt", app.viewerTitle())
 
 	widget := app.buildViewerTitle(theme)
-	text, ok := widget.(t.Text)
+	row, ok := widget.(t.Row)
 	require.True(tt, ok)
-	require.True(tt, text.Style.Bold)
-	require.Len(tt, text.Spans, 5)
-	require.Equal(tt, "a.txt", text.Spans[0].Text)
-	require.True(tt, text.Spans[0].Style.Bold)
-	require.Equal(tt, "+1", text.Spans[2].Text)
-	require.True(tt, text.Spans[2].Style.Bold)
-	require.Equal(tt, theme.Success, text.Spans[2].Style.Foreground)
-	require.Equal(tt, "-1", text.Spans[4].Text)
-	require.True(tt, text.Spans[4].Style.Bold)
-	require.Equal(tt, theme.Error, text.Spans[4].Style.Foreground)
+	require.Len(tt, row.Children, 3)
+
+	titleText, ok := row.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Len(tt, titleText.Spans, 5)
+	require.Equal(tt, "a.txt", titleText.Spans[0].Text)
+	require.True(tt, titleText.Spans[0].Style.Bold)
+	require.Equal(tt, "+1", titleText.Spans[2].Text)
+	require.True(tt, titleText.Spans[2].Style.Bold)
+	require.Equal(tt, theme.Success, titleText.Spans[2].Style.Foreground)
+	require.Equal(tt, "-1", titleText.Spans[4].Text)
+	require.True(tt, titleText.Spans[4].Style.Bold)
+	require.Equal(tt, theme.Error, titleText.Spans[4].Style.Foreground)
+
+	_, ok = row.Children[1].(t.Spacer)
+	require.True(tt, ok)
+
+	positionText, ok := row.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "1/1", positionText.Content)
 }
 
 func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
@@ -1052,22 +1062,105 @@ func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
 		diffs:    []string{diffForPathWithStats("added.go", 3, 0)},
 	}, false)
 	addOnlyWidget := addOnlyApp.buildViewerTitle(theme)
-	addOnlyText, ok := addOnlyWidget.(t.Text)
+	addOnlyRow, ok := addOnlyWidget.(t.Row)
 	require.True(tt, ok)
-	addOnlySpanTexts := spanTexts(addOnlyText.Spans)
+	addOnlyTitle, ok := addOnlyRow.Children[0].(t.Text)
+	require.True(tt, ok)
+	addOnlySpanTexts := spanTexts(addOnlyTitle.Spans)
 	require.Equal(tt, []string{"added.go", " ", "+3"}, addOnlySpanTexts)
 	require.NotContains(tt, strings.Join(addOnlySpanTexts, ""), "-0")
+	addOnlyPosition, ok := addOnlyRow.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "1/1", addOnlyPosition.Content)
 
 	delOnlyApp := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
 		diffs:    []string{diffForPathWithStats("removed.go", 0, 2)},
 	}, false)
 	delOnlyWidget := delOnlyApp.buildViewerTitle(theme)
-	delOnlyText, ok := delOnlyWidget.(t.Text)
+	delOnlyRow, ok := delOnlyWidget.(t.Row)
 	require.True(tt, ok)
-	delOnlySpanTexts := spanTexts(delOnlyText.Spans)
+	delOnlyTitle, ok := delOnlyRow.Children[0].(t.Text)
+	require.True(tt, ok)
+	delOnlySpanTexts := spanTexts(delOnlyTitle.Spans)
 	require.Equal(tt, []string{"removed.go", " ", "-2"}, delOnlySpanTexts)
 	require.NotContains(tt, strings.Join(delOnlySpanTexts, ""), "+0")
+	delOnlyPosition, ok := delOnlyRow.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "1/1", delOnlyPosition.Content)
+}
+
+func TestDv_ViewerTitleShowsFilePositionBySectionOrder(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt", "b.txt", "c.txt")},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	require.True(tt, app.selectFilePath("b.txt"))
+	widget := app.buildViewerTitle(theme)
+	row, ok := widget.(t.Row)
+	require.True(tt, ok)
+	positionText, ok := row.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "2/3", positionText.Content)
+}
+
+func TestDv_ViewerTitleFilePositionIsSectionScoped(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPaths("unstaged.txt")},
+		stagedDiffs:   []string{diffForPaths("a-staged.txt", "b-staged.txt")},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	app.switchSectionFocus()
+	widget := app.buildViewerTitle(theme)
+	row, ok := widget.(t.Row)
+	require.True(tt, ok)
+	positionText, ok := row.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "1/2", positionText.Content)
+	require.NotEqual(tt, "1/3", positionText.Content)
+}
+
+func TestDv_ViewerTitleFilePositionUsesUnfilteredSectionCount(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.go", "b.go", "c.txt")},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	app.onTreeFilterChange(".go")
+	require.Equal(tt, "a.go", app.activePath)
+
+	widget := app.buildViewerTitle(theme)
+	row, ok := widget.(t.Row)
+	require.True(tt, ok)
+	positionText, ok := row.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "1/3", positionText.Content)
+}
+
+func TestDv_ViewerTitleNonFileStateHasNoFilePosition(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt")},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	roots := app.treeState.Nodes.Peek()
+	require.Len(tt, roots, 2)
+	app.onTreeCursorChange(roots[0].Data)
+
+	widget := app.buildViewerTitle(theme)
+	text, ok := widget.(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "Unstaged changes", text.Content)
 }
 
 func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
@@ -1505,9 +1598,9 @@ func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
 
 	app.diffLayoutMode = DiffLayoutSideBySide
 	widget := app.buildViewerTitle(theme)
-	text, ok := widget.(t.Text)
+	row, ok := widget.(t.Row)
 	require.True(tt, ok)
-	joined := strings.Join(spanTexts(text.Spans), "")
+	joined := strings.Join(rowTextContents(row), "")
 	require.NotContains(tt, joined, "side-by-side")
 	require.NotContains(tt, joined, "unified")
 }
