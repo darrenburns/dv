@@ -54,6 +54,8 @@ There are a few CLI options available for customising `dv`.
 | `--theme` | any built-in theme name (for example `catppuccin`, `dracula`, `nord`) | `catppuccin` |
 | `--intraline-style` | `background`, `underline` | `background` |
 | `--show-symbols` | `true`, `false` | `false` |
+| `--config` | path to a YAML config file | auto-discover via XDG |
+| `--no-config` | `true`, `false` | `false` |
 
 Example using all options:
 
@@ -61,9 +63,39 @@ Example using all options:
 dv --view split --sidebar=false --theme catppuccin --intraline-style underline --show-symbols
 ```
 
-There's no config file yet, so I recommend creating an alias or something in your shell for now.
+## Config file
+
+`dv` can load startup defaults from a YAML config file.
+
+Default path:
+
+```text
+<XDG_CONFIG_HOME>/dv/config.yaml
+```
+
+This path is resolved using `xdg.ConfigHome` via the `github.com/adrg/xdg` package.
+
+Precedence:
+
+1. CLI flags
+2. Config file
+3. Built-in defaults
+
+You can also use:
+
+- `--config /path/to/config.yaml` to load an explicit file path.
+- `--no-config` to disable config loading for a run.
+
+Example config:
+
+```yaml
+view: split
+sidebar: true
+theme: catppuccin
+intraline-style: underline
+show-symbols: false
+```
 
 Notes:
 - For string flags, both `--flag value` and `--flag=value` work.
 - For booleans, prefer `--flag=false` when disabling.
-
