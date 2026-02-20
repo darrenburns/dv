@@ -40,12 +40,6 @@ git diff | dv
 gh pr diff <number> | dv
 ```
 
-In piped mode:
-
-* Files appear in a single `Files` section (accent color).
-* Section switching is hidden (there is only one section).
-* Manual refresh (`r`) is disabled. Re-run the command to load updated input.
-
 ## Things you can do
 
 Most keybinds are documented either in the footer, command palette (`ctrl+p`), or in the UI itself.
