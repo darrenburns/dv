@@ -41,7 +41,7 @@ Some things that aren't as clear at the moment:
 * You can click and drag the central divider when in side-by-side/split view to adjust the ratio.
   * As a shortcut you can use `ctrl+h`/`ctrl+l` to shift it left/right.
 * Tab and shift-tab move focus
-* When the file tree is focused, press `/` to filter the files, `tab` to move focus back to the tree, and `esc` to clear the filter.
+* Press `/` from the file tree or diff view to filter files (if the sidebar is hidden, this opens it). While the filter input is focused, `up`/`down` move through matching files, `tab` moves focus back to the tree, and `esc` clears the filter.
 
 ## Startup options
 

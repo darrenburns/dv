@@ -423,13 +423,13 @@ func TestDv_KeybindsIncludeThemeMenuShortcut(tt *testing.T) {
 	require.True(tt, keybind.Hidden)
 }
 
-func TestDv_FilterFilesKeybindVisibleOnlyWhenTreeFocused(tt *testing.T) {
+func TestDv_FilterFilesKeybindVisibleWhenTreeOrViewerFocused(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 
 	app.focusedWidgetID = diffViewerScrollID
 	keybind, ok := findKeybindByKey(app.Keybinds(), "/")
 	require.True(tt, ok)
-	require.True(tt, keybind.Hidden)
+	require.False(tt, keybind.Hidden)
 
 	app.focusedWidgetID = diffFilesTreeID
 	keybind, ok = findKeybindByKey(app.Keybinds(), "/")
@@ -637,16 +637,33 @@ func TestDv_ThemeSelectionPersistsOnEnter(tt *testing.T) {
 	require.Equal(tt, "", app.themePreviewBase)
 }
 
-func TestDv_OpenTreeFilterRequiresFocusedTree(tt *testing.T) {
+func TestDv_OpenTreeFilterAllowsViewerFocus(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 
 	app.focusedWidgetID = diffViewerScrollID
 	app.openTreeFilter()
-	require.False(tt, app.treeFilterVisible)
+	require.True(tt, app.treeFilterVisible)
 
+	app.treeFilterVisible = false
 	app.focusedWidgetID = diffFilesTreeID
 	app.openTreeFilter()
 	require.True(tt, app.treeFilterVisible)
+}
+
+func TestDv_OpenTreeFilterShowsHiddenSidebarAndKeepsItAfterDismiss(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	app.sidebarVisible = false
+	app.focusedWidgetID = diffViewerScrollID
+
+	app.openTreeFilter()
+	require.True(tt, app.sidebarVisible)
+	require.True(tt, app.treeFilterVisible)
+
+	app.focusedWidgetID = diffFilesFilterID
+	app.handleEscape()
+
+	require.False(tt, app.treeFilterVisible)
+	require.True(tt, app.sidebarVisible)
 }
 
 func TestDv_HandleEscapeClearsActiveTreeFilter(tt *testing.T) {
@@ -697,6 +714,72 @@ func TestDv_ClearTreeFilterResetsNoMatchesState(tt *testing.T) {
 	require.Equal(tt, "", app.treeFilterInput.GetText())
 	require.False(tt, app.treeFilterVisible)
 	require.Equal(tt, app.orderedFilePaths[0], app.activePath)
+}
+
+func TestDv_FilterInputExposesArrowNavigationKeybinds(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt", "b.txt")}}, false)
+	app.treeFilterVisible = true
+
+	filterInput := findFilterInput(tt, app)
+	up, ok := findKeybindByKey(filterInput.ExtraKeybinds, "up")
+	require.True(tt, ok)
+	require.True(tt, up.Hidden)
+	require.NotNil(tt, up.Action)
+
+	down, ok := findKeybindByKey(filterInput.ExtraKeybinds, "down")
+	require.True(tt, ok)
+	require.True(tt, down.Hidden)
+	require.NotNil(tt, down.Action)
+}
+
+func TestDv_FilterInputArrowKeybindsNavigateFilteredFiles(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.go", "b.go", "c.txt")},
+	}, false)
+	app.treeFilterVisible = true
+	app.onTreeFilterChange(".go")
+	require.Equal(tt, "a.go", app.activePath)
+
+	filterInput := findFilterInput(tt, app)
+	down, ok := findKeybindByKey(filterInput.ExtraKeybinds, "down")
+	require.True(tt, ok)
+	up, ok := findKeybindByKey(filterInput.ExtraKeybinds, "up")
+	require.True(tt, ok)
+
+	down.Action()
+	require.Equal(tt, "b.go", app.activePath)
+
+	down.Action()
+	require.Equal(tt, "a.go", app.activePath)
+
+	up.Action()
+	require.Equal(tt, "b.go", app.activePath)
+}
+
+func TestDv_FilterInputArrowKeybindsKeepInputFocus(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt", "b.txt")},
+	}, false)
+	app.treeFilterVisible = true
+	app.focusedWidgetID = diffFilesFilterID
+	require.GreaterOrEqual(tt, len(app.orderedFilePaths), 2)
+	require.Equal(tt, app.orderedFilePaths[0], app.activePath)
+
+	filterInput := findFilterInput(tt, app)
+	down, ok := findKeybindByKey(filterInput.ExtraKeybinds, "down")
+	require.True(tt, ok)
+	up, ok := findKeybindByKey(filterInput.ExtraKeybinds, "up")
+	require.True(tt, ok)
+
+	down.Action()
+	require.Equal(tt, app.orderedFilePaths[1], app.activePath)
+	require.Equal(tt, diffFilesFilterID, app.focusedWidgetID)
+
+	up.Action()
+	require.Equal(tt, app.orderedFilePaths[0], app.activePath)
+	require.Equal(tt, diffFilesFilterID, app.focusedWidgetID)
 }
 
 func TestDv_RenderTreeNodeHighlightsMatchWithDefaultStyle(tt *testing.T) {
@@ -1565,6 +1648,27 @@ func findPaletteItemByLabel(items []t.CommandPaletteItem, label string) t.Comman
 		}
 	}
 	return t.CommandPaletteItem{}
+}
+
+func findFilterInput(tt *testing.T, app *Dv) t.TextInput {
+	tt.Helper()
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	for _, child := range column.Children {
+		input, ok := child.(t.TextInput)
+		if !ok {
+			continue
+		}
+		if input.ID == diffFilesFilterID {
+			return input
+		}
+	}
+	require.FailNow(tt, "expected filter input in left pane")
+	return t.TextInput{}
 }
 
 func keybindIsHidden(keybinds []t.Keybind, key string) bool {

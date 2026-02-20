@@ -329,7 +329,7 @@ func (a *Dv) toggleMode() {
 }
 
 func (a *Dv) Keybinds() []t.Keybind {
-	showFilterFiles := a.focusedWidgetID == diffFilesTreeID
+	showFilterFiles := a.focusedWidgetID == diffFilesTreeID || a.focusedWidgetID == diffViewerScrollID
 	return []t.Keybind{
 		{Key: "n", Name: "Next file", Action: func() { a.moveFileCursor(1) }},
 		{Key: "]", Name: "Next file", Action: func() { a.moveFileCursor(1) }},
@@ -544,7 +544,8 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 				BackgroundColor: theme.Background,
 				ForegroundColor: theme.Text,
 			},
-			OnChange: a.onTreeFilterChange,
+			OnChange:      a.onTreeFilterChange,
+			ExtraKeybinds: a.treeFilterInputKeybinds(),
 		})
 	}
 
@@ -962,6 +963,13 @@ func (a *Dv) moveFileCursor(delta int) {
 	}
 
 	a.selectFilePath(filePaths[nextIdx])
+}
+
+func (a *Dv) treeFilterInputKeybinds() []t.Keybind {
+	return []t.Keybind{
+		{Key: "up", Action: func() { a.moveFileCursor(-1) }, Hidden: true},
+		{Key: "down", Action: func() { a.moveFileCursor(1) }, Hidden: true},
+	}
 }
 
 func (a *Dv) selectFilePath(filePath string) bool {
@@ -1617,8 +1625,10 @@ func (a *Dv) toggleSidebar() {
 }
 
 func (a *Dv) openTreeFilter() {
-	if a.focusedWidgetID != diffFilesTreeID {
-		return
+	if !a.sidebarVisible {
+		a.sidebarVisible = true
+		a.dividerFocusRequested = false
+		a.dividerFocused = false
 	}
 	a.treeFilterVisible = true
 	if a.treeFilterInput != nil {
