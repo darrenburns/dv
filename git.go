@@ -14,6 +14,16 @@ type DiffProvider interface {
 	CurrentBranch() (string, error)
 }
 
+// DiffSectionsProvider optionally customizes which sections dv should render.
+type DiffSectionsProvider interface {
+	Sections() []DiffSection
+}
+
+// ManualRefreshCapable optionally controls whether manual refresh is enabled.
+type ManualRefreshCapable interface {
+	ManualRefreshEnabled() bool
+}
+
 // GitDiffProvider loads diff data by shelling out to git.
 type GitDiffProvider struct {
 	WorkDir string

@@ -106,6 +106,7 @@ type Dv struct {
 	fileByPath         map[string]*DiffFile
 	filePathToTreePath map[string][]int
 	orderedFilePaths   []string
+	sectionOrder       []DiffSection
 	activeSection      DiffSection
 	initialSection     DiffSection
 	sections           map[DiffSection]*diffSectionState
@@ -119,14 +120,15 @@ type Dv struct {
 	splitState      *t.SplitPaneState
 	commandPalette  *t.CommandPaletteState
 
-	treeFilterVisible   bool
-	treeFilterNoMatches bool
-	diffLayoutMode      DiffLayoutMode
-	diffHardWrap        bool
-	diffHideChangeSigns bool
-	diffIntralineStyle  IntralineStyleMode
-	focusedWidgetID     string
-	sidebarVisible      bool
+	treeFilterVisible    bool
+	treeFilterNoMatches  bool
+	diffLayoutMode       DiffLayoutMode
+	diffHardWrap         bool
+	diffHideChangeSigns  bool
+	diffIntralineStyle   IntralineStyleMode
+	manualRefreshEnabled bool
+	focusedWidgetID      string
+	sidebarVisible       bool
 
 	dividerFocused        bool
 	dividerFocusRequested bool
@@ -148,37 +150,46 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 	initialState = normalizeDvInitialState(initialState)
 	t.SetTheme(initialState.ThemeName)
 
-	initialSection := DiffSectionUnstaged
-	if staged {
+	sectionOrder := defaultDiffSections()
+	if customSectionProvider, ok := provider.(DiffSectionsProvider); ok {
+		sectionOrder = normalizeDiffSections(customSectionProvider.Sections())
+	}
+
+	initialSection := sectionOrder[0]
+	if staged && containsSection(sectionOrder, DiffSectionStaged) {
 		initialSection = DiffSectionStaged
 	}
 
+	manualRefreshEnabled := true
+	if manualRefreshProvider, ok := provider.(ManualRefreshCapable); ok {
+		manualRefreshEnabled = manualRefreshProvider.ManualRefreshEnabled()
+	}
+
 	app := &Dv{
-		provider:           provider,
-		renderedByPath:     map[string]*RenderedFile{},
-		sideRenderedByPath: map[string]*SideBySideRenderedFile{},
-		fileByPath:         map[string]*DiffFile{},
-		filePathToTreePath: map[string][]int{},
-		orderedFilePaths:   []string{},
-		activeSection:      initialSection,
-		initialSection:     initialSection,
-		sections: map[DiffSection]*diffSectionState{
-			DiffSectionUnstaged: newDiffSectionState(),
-			DiffSectionStaged:   newDiffSectionState(),
-		},
-		treeState:           t.NewTreeState([]t.TreeNode[DiffTreeNodeData]{}),
-		treeScrollState:     t.NewScrollState(),
-		treeFilterState:     t.NewFilterState(),
-		treeFilterInput:     t.NewTextInputState(""),
-		diffScrollState:     t.NewScrollState(),
-		diffViewState:       NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
-		splitState:          t.NewSplitPaneState(0.30),
-		sidebarVisible:      initialState.SidebarVisible,
-		diffLayoutMode:      initialState.LayoutMode,
-		diffHideChangeSigns: !initialState.ShowChangeSigns,
-		diffIntralineStyle:  initialState.IntralineStyle,
-		lastNonDividerFocus: diffViewerScrollID,
-		focusReturnID:       diffViewerScrollID,
+		provider:             provider,
+		renderedByPath:       map[string]*RenderedFile{},
+		sideRenderedByPath:   map[string]*SideBySideRenderedFile{},
+		fileByPath:           map[string]*DiffFile{},
+		filePathToTreePath:   map[string][]int{},
+		orderedFilePaths:     []string{},
+		sectionOrder:         sectionOrder,
+		activeSection:        initialSection,
+		initialSection:       initialSection,
+		sections:             newDiffSectionStateMap(sectionOrder),
+		treeState:            t.NewTreeState([]t.TreeNode[DiffTreeNodeData]{}),
+		treeScrollState:      t.NewScrollState(),
+		treeFilterState:      t.NewFilterState(),
+		treeFilterInput:      t.NewTextInputState(""),
+		diffScrollState:      t.NewScrollState(),
+		diffViewState:        NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
+		splitState:           t.NewSplitPaneState(0.30),
+		sidebarVisible:       initialState.SidebarVisible,
+		diffLayoutMode:       initialState.LayoutMode,
+		diffHideChangeSigns:  !initialState.ShowChangeSigns,
+		diffIntralineStyle:   initialState.IntralineStyle,
+		manualRefreshEnabled: manualRefreshEnabled,
+		lastNonDividerFocus:  diffViewerScrollID,
+		focusReturnID:        diffViewerScrollID,
 	}
 	app.configureDiffHorizontalScroll()
 	app.commandPalette = app.newCommandPalette()
@@ -199,6 +210,75 @@ func newDiffSectionState() *diffSectionState {
 	}
 }
 
+func newDiffSectionStateMap(sectionOrder []DiffSection) map[DiffSection]*diffSectionState {
+	states := map[DiffSection]*diffSectionState{}
+	for _, section := range sectionOrder {
+		states[section] = newDiffSectionState()
+	}
+	return states
+}
+
+func containsSection(sections []DiffSection, target DiffSection) bool {
+	for _, section := range sections {
+		if section == target {
+			return true
+		}
+	}
+	return false
+}
+
+func (a *Dv) hasSection(section DiffSection) bool {
+	return containsSection(a.sectionOrder, section)
+}
+
+func (a *Dv) canSwitchSections() bool {
+	return len(a.sectionOrder) > 1
+}
+
+func (a *Dv) sectionIndex(section DiffSection) int {
+	for idx, value := range a.sectionOrder {
+		if value == section {
+			return idx
+		}
+	}
+	return -1
+}
+
+func (a *Dv) orderedSectionsFrom(start DiffSection) []DiffSection {
+	if len(a.sectionOrder) == 0 {
+		return nil
+	}
+	startIdx := a.sectionIndex(start)
+	if startIdx < 0 {
+		out := make([]DiffSection, len(a.sectionOrder))
+		copy(out, a.sectionOrder)
+		return out
+	}
+
+	ordered := make([]DiffSection, 0, len(a.sectionOrder))
+	for i := 0; i < len(a.sectionOrder); i++ {
+		ordered = append(ordered, a.sectionOrder[(startIdx+i)%len(a.sectionOrder)])
+	}
+	return ordered
+}
+
+func (a *Dv) orderedSectionsAfter(start DiffSection) []DiffSection {
+	ordered := a.orderedSectionsFrom(start)
+	if len(ordered) <= 1 {
+		return nil
+	}
+	return ordered[1:]
+}
+
+func (a *Dv) findSectionWithFiles(start DiffSection) (DiffSection, bool) {
+	for _, section := range a.orderedSectionsFrom(start) {
+		if a.sectionHasFiles(section) {
+			return section, true
+		}
+	}
+	return "", false
+}
+
 func (a *Dv) sectionState(section DiffSection) *diffSectionState {
 	if a.sections == nil {
 		return nil
@@ -211,7 +291,7 @@ func (a *Dv) sectionState(section DiffSection) *diffSectionState {
 }
 
 func (a *Dv) setActiveSection(section DiffSection) {
-	if section == "" {
+	if section == "" || !a.hasSection(section) {
 		section = a.initialSection
 	}
 	a.activeSection = section
@@ -252,7 +332,7 @@ func (a *Dv) sectionFileCount(section DiffSection) int {
 
 func (a *Dv) totalFileCount() int {
 	total := 0
-	for _, section := range allDiffSections() {
+	for _, section := range a.sectionOrder {
 		total += a.sectionFileCount(section)
 	}
 	return total
@@ -293,16 +373,13 @@ func (a *Dv) setActiveSectionSummary(section DiffSection) {
 
 func (a *Dv) setLoadError(message string) {
 	a.loadErr = message
-	a.sections = map[DiffSection]*diffSectionState{
-		DiffSectionUnstaged: newDiffSectionState(),
-		DiffSectionStaged:   newDiffSectionState(),
-	}
+	a.sections = newDiffSectionStateMap(a.sectionOrder)
 	a.setActiveSection(a.initialSection)
 	a.activePath = ""
 	a.activeIsDir = false
 	a.activeKind = DiffTreeNodeUnknown
-	roots := make([]t.TreeNode[DiffTreeNodeData], 0, len(allDiffSections()))
-	for _, section := range allDiffSections() {
+	roots := make([]t.TreeNode[DiffTreeNodeData], 0, len(a.sectionOrder))
+	for _, section := range a.sectionOrder {
 		roots = append(roots, t.TreeNode[DiffTreeNodeData]{
 			Data: DiffTreeNodeData{
 				Name:         section.DisplayName(),
@@ -338,7 +415,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "/", Name: "Filter files", Action: a.openTreeFilter, Hidden: !showFilterFiles},
 		{Key: "ctrl+b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
-		{Key: "r", Name: "Refresh", Action: a.refreshDiff, Hidden: true},
+		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
 		{Key: "s", Name: "Switch section", Action: a.switchSectionFocus, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle side-by-side", Action: a.toggleDiffLayoutMode, Hidden: true},
@@ -587,11 +664,7 @@ func (a *Dv) renderTreeNode(theme t.ThemeData, widgetFocused bool) func(node Dif
 
 		if node.NodeKind == DiffTreeNodeSection {
 			labelStyle.Bold = true
-			if node.Section == DiffSectionStaged {
-				labelStyle.ForegroundColor = theme.Success
-			} else {
-				labelStyle.ForegroundColor = theme.Error
-			}
+			labelStyle.ForegroundColor = sectionColor(theme, node.Section)
 		}
 
 		if nodeCtx.FilteredAncestor && node.NodeKind != DiffTreeNodeSection {
@@ -834,6 +907,13 @@ func (a *Dv) diffLayoutModeLabel() string {
 	return "unified"
 }
 
+func (a *Dv) manualRefresh() {
+	if !a.manualRefreshEnabled {
+		return
+	}
+	a.refreshDiff()
+}
+
 func (a *Dv) refreshDiff() {
 	if repoRoot, err := a.provider.RepoRoot(); err == nil {
 		a.repoRoot = repoRoot
@@ -843,7 +923,7 @@ func (a *Dv) refreshDiff() {
 	}
 
 	previousSelections := map[DiffSection]string{}
-	for _, section := range allDiffSections() {
+	for _, section := range a.sectionOrder {
 		state := a.sectionState(section)
 		if state == nil {
 			continue
@@ -856,20 +936,17 @@ func (a *Dv) refreshDiff() {
 		previousSelections[a.activeSection] = a.activePath
 	}
 	previousActiveSection := a.activeSection
-	if previousActiveSection == "" {
+	if previousActiveSection == "" || !a.hasSection(previousActiveSection) {
 		previousActiveSection = a.initialSection
 	}
 
-	sectionRoots := map[DiffSection][]t.TreeNode[DiffTreeNodeData]{
-		DiffSectionUnstaged: {},
-		DiffSectionStaged:   {},
+	sectionRoots := map[DiffSection][]t.TreeNode[DiffTreeNodeData]{}
+	for _, section := range a.sectionOrder {
+		sectionRoots[section] = []t.TreeNode[DiffTreeNodeData]{}
 	}
-	nextSections := map[DiffSection]*diffSectionState{
-		DiffSectionUnstaged: newDiffSectionState(),
-		DiffSectionStaged:   newDiffSectionState(),
-	}
+	nextSections := newDiffSectionStateMap(a.sectionOrder)
 
-	for idx, section := range allDiffSections() {
+	for idx, section := range a.sectionOrder {
 		raw, err := a.provider.LoadDiff(section == DiffSectionStaged)
 		if err != nil {
 			a.setLoadError(fmt.Sprintf("%s diff: %v", strings.ToLower(section.DisplayName()), err))
@@ -882,7 +959,10 @@ func (a *Dv) refreshDiff() {
 			return
 		}
 
-		state := newDiffSectionState()
+		state := nextSections[section]
+		if state == nil {
+			state = newDiffSectionState()
+		}
 		state.files = doc.Files
 		state.renderedByPath = make(map[string]*RenderedFile, len(state.files))
 		state.sideRenderedByPath = make(map[string]*SideBySideRenderedFile, len(state.files))
@@ -925,9 +1005,12 @@ func (a *Dv) refreshDiff() {
 	a.loadErr = ""
 	a.sections = nextSections
 
-	roots := make([]t.TreeNode[DiffTreeNodeData], 0, len(allDiffSections()))
-	for _, section := range allDiffSections() {
+	roots := make([]t.TreeNode[DiffTreeNodeData], 0, len(a.sectionOrder))
+	for _, section := range a.sectionOrder {
 		state := a.sectionState(section)
+		if state == nil {
+			state = newDiffSectionState()
+		}
 		roots = append(roots, t.TreeNode[DiffTreeNodeData]{
 			Data: DiffTreeNodeData{
 				Name:         section.DisplayName(),
@@ -961,10 +1044,10 @@ func (a *Dv) refreshDiff() {
 
 	targetSection := previousActiveSection
 	if !a.sectionHasFiles(targetSection) {
-		if a.sectionHasFiles(a.initialSection) {
-			targetSection = a.initialSection
+		if sectionWithFiles, ok := a.findSectionWithFiles(previousActiveSection); ok {
+			targetSection = sectionWithFiles
 		} else {
-			targetSection = targetSection.Opposite()
+			targetSection = a.initialSection
 		}
 	}
 	a.setActiveSection(targetSection)
@@ -1110,11 +1193,11 @@ func (a *Dv) setActiveDirectory(node DiffTreeNodeData) {
 }
 
 func (a *Dv) switchSectionFocus() {
-	targetSection := a.activeSection.Opposite()
-	if !a.sectionHasFiles(targetSection) {
+	if !a.canSwitchSections() {
 		return
 	}
 
+	var targetSection DiffSection
 	targetPath := ""
 	query := ""
 	options := t.FilterOptions{}
@@ -1122,25 +1205,39 @@ func (a *Dv) switchSectionFocus() {
 		query = a.treeFilterState.PeekQuery()
 		options = a.treeFilterState.PeekOptions()
 	}
-	if query != "" {
-		filtered := a.filteredFilePathsForSection(targetSection, query, options)
-		if len(filtered) == 0 {
-			return
+
+	for _, candidateSection := range a.orderedSectionsAfter(a.activeSection) {
+		if query != "" {
+			filtered := a.filteredFilePathsForSection(candidateSection, query, options)
+			if len(filtered) == 0 {
+				continue
+			}
+			targetSection = candidateSection
+			targetPath = filtered[0]
+			if state := a.sectionState(candidateSection); state != nil && state.lastSelectedPath != "" {
+				if indexOfPath(filtered, state.lastSelectedPath) >= 0 {
+					targetPath = state.lastSelectedPath
+				}
+			}
+			break
 		}
-		targetPath = filtered[0]
-		if state := a.sectionState(targetSection); state != nil && state.lastSelectedPath != "" {
-			if indexOfPath(filtered, state.lastSelectedPath) >= 0 {
-				targetPath = state.lastSelectedPath
+
+		if !a.sectionHasFiles(candidateSection) {
+			continue
+		}
+		targetSection = candidateSection
+		if state := a.sectionState(candidateSection); state != nil {
+			targetPath = state.lastSelectedPath
+			if targetPath == "" && len(state.orderedFilePaths) > 0 {
+				targetPath = state.orderedFilePaths[0]
 			}
 		}
-	} else if state := a.sectionState(targetSection); state != nil {
-		targetPath = state.lastSelectedPath
-		if targetPath == "" && len(state.orderedFilePaths) > 0 {
-			targetPath = state.orderedFilePaths[0]
+		if targetPath != "" {
+			break
 		}
 	}
 
-	if targetPath == "" {
+	if targetSection == "" || targetPath == "" {
 		return
 	}
 
@@ -1742,20 +1839,28 @@ func (a *Dv) syncTreeFilterSelection() {
 		a.treeFilterNoMatches = false
 		if a.activeKind != DiffTreeNodeFile {
 			if !a.switchToFirstSelectableFile(a.activeSection) {
-				a.switchToFirstSelectableFile(a.activeSection.Opposite())
+				for _, section := range a.orderedSectionsAfter(a.activeSection) {
+					if a.switchToFirstSelectableFile(section) {
+						break
+					}
+				}
 			}
 		}
 		return
 	}
 
-	preferredSection := a.activeSection
-	targetSection := preferredSection
-	filtered := a.filteredFilePathsForSection(preferredSection, query, options)
-	if len(filtered) == 0 {
-		targetSection = preferredSection.Opposite()
-		filtered = a.filteredFilePathsForSection(targetSection, query, options)
+	targetSection := DiffSection("")
+	filtered := []string(nil)
+	for _, section := range a.orderedSectionsFrom(a.activeSection) {
+		candidateFiltered := a.filteredFilePathsForSection(section, query, options)
+		if len(candidateFiltered) == 0 {
+			continue
+		}
+		targetSection = section
+		filtered = candidateFiltered
+		break
 	}
-	if len(filtered) == 0 {
+	if targetSection == "" || len(filtered) == 0 {
 		a.setTreeFilterNoMatches(query)
 		return
 	}
@@ -1932,6 +2037,17 @@ func unfocusedTreeCursorColor(theme t.ThemeData) t.Color {
 	return theme.ActiveCursor.WithAlpha(alpha)
 }
 
+func sectionColor(theme t.ThemeData, section DiffSection) t.Color {
+	switch section {
+	case DiffSectionStaged:
+		return theme.Success
+	case DiffSectionFiles:
+		return theme.Accent
+	default:
+		return theme.Error
+	}
+}
+
 func focusedWidgetID(ctx t.BuildContext) string {
 	focused := ctx.Focused()
 	if focused == nil {
@@ -1948,46 +2064,49 @@ func (a *Dv) newCommandPalette() *t.CommandPaletteState {
 }
 
 func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
-	items := []t.CommandPaletteItem{
-		{
+	items := []t.CommandPaletteItem{}
+	if a.canSwitchSections() {
+		items = append(items, t.CommandPaletteItem{
 			Label:      "Switch section",
-			FilterText: "Switch section staged unstaged",
+			FilterText: "Switch section staged unstaged files",
 			Hint:       "[s]",
 			Action:     a.paletteAction(a.switchSectionFocus),
-		},
-		{
+		})
+	}
+	items = append(items,
+		t.CommandPaletteItem{
 			Label:      "Refresh",
 			FilterText: "Refresh reload diff",
 			Hint:       "[r]",
-			Action:     a.paletteAction(a.refreshDiff),
+			Action:     a.paletteAction(a.manualRefresh),
 		},
-		{Divider: "Layout"},
-		{
+		t.CommandPaletteItem{Divider: "Layout"},
+		t.CommandPaletteItem{
 			Label:      "Toggle sidebar",
 			FilterText: "Toggle sidebar layout panel",
 			Hint:       "[ctrl+b]",
 			Action:     a.paletteAction(a.toggleSidebar),
 		},
-		{
+		t.CommandPaletteItem{
 			Label:      "Focus divider",
 			FilterText: "Focus divider split resize",
 			Hint:       "[d]",
 			Action:     a.focusDividerFromPalette,
 		},
-		{Divider: "Appearance"},
-		{
+		t.CommandPaletteItem{Divider: "Appearance"},
+		t.CommandPaletteItem{
 			Label:      "Toggle line wrap",
 			FilterText: "Toggle line wrap hard wrap soft wrap",
 			Hint:       "[w]",
 			Action:     a.paletteAction(a.toggleDiffWrap),
 		},
-		{
+		t.CommandPaletteItem{
 			Label:      "Toggle side-by-side mode",
 			FilterText: "Toggle side by side mode split unified layout view",
 			Hint:       "[v]",
 			Action:     a.paletteAction(a.toggleDiffLayoutMode),
 		},
-	}
+	)
 	if a.diffLayoutMode == DiffLayoutSideBySide {
 		items = append(items, t.CommandPaletteItem{
 			Label:      "Reset pane split",
@@ -2161,38 +2280,43 @@ func themeDisplayName(name string) string {
 }
 
 func (a *Dv) sidebarSummaryLabel() string {
-	return fmt.Sprintf("Unstaged: %d Staged: %d", a.sectionFileCount(DiffSectionUnstaged), a.sectionFileCount(DiffSectionStaged))
+	parts := make([]string, 0, len(a.sectionOrder))
+	for _, section := range a.sectionOrder {
+		parts = append(parts, fmt.Sprintf("%s: %d", section.DisplayName(), a.sectionFileCount(section)))
+	}
+	return strings.Join(parts, " ")
 }
 
 func (a *Dv) sidebarHeadingSpans(theme t.ThemeData) []t.Span {
-	unstagedCount := a.sectionFileCount(DiffSectionUnstaged)
-	stagedCount := a.sectionFileCount(DiffSectionStaged)
-	return []t.Span{
-		t.StyledSpan("Unstaged: ", t.SpanStyle{
-			Foreground: theme.TextMuted,
-		}),
-		t.StyledSpan(fmt.Sprintf("%d", unstagedCount), t.SpanStyle{
-			Foreground: theme.Error,
-			Bold:       true,
-		}),
-		t.StyledSpan("  ", t.SpanStyle{}),
-		t.StyledSpan("Staged: ", t.SpanStyle{
-			Foreground: theme.TextMuted,
-		}),
-		t.StyledSpan(fmt.Sprintf("%d", stagedCount), t.SpanStyle{
-			Foreground: theme.Success,
-			Bold:       true,
-		}),
-		t.BoldSpan(" ", theme.TextMuted),
-		t.StyledSpan("[s]", t.SpanStyle{
-			Foreground: theme.TextMuted,
-			Faint:      true,
-		}),
+	spans := make([]t.Span, 0, len(a.sectionOrder)*3+2)
+	for idx, section := range a.sectionOrder {
+		if idx > 0 {
+			spans = append(spans, t.StyledSpan("  ", t.SpanStyle{}))
+		}
+		spans = append(spans,
+			t.StyledSpan(section.DisplayName()+": ", t.SpanStyle{
+				Foreground: theme.TextMuted,
+			}),
+			t.StyledSpan(fmt.Sprintf("%d", a.sectionFileCount(section)), t.SpanStyle{
+				Foreground: sectionColor(theme, section),
+				Bold:       true,
+			}),
+		)
 	}
+	if a.canSwitchSections() {
+		spans = append(spans,
+			t.BoldSpan(" ", theme.TextMuted),
+			t.StyledSpan("[s]", t.SpanStyle{
+				Foreground: theme.TextMuted,
+				Faint:      true,
+			}),
+		)
+	}
+	return spans
 }
 
 func (a *Dv) sidebarTotals() (additions int, deletions int) {
-	for _, section := range allDiffSections() {
+	for _, section := range a.sectionOrder {
 		state := a.sectionState(section)
 		if state == nil {
 			continue
@@ -2234,7 +2358,14 @@ func (a *Dv) emptyMessage() string {
 	return heading + "\n\n" + details
 }
 
+func (a *Dv) isPipedDiffMode() bool {
+	return len(a.sectionOrder) == 1 && a.sectionOrder[0] == DiffSectionFiles
+}
+
 func (a *Dv) emptyMessageParts() (heading string, details string) {
+	if a.isPipedDiffMode() {
+		return "No files in piped diff.", "Run your diff command again and pipe it into dv."
+	}
 	return "No staged or unstaged changes.", "Make edits or stage files, then press r to refresh."
 }
 
@@ -2242,6 +2373,9 @@ func (a *Dv) errorMessage() string {
 	msg := strings.TrimSpace(a.loadErr)
 	if msg == "" {
 		msg = "Unknown error"
+	}
+	if !a.manualRefreshEnabled {
+		return "Failed to load git diff:\n\n" + msg + "\n\nRun the command again to retry."
 	}
 	return "Failed to load git diff:\n\n" + msg + "\n\nPress r to retry."
 }
@@ -2279,6 +2413,13 @@ func messageToRendered(title string, text string) *RenderedFile {
 	return buildMetaRenderedFile(title, strings.Split(normalized, "\n"))
 }
 
+func emptySectionSummaryMessage(section DiffSection) string {
+	if section == DiffSectionFiles {
+		return "No files in this diff."
+	}
+	return fmt.Sprintf("No %s files in this diff.", strings.ToLower(section.DisplayName()))
+}
+
 func buildSectionSummaryRenderedFile(section DiffSection, state *diffSectionState) *RenderedFile {
 	fileCount := 0
 	additions := 0
@@ -2300,7 +2441,7 @@ func buildSectionSummaryRenderedFile(section DiffSection, state *diffSectionStat
 	if fileCount == 0 {
 		lines = append(lines,
 			"",
-			fmt.Sprintf("No %s files in this diff.", strings.ToLower(section.DisplayName())),
+			emptySectionSummaryMessage(section),
 		)
 	}
 	return buildMetaRenderedFile(title, lines)

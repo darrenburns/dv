@@ -3,10 +3,12 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 
 	"github.com/adrg/xdg"
+	uv "github.com/charmbracelet/ultraviolet"
 	t "github.com/darrenburns/terma"
 )
 
@@ -15,6 +17,10 @@ var (
 	version = "dev"
 	commit  = "none"
 )
+
+type ttyOpener func() (inTTY *os.File, outTTY *os.File, err error)
+
+type stdinSetter func(file *os.File)
 
 func main() {
 	var staged bool
@@ -72,9 +78,75 @@ func main() {
 		log.Fatal(err)
 	}
 
-	provider := GitDiffProvider{WorkDir: cwd}
+	stdinPiped, err := stdinIsPiped(os.Stdin)
+	if err != nil {
+		log.Fatal(err)
+	}
+	provider, closeTTY, err := startupDiffProvider(
+		cwd,
+		os.Stdin,
+		stdinPiped,
+		uv.OpenTTY,
+		func(file *os.File) { os.Stdin = file },
+	)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer closeTTY()
+
 	app := NewDv(provider, staged, initialState)
 	if err := t.Run(app); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func stdinIsPiped(stdin *os.File) (bool, error) {
+	if stdin == nil {
+		return false, fmt.Errorf("stdin is unavailable")
+	}
+	info, err := stdin.Stat()
+	if err != nil {
+		return false, fmt.Errorf("stat stdin: %w", err)
+	}
+	return info.Mode()&os.ModeCharDevice == 0, nil
+}
+
+func startupDiffProvider(workDir string, stdin io.Reader, piped bool, openTTY ttyOpener, setStdin stdinSetter) (DiffProvider, func(), error) {
+	if openTTY == nil {
+		openTTY = uv.OpenTTY
+	}
+	if setStdin == nil {
+		setStdin = func(file *os.File) {
+			os.Stdin = file
+		}
+	}
+
+	if !piped {
+		return GitDiffProvider{WorkDir: workDir}, func() {}, nil
+	}
+
+	rawDiff, err := io.ReadAll(stdin)
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("read piped diff from stdin: %w", err)
+	}
+
+	inTTY, outTTY, err := openTTY()
+	if err != nil {
+		return nil, func() {}, fmt.Errorf("reopen terminal input after reading piped stdin: %w", err)
+	}
+	setStdin(inTTY)
+
+	return StdinDiffProvider{
+		WorkDir: workDir,
+		Diff:    string(rawDiff),
+	}, func() { closeTTYPair(inTTY, outTTY) }, nil
+}
+
+func closeTTYPair(inTTY *os.File, outTTY *os.File) {
+	if inTTY != nil {
+		_ = inTTY.Close()
+	}
+	if outTTY != nil && outTTY != inTTY {
+		_ = outTTY.Close()
 	}
 }

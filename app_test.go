@@ -218,6 +218,128 @@ func TestDv_SamePathCanExistInBothSectionsWithDistinctSelection(t *testing.T) {
 	require.Equal(t, 2, app.fileByPath["same.go"].Deletions)
 }
 
+func TestDv_PipeModeTreeShowsSingleFilesSection(t *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("piped.go")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+
+	roots := app.treeState.Nodes.Peek()
+	require.Len(t, roots, 1)
+	require.Equal(t, "Files", roots[0].Data.Name)
+	require.Equal(t, DiffSectionFiles, roots[0].Data.Section)
+	require.Equal(t, DiffSectionFiles, app.activeSection)
+	require.Equal(t, "piped.go", app.activePath)
+}
+
+func TestDv_PipeModeSectionLabelUsesAccentColor(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	render := app.renderTreeNode(theme, false)
+	widget := render(
+		DiffTreeNodeData{
+			Name:         "Files",
+			Path:         string(DiffSectionFiles),
+			IsDir:        true,
+			Section:      DiffSectionFiles,
+			NodeKind:     DiffTreeNodeSection,
+			TouchedFiles: 1,
+		},
+		t.TreeNodeContext{},
+		t.MatchResult{},
+	)
+	row, ok := widget.(t.Row)
+	require.True(tt, ok)
+	label, ok := row.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, theme.Accent, label.Style.ForegroundColor)
+}
+
+func TestDv_PipeModeSidebarHeadingOmitsSectionSwitchHint(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	spans := app.sidebarHeadingSpans(theme)
+	require.Len(tt, spans, 2)
+	require.Equal(tt, "Files: ", spans[0].Text)
+	require.Equal(tt, "1", spans[1].Text)
+	require.Equal(tt, theme.Accent, spans[1].Style.Foreground)
+
+	joined := strings.Join(spanTexts(spans), "")
+	require.NotContains(tt, joined, "[s]")
+}
+
+func TestDv_PipeModeCommandPaletteOmitsSwitchSection(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	switchSection := findPaletteItemByLabel(level.Items, "Switch section")
+	require.Empty(tt, switchSection.Label)
+
+	refresh := findPaletteItemByLabel(level.Items, "Refresh")
+	require.True(tt, refresh.IsSelectable())
+}
+
+func TestDv_PipeModeSectionSummaryUsesFilesCopy(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+
+	app.setActiveSectionSummary(DiffSectionFiles)
+
+	rendered := app.diffViewState.Rendered.Peek()
+	require.NotNil(tt, rendered)
+	found := false
+	for _, line := range rendered.Lines {
+		if strings.Contains(lineText(line), "No files in this diff.") {
+			found = true
+			break
+		}
+	}
+	require.True(tt, found)
+}
+
+func TestDv_PipeModeManualRefreshIsNoop(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("first.txt"), diffForPaths("second.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}
+	app := newTestDv(provider, false)
+	require.Equal(tt, "first.txt", app.activePath)
+	require.Equal(tt, 1, provider.index)
+
+	app.manualRefresh()
+
+	require.Equal(tt, "first.txt", app.activePath)
+	require.Equal(tt, 1, provider.index)
+}
+
 func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	level := app.commandPalette.CurrentLevel()
@@ -1206,6 +1328,34 @@ func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	require.Equal(tt, "No staged or unstaged changes.", heading.Content)
 }
 
+func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	widget := app.buildRightPane(theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok := column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+	emptyState, ok := scrollable.Child.(t.Column)
+	require.True(tt, ok)
+	require.Len(tt, emptyState.Children, 3)
+
+	heading, ok := emptyState.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "No files in piped diff.", heading.Content)
+
+	details, ok := emptyState.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.NotContains(tt, details.Content, "press r")
+	require.NotContains(tt, details.Content, "Press r")
+}
+
 func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	require.True(tt, app.sidebarVisible)
@@ -1611,6 +1761,8 @@ type scriptedDiffProvider struct {
 	diffs         []string
 	unstagedDiffs []string
 	stagedDiffs   []string
+	sections      []DiffSection
+	manualRefresh *bool
 	index         int
 	unstagedIndex int
 	stagedIndex   int
@@ -1658,6 +1810,24 @@ func (p *scriptedDiffProvider) RepoRoot() (string, error) {
 
 func (p *scriptedDiffProvider) CurrentBranch() (string, error) {
 	return p.branch, nil
+}
+
+func (p *scriptedDiffProvider) Sections() []DiffSection {
+	if len(p.sections) == 0 {
+		return nil
+	}
+	return p.sections
+}
+
+func (p *scriptedDiffProvider) ManualRefreshEnabled() bool {
+	if p.manualRefresh == nil {
+		return true
+	}
+	return *p.manualRefresh
+}
+
+func boolPtr(value bool) *bool {
+	return &value
 }
 
 func diffForPaths(paths ...string) string {
