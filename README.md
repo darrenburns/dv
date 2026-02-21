@@ -24,6 +24,12 @@ Install it using Homebrew:
 brew install darrenburns/homebrew/dv
 ```
 
+Alternatively install using Go (ensure `$GOPATH/bin` or `$HOME/go/bin` is in your `PATH`):
+
+```bash
+go install github.com/darrenburns/dv@latest
+```
+
 Then run it like this:
 
 ```bash
