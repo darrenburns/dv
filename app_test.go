@@ -1950,7 +1950,7 @@ func TestDv_NewDvNormalizesInvalidValues(tt *testing.T) {
 	require.False(tt, app.sidebarVisible)
 	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
 	require.True(tt, app.diffHideChangeSigns)
-	require.Equal(tt, t.ThemeNameCatppuccin, t.CurrentThemeName())
+	require.Equal(tt, t.ThemeNameObsidianTide, t.CurrentThemeName())
 }
 
 func TestDv_DefaultIntralineStyleModeIsBackground(tt *testing.T) {

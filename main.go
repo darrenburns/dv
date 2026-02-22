@@ -38,7 +38,7 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "print version and exit")
 	flag.StringVar(&viewMode, "view", "unified", "default view mode: unified or split")
 	flag.BoolVar(&sidebarVisible, "sidebar", true, "show sidebar on startup")
-	flag.StringVar(&themeName, "theme", t.ThemeNameCatppuccin, "default theme")
+	flag.StringVar(&themeName, "theme", t.ThemeNameObsidianTide, "default theme")
 	flag.StringVar(&intralineStyle, "intraline-style", "background", "default intraline style: background or underline")
 	flag.BoolVar(&showSymbols, "show-symbols", false, "show +/- symbols by default")
 	flag.BoolVar(&ignoreWhitespace, "ignore-whitespace", false, "ignore whitespace-only changes by default")

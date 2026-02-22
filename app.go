@@ -43,7 +43,7 @@ func DefaultDvInitialState() DvInitialState {
 	return DvInitialState{
 		LayoutMode:       DiffLayoutUnified,
 		SidebarVisible:   true,
-		ThemeName:        t.ThemeNameCatppuccin,
+		ThemeName:        t.ThemeNameObsidianTide,
 		IntralineStyle:   IntralineStyleModeBackground,
 		ShowChangeSigns:  false,
 		IgnoreWhitespace: false,
