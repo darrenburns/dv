@@ -73,6 +73,7 @@ There are a few CLI options available for customising `dv`.
 | `--theme` | any built-in theme name (for example `catppuccin`, `dracula`, `nord`) | `catppuccin` |
 | `--intraline-style` | `background`, `underline` | `background` |
 | `--show-symbols` | `true`, `false` | `false` |
+| `--ignore-whitespace` | `true`, `false` | `false` |
 | `--config` | path to a YAML config file | auto-discover via XDG |
 | `--no-config` | `true`, `false` | `false` |
 
@@ -113,8 +114,10 @@ sidebar: true
 theme: catppuccin
 intraline-style: underline
 show-symbols: false
+ignore-whitespace: true
 ```
 
 Notes:
 - For string flags, both `--flag value` and `--flag=value` work.
 - For booleans, prefer `--flag=false` when disabling.
+- `ignore-whitespace` is unavailable in piped mode (`git diff | dv`); apply whitespace flags before piping.

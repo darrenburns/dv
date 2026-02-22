@@ -345,6 +345,25 @@ func TestDv_PipeModeSidebarHeadingOmitsSectionSwitchHint(tt *testing.T) {
 	require.NotContains(tt, joined, "[s]")
 }
 
+func TestDv_PipeModeHeaderOmitsIgnoreWhitespaceIndicator(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	header := app.buildHeader(theme)
+	row, ok := header.(t.Row)
+	require.True(tt, ok)
+	text := strings.Join(rowTextContents(row), " ")
+	require.Contains(tt, text, "unified [v]")
+	require.NotContains(tt, text, "ignore-ws:")
+	require.NotContains(tt, text, "[x]")
+}
+
 func TestDv_PipeModeCommandPaletteOmitsSwitchSection(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
@@ -361,6 +380,9 @@ func TestDv_PipeModeCommandPaletteOmitsSwitchSection(tt *testing.T) {
 
 	refresh := findPaletteItemByLabel(level.Items, "Refresh")
 	require.True(tt, refresh.IsSelectable())
+
+	ignoreWhitespace := findPaletteItemByLabel(level.Items, "Toggle ignore whitespace")
+	require.Empty(tt, ignoreWhitespace.Label)
 }
 
 func TestDv_PipeModeSectionSummaryUsesFilesCopy(tt *testing.T) {
@@ -437,6 +459,10 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	signs := findPaletteItemByLabel(level.Items, "Toggle +/- symbols")
 	require.True(tt, signs.IsSelectable())
 
+	ignoreWhitespace := findPaletteItemByLabel(level.Items, "Toggle ignore whitespace")
+	require.True(tt, ignoreWhitespace.IsSelectable())
+	require.Equal(tt, "[x]", ignoreWhitespace.Hint)
+
 	intraline := findPaletteItemByLabel(level.Items, "Toggle intraline style")
 	require.True(tt, intraline.IsSelectable())
 	require.Equal(tt, "[i]", intraline.Hint)
@@ -501,6 +527,7 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 	wrapIdx := -1
 	layoutModeIdx := -1
 	signsIdx := -1
+	ignoreWhitespaceIdx := -1
 	intralineIdx := -1
 	themeIdx := -1
 
@@ -520,6 +547,8 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 			layoutModeIdx = idx
 		case item.Label == "Toggle +/- symbols":
 			signsIdx = idx
+		case item.Label == "Toggle ignore whitespace":
+			ignoreWhitespaceIdx = idx
 		case item.Label == "Toggle intraline style":
 			intralineIdx = idx
 		case item.Label == "Theme":
@@ -535,7 +564,8 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 	require.Greater(tt, wrapIdx, appearanceDivider)
 	require.Greater(tt, layoutModeIdx, wrapIdx)
 	require.Greater(tt, signsIdx, layoutModeIdx)
-	require.Greater(tt, intralineIdx, signsIdx)
+	require.Greater(tt, ignoreWhitespaceIdx, signsIdx)
+	require.Greater(tt, intralineIdx, ignoreWhitespaceIdx)
 	require.Greater(tt, themeIdx, intralineIdx)
 }
 
@@ -551,6 +581,7 @@ func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 	require.True(tt, keybindIsHidden(keybinds, "w"))
 	require.True(tt, keybindIsHidden(keybinds, "v"))
 	require.True(tt, keybindIsHidden(keybinds, "i"))
+	require.True(tt, keybindIsHidden(keybinds, "x"))
 	require.True(tt, keybindIsHidden(keybinds, "b"))
 	require.True(tt, keybindIsHidden(keybinds, "y"))
 	require.False(tt, keybindIsHidden(keybinds, "ctrl+p"))
@@ -587,6 +618,25 @@ func TestDv_KeybindsIncludeIntralineStyleToggle(tt *testing.T) {
 	require.True(tt, ok)
 	require.Equal(tt, "Toggle intraline style", keybind.Name)
 	require.True(tt, keybind.Hidden)
+}
+
+func TestDv_KeybindsIncludeIgnoreWhitespaceToggle(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "x")
+	require.True(tt, ok)
+	require.Equal(tt, "Toggle ignore whitespace", keybind.Name)
+	require.True(tt, keybind.Hidden)
+}
+
+func TestDv_PipeModeKeybindsOmitIgnoreWhitespaceToggle(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false)
+	_, ok := findKeybindByKey(app.Keybinds(), "x")
+	require.False(tt, ok)
 }
 
 func TestDv_KeybindsIncludeSideBySideSplitShiftShortcuts(tt *testing.T) {
@@ -1476,6 +1526,31 @@ func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	require.Equal(tt, "No staged or unstaged changes.", heading.Content)
 }
 
+func TestDv_EmptyStateMentionsIgnoreWhitespaceWhenEnabled(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	app.toggleDiffIgnoreWhitespace()
+
+	widget := app.buildRightPane(theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok := column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+	emptyState, ok := scrollable.Child.(t.Column)
+	require.True(tt, ok)
+
+	heading, ok := emptyState.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "No staged or unstaged changes (ignoring whitespace).", heading.Content)
+
+	details, ok := emptyState.Children[2].(t.Text)
+	require.True(tt, ok)
+	require.Contains(tt, details.Content, "Whitespace-only changes are hidden")
+	require.Contains(tt, details.Content, "Press x")
+}
+
 func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
@@ -1744,23 +1819,67 @@ func TestDv_ToggleDiffChangeSigns(tt *testing.T) {
 	require.True(tt, app.diffHideChangeSigns)
 }
 
+func TestDv_ToggleDiffIgnoreWhitespaceRefreshesAndUpdatesProviderCalls(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt"), diffForPaths("a.txt"), diffForPaths("a.txt")},
+	}
+	app := newTestDv(provider, false)
+	require.False(tt, app.diffIgnoreWhitespace)
+	require.NotEmpty(tt, provider.loadIgnoreWS)
+	for _, value := range provider.loadIgnoreWS {
+		require.False(tt, value)
+	}
+
+	initialCalls := len(provider.loadIgnoreWS)
+	app.toggleDiffIgnoreWhitespace()
+
+	require.True(tt, app.diffIgnoreWhitespace)
+	require.Greater(tt, len(provider.loadIgnoreWS), initialCalls)
+	for _, value := range provider.loadIgnoreWS[initialCalls:] {
+		require.True(tt, value)
+	}
+
+	app.toggleDiffIgnoreWhitespace()
+	require.False(tt, app.diffIgnoreWhitespace)
+	secondCalls := provider.loadIgnoreWS[len(provider.loadIgnoreWS)-2:]
+	require.Len(tt, secondCalls, 2)
+	require.Equal(tt, []bool{false, false}, secondCalls)
+}
+
 func TestDv_NewDvAppliesProvidedDefaults(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
 		diffs:    []string{diffForPaths("a.txt")},
 	}, false, DvInitialState{
-		LayoutMode:      DiffLayoutSideBySide,
-		SidebarVisible:  false,
-		ThemeName:       t.ThemeNameDracula,
-		IntralineStyle:  IntralineStyleModeUnderline,
-		ShowChangeSigns: true,
+		LayoutMode:       DiffLayoutSideBySide,
+		SidebarVisible:   false,
+		ThemeName:        t.ThemeNameDracula,
+		IntralineStyle:   IntralineStyleModeUnderline,
+		ShowChangeSigns:  true,
+		IgnoreWhitespace: true,
 	})
 
 	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
 	require.False(tt, app.sidebarVisible)
 	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
 	require.False(tt, app.diffHideChangeSigns)
+	require.True(tt, app.diffIgnoreWhitespace)
 	require.Equal(tt, t.ThemeNameDracula, t.CurrentThemeName())
+}
+
+func TestDv_NewDvPipeModeDisablesIgnoreWhitespace(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		sections:      []DiffSection{DiffSectionFiles},
+		manualRefresh: boolPtr(false),
+	}, false, DvInitialState{
+		IgnoreWhitespace: true,
+	})
+
+	require.True(tt, app.isPipedDiffMode())
+	require.False(tt, app.diffIgnoreWhitespace)
 }
 
 func TestDv_NewDvNormalizesInvalidValues(tt *testing.T) {
@@ -1895,9 +2014,10 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	require.NotContains(tt, text, "Mode:")
 	require.Contains(tt, text, "[t]")
 	require.Contains(tt, text, "unified [v]")
+	require.Contains(tt, text, "ignore-ws:off [x]")
 	branchIdx := indexOfTextContaining(texts, "feature/layout-mode")
 	themeIdx := indexOfTextContaining(texts, "[t]")
-	modeIdx := indexOfTextContaining(texts, "unified [v]")
+	modeIdx := indexOfTextContaining(texts, "unified [v] ignore-ws:off [x]")
 	require.GreaterOrEqual(tt, branchIdx, 0)
 	require.GreaterOrEqual(tt, themeIdx, 0)
 	require.Greater(tt, modeIdx, branchIdx)
@@ -1910,13 +2030,21 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	texts = rowTextContents(row)
 	text = strings.Join(texts, " ")
 	require.Contains(tt, text, "side-by-side [v]")
+	require.Contains(tt, text, "ignore-ws:off [x]")
 	branchIdx = indexOfTextContaining(texts, "feature/layout-mode")
 	themeIdx = indexOfTextContaining(texts, "[t]")
-	modeIdx = indexOfTextContaining(texts, "side-by-side [v]")
+	modeIdx = indexOfTextContaining(texts, "side-by-side [v] ignore-ws:off [x]")
 	require.GreaterOrEqual(tt, branchIdx, 0)
 	require.GreaterOrEqual(tt, themeIdx, 0)
 	require.Greater(tt, modeIdx, branchIdx)
 	require.Greater(tt, themeIdx, modeIdx)
+
+	app.toggleDiffIgnoreWhitespace()
+	header = app.buildHeader(theme)
+	row, ok = header.(t.Row)
+	require.True(tt, ok)
+	text = strings.Join(rowTextContents(row), " ")
+	require.Contains(tt, text, "ignore-ws:on [x]")
 }
 
 func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
@@ -1947,9 +2075,14 @@ type scriptedDiffProvider struct {
 	index         int
 	unstagedIndex int
 	stagedIndex   int
+	loadStaged    []bool
+	loadIgnoreWS  []bool
 }
 
-func (p *scriptedDiffProvider) LoadDiff(staged bool) (string, error) {
+func (p *scriptedDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
+	p.loadStaged = append(p.loadStaged, staged)
+	p.loadIgnoreWS = append(p.loadIgnoreWS, ignoreWhitespace)
+
 	if len(p.unstagedDiffs) > 0 || len(p.stagedDiffs) > 0 {
 		if staged {
 			if len(p.stagedDiffs) == 0 {

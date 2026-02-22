@@ -9,7 +9,7 @@ import (
 
 // DiffProvider abstracts where git diff content comes from.
 type DiffProvider interface {
-	LoadDiff(staged bool) (string, error)
+	LoadDiff(staged bool, ignoreWhitespace bool) (string, error)
 	RepoRoot() (string, error)
 	CurrentBranch() (string, error)
 }
@@ -29,8 +29,8 @@ type GitDiffProvider struct {
 	WorkDir string
 }
 
-func (p GitDiffProvider) LoadDiff(staged bool) (string, error) {
-	args := buildDiffArgs(staged)
+func (p GitDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
+	args := buildDiffArgs(staged, ignoreWhitespace)
 	stdout, stderr, err := runGit(p.WorkDir, args)
 	if err != nil {
 		return "", fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
@@ -67,7 +67,7 @@ func runGit(workDir string, args []string) (stdout string, stderr string, err er
 	return outBuf.String(), errBuf.String(), err
 }
 
-func buildDiffArgs(staged bool) []string {
+func buildDiffArgs(staged bool, ignoreWhitespace bool) []string {
 	args := []string{
 		"-c", "color.ui=never",
 		"diff",
@@ -75,6 +75,9 @@ func buildDiffArgs(staged bool) []string {
 		"--no-ext-diff",
 		"--patch",
 		"--find-renames",
+	}
+	if ignoreWhitespace {
+		args = append(args, "--ignore-all-space")
 	}
 	if staged {
 		args = append(args, "--staged")

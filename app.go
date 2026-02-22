@@ -30,20 +30,22 @@ const (
 )
 
 type DvInitialState struct {
-	LayoutMode      DiffLayoutMode
-	SidebarVisible  bool
-	ThemeName       string
-	IntralineStyle  IntralineStyleMode
-	ShowChangeSigns bool
+	LayoutMode       DiffLayoutMode
+	SidebarVisible   bool
+	ThemeName        string
+	IntralineStyle   IntralineStyleMode
+	ShowChangeSigns  bool
+	IgnoreWhitespace bool
 }
 
 func DefaultDvInitialState() DvInitialState {
 	return DvInitialState{
-		LayoutMode:      DiffLayoutUnified,
-		SidebarVisible:  true,
-		ThemeName:       t.ThemeNameCatppuccin,
-		IntralineStyle:  IntralineStyleModeBackground,
-		ShowChangeSigns: false,
+		LayoutMode:       DiffLayoutUnified,
+		SidebarVisible:   true,
+		ThemeName:        t.ThemeNameCatppuccin,
+		IntralineStyle:   IntralineStyleModeBackground,
+		ShowChangeSigns:  false,
+		IgnoreWhitespace: false,
 	}
 }
 
@@ -138,6 +140,7 @@ type Dv struct {
 	diffHardWrap         bool
 	diffHideChangeSigns  bool
 	diffIntralineStyle   IntralineStyleMode
+	diffIgnoreWhitespace bool
 	manualRefreshEnabled bool
 	focusedWidgetID      string
 	sidebarVisible       bool
@@ -201,11 +204,15 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		diffLayoutMode:       initialState.LayoutMode,
 		diffHideChangeSigns:  !initialState.ShowChangeSigns,
 		diffIntralineStyle:   initialState.IntralineStyle,
+		diffIgnoreWhitespace: initialState.IgnoreWhitespace,
 		manualRefreshEnabled: manualRefreshEnabled,
 		lastNonDividerFocus:  diffViewerScrollID,
 		focusReturnID:        diffViewerScrollID,
 		copyPathToClipboard:  copyPathToClipboardOSC52,
 		fileScrollOffsets:    map[string]fileScrollState{},
+	}
+	if app.isPipedDiffMode() {
+		app.diffIgnoreWhitespace = false
 	}
 	app.configureDiffHorizontalScroll()
 	app.commandPalette = app.newCommandPalette()
@@ -430,7 +437,7 @@ func (a *Dv) toggleMode() {
 
 func (a *Dv) Keybinds() []t.Keybind {
 	showFilterFiles := a.focusedWidgetID == diffFilesTreeID || a.focusedWidgetID == diffViewerScrollID
-	return []t.Keybind{
+	keybinds := []t.Keybind{
 		{Key: "n", Name: "Next file", Action: func() { a.moveFileCursor(1) }},
 		{Key: "]", Name: "Next file", Action: func() { a.moveFileCursor(1) }},
 		{Key: "p", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
@@ -451,6 +458,15 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "t", Name: "Theme menu", Action: a.openThemePalette, Hidden: true},
 		{Key: "q", Name: "Quit", Action: t.Quit},
 	}
+	if a.canToggleDiffIgnoreWhitespace() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "x",
+			Name:   "Toggle ignore whitespace",
+			Action: a.toggleDiffIgnoreWhitespace,
+			Hidden: true,
+		})
+	}
+	return keybinds
 }
 
 func (a *Dv) Build(ctx t.BuildContext) t.Widget {
@@ -911,17 +927,32 @@ func (a *Dv) viewerFilePosition() (current int, total int, ok bool) {
 }
 
 func (a *Dv) buildHeaderModeIndicator(theme t.ThemeData) t.Widget {
-	return t.Text{
-		Spans: []t.Span{
-			t.StyledSpan(a.diffLayoutModeLabel(), t.SpanStyle{
+	spans := []t.Span{
+		t.StyledSpan(a.diffLayoutModeLabel(), t.SpanStyle{
+			Foreground: theme.Text,
+		}),
+		t.PlainSpan(" "),
+		t.StyledSpan("[v]", t.SpanStyle{
+			Foreground: theme.Text,
+		}),
+	}
+	if a.canToggleDiffIgnoreWhitespace() {
+		ignoreWsLabel := "ignore-ws:off"
+		if a.diffIgnoreWhitespace {
+			ignoreWsLabel = "ignore-ws:on"
+		}
+		spans = append(spans,
+			t.PlainSpan(" "),
+			t.StyledSpan(ignoreWsLabel, t.SpanStyle{
 				Foreground: theme.Text,
 			}),
 			t.PlainSpan(" "),
-			t.StyledSpan("[v]", t.SpanStyle{
+			t.StyledSpan("[x]", t.SpanStyle{
 				Foreground: theme.Text,
 			}),
-		},
+		)
 	}
+	return t.Text{Spans: spans}
 }
 
 func (a *Dv) diffLayoutModeLabel() string {
@@ -936,6 +967,10 @@ func (a *Dv) manualRefresh() {
 		return
 	}
 	a.refreshDiff()
+}
+
+func (a *Dv) canToggleDiffIgnoreWhitespace() bool {
+	return !a.isPipedDiffMode()
 }
 
 func (a *Dv) canCopyActiveFilePath() bool {
@@ -987,7 +1022,7 @@ func (a *Dv) refreshDiff() {
 	nextSections := newDiffSectionStateMap(a.sectionOrder)
 
 	for idx, section := range a.sectionOrder {
-		raw, err := a.provider.LoadDiff(section == DiffSectionStaged)
+		raw, err := a.provider.LoadDiff(section == DiffSectionStaged, a.diffIgnoreWhitespace)
 		if err != nil {
 			a.setLoadError(fmt.Sprintf("%s diff: %v", strings.ToLower(section.DisplayName()), err))
 			return
@@ -1849,6 +1884,14 @@ func (a *Dv) toggleDiffChangeSigns() {
 	a.clampDiffHorizontalScroll()
 }
 
+func (a *Dv) toggleDiffIgnoreWhitespace() {
+	if !a.canToggleDiffIgnoreWhitespace() {
+		return
+	}
+	a.diffIgnoreWhitespace = !a.diffIgnoreWhitespace
+	a.refreshDiff()
+}
+
 func (a *Dv) toggleDiffIntralineStyle() {
 	if a.diffIntralineStyle == IntralineStyleModeBackground {
 		a.diffIntralineStyle = IntralineStyleModeUnderline
@@ -2274,6 +2317,16 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			FilterText: "Toggle plus minus symbols signs prefixes add remove",
 			Action:     a.paletteAction(a.toggleDiffChangeSigns),
 		},
+	)
+	if a.canToggleDiffIgnoreWhitespace() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Toggle ignore whitespace",
+			FilterText: "Toggle ignore whitespace differences -w ignore-all-space",
+			Hint:       "[x]",
+			Action:     a.paletteAction(a.toggleDiffIgnoreWhitespace),
+		})
+	}
+	items = append(items,
 		t.CommandPaletteItem{
 			Label:      "Toggle intraline style",
 			FilterText: "Toggle intraline style highlight background underline changed characters",
@@ -2508,6 +2561,9 @@ func (a *Dv) isPipedDiffMode() bool {
 func (a *Dv) emptyMessageParts() (heading string, details string) {
 	if a.isPipedDiffMode() {
 		return "No files in piped diff.", "Run your diff command again and pipe it into dv."
+	}
+	if a.diffIgnoreWhitespace {
+		return "No staged or unstaged changes (ignoring whitespace).", "Whitespace-only changes are hidden. Press x to toggle ignore whitespace."
 	}
 	return "No staged or unstaged changes.", "Make edits or stage files, then press r to refresh."
 }

@@ -8,13 +8,14 @@ import (
 )
 
 func TestStartupInitialStateFromFlags_ParsesValues(t *testing.T) {
-	initialState, err := startupInitialStateFromFlags("split", false, "catpuccin", "underline", true)
+	initialState, err := startupInitialStateFromFlags("split", false, "catpuccin", "underline", true, true)
 	require.NoError(t, err)
 	require.Equal(t, DiffLayoutSideBySide, initialState.LayoutMode)
 	require.False(t, initialState.SidebarVisible)
 	require.Equal(t, terma.ThemeNameCatppuccin, initialState.ThemeName)
 	require.Equal(t, IntralineStyleModeUnderline, initialState.IntralineStyle)
 	require.True(t, initialState.ShowChangeSigns)
+	require.True(t, initialState.IgnoreWhitespace)
 }
 
 func TestParseDiffLayoutMode(t *testing.T) {

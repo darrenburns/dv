@@ -30,6 +30,7 @@ func main() {
 	var themeName string
 	var intralineStyle string
 	var showSymbols bool
+	var ignoreWhitespace bool
 	var configPath string
 	var noConfig bool
 
@@ -40,6 +41,7 @@ func main() {
 	flag.StringVar(&themeName, "theme", t.ThemeNameCatppuccin, "default theme")
 	flag.StringVar(&intralineStyle, "intraline-style", "background", "default intraline style: background or underline")
 	flag.BoolVar(&showSymbols, "show-symbols", false, "show +/- symbols by default")
+	flag.BoolVar(&ignoreWhitespace, "ignore-whitespace", false, "ignore whitespace-only changes by default")
 	flag.StringVar(&configPath, "config", "", "path to YAML config file")
 	flag.BoolVar(&noConfig, "no-config", false, "disable config file loading")
 	flag.Parse()
@@ -60,15 +62,23 @@ func main() {
 	}
 
 	flagValues := startupFlagValues{
-		ViewMode:       viewMode,
-		SidebarVisible: sidebarVisible,
-		ThemeName:      themeName,
-		IntralineStyle: intralineStyle,
-		ShowSymbols:    showSymbols,
+		ViewMode:         viewMode,
+		SidebarVisible:   sidebarVisible,
+		ThemeName:        themeName,
+		IntralineStyle:   intralineStyle,
+		ShowSymbols:      showSymbols,
+		IgnoreWhitespace: ignoreWhitespace,
 	}
 	flagValues = applyStartupConfig(flagValues, cfg, explicitlySetFlags)
 
-	initialState, err := startupInitialStateFromFlags(flagValues.ViewMode, flagValues.SidebarVisible, flagValues.ThemeName, flagValues.IntralineStyle, flagValues.ShowSymbols)
+	initialState, err := startupInitialStateFromFlags(
+		flagValues.ViewMode,
+		flagValues.SidebarVisible,
+		flagValues.ThemeName,
+		flagValues.IntralineStyle,
+		flagValues.ShowSymbols,
+		flagValues.IgnoreWhitespace,
+	)
 	if err != nil {
 		log.Fatal(err)
 	}

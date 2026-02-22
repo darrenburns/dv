@@ -14,27 +14,30 @@ import (
 const defaultConfigRelPath = "dv/config.yaml"
 
 const (
-	flagNameView           = "view"
-	flagNameSidebar        = "sidebar"
-	flagNameTheme          = "theme"
-	flagNameIntralineStyle = "intraline-style"
-	flagNameShowSymbols    = "show-symbols"
+	flagNameView             = "view"
+	flagNameSidebar          = "sidebar"
+	flagNameTheme            = "theme"
+	flagNameIntralineStyle   = "intraline-style"
+	flagNameShowSymbols      = "show-symbols"
+	flagNameIgnoreWhitespace = "ignore-whitespace"
 )
 
 type startupConfig struct {
-	View           *string `yaml:"view"`
-	Sidebar        *bool   `yaml:"sidebar"`
-	Theme          *string `yaml:"theme"`
-	IntralineStyle *string `yaml:"intraline-style"`
-	ShowSymbols    *bool   `yaml:"show-symbols"`
+	View             *string `yaml:"view"`
+	Sidebar          *bool   `yaml:"sidebar"`
+	Theme            *string `yaml:"theme"`
+	IntralineStyle   *string `yaml:"intraline-style"`
+	ShowSymbols      *bool   `yaml:"show-symbols"`
+	IgnoreWhitespace *bool   `yaml:"ignore-whitespace"`
 }
 
 type startupFlagValues struct {
-	ViewMode       string
-	SidebarVisible bool
-	ThemeName      string
-	IntralineStyle string
-	ShowSymbols    bool
+	ViewMode         string
+	SidebarVisible   bool
+	ThemeName        string
+	IntralineStyle   string
+	ShowSymbols      bool
+	IgnoreWhitespace bool
 }
 
 type resolvedConfigPath struct {
@@ -133,6 +136,9 @@ func applyStartupConfig(values startupFlagValues, cfg startupConfig, explicitlyS
 	}
 	if cfg.ShowSymbols != nil && !explicitlySet[flagNameShowSymbols] {
 		values.ShowSymbols = *cfg.ShowSymbols
+	}
+	if cfg.IgnoreWhitespace != nil && !explicitlySet[flagNameIgnoreWhitespace] {
+		values.IgnoreWhitespace = *cfg.IgnoreWhitespace
 	}
 	return values
 }

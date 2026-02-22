@@ -67,6 +67,7 @@ sidebar: false
 theme: catppuccin
 intraline-style: underline
 show-symbols: true
+ignore-whitespace: true
 `)
 
 	cfg, err := loadStartupConfig(configHome, configPath, false)
@@ -76,11 +77,13 @@ show-symbols: true
 	require.NotNil(t, cfg.Theme)
 	require.NotNil(t, cfg.IntralineStyle)
 	require.NotNil(t, cfg.ShowSymbols)
+	require.NotNil(t, cfg.IgnoreWhitespace)
 	require.Equal(t, "split", *cfg.View)
 	require.False(t, *cfg.Sidebar)
 	require.Equal(t, "catppuccin", *cfg.Theme)
 	require.Equal(t, "underline", *cfg.IntralineStyle)
 	require.True(t, *cfg.ShowSymbols)
+	require.True(t, *cfg.IgnoreWhitespace)
 }
 
 func TestLoadStartupConfig_UnknownKeyErrors(t *testing.T) {
@@ -155,21 +158,24 @@ func TestApplyStartupConfig_AppliesWhenFlagNotSet(t *testing.T) {
 	theme := "dracula"
 	intralineStyle := "underline"
 	showSymbols := true
+	ignoreWhitespace := true
 
 	got := applyStartupConfig(
 		startupFlagValues{
-			ViewMode:       "unified",
-			SidebarVisible: true,
-			ThemeName:      "catppuccin",
-			IntralineStyle: "background",
-			ShowSymbols:    false,
+			ViewMode:         "unified",
+			SidebarVisible:   true,
+			ThemeName:        "catppuccin",
+			IntralineStyle:   "background",
+			ShowSymbols:      false,
+			IgnoreWhitespace: false,
 		},
 		startupConfig{
-			View:           &view,
-			Sidebar:        &sidebar,
-			Theme:          &theme,
-			IntralineStyle: &intralineStyle,
-			ShowSymbols:    &showSymbols,
+			View:             &view,
+			Sidebar:          &sidebar,
+			Theme:            &theme,
+			IntralineStyle:   &intralineStyle,
+			ShowSymbols:      &showSymbols,
+			IgnoreWhitespace: &ignoreWhitespace,
 		},
 		map[string]bool{},
 	)
@@ -179,6 +185,7 @@ func TestApplyStartupConfig_AppliesWhenFlagNotSet(t *testing.T) {
 	require.Equal(t, "dracula", got.ThemeName)
 	require.Equal(t, "underline", got.IntralineStyle)
 	require.True(t, got.ShowSymbols)
+	require.True(t, got.IgnoreWhitespace)
 }
 
 func TestApplyStartupConfig_FlagsOverrideConfig(t *testing.T) {
@@ -187,28 +194,32 @@ func TestApplyStartupConfig_FlagsOverrideConfig(t *testing.T) {
 	theme := "dracula"
 	intralineStyle := "underline"
 	showSymbols := true
+	ignoreWhitespace := true
 
 	got := applyStartupConfig(
 		startupFlagValues{
-			ViewMode:       "unified",
-			SidebarVisible: true,
-			ThemeName:      "catppuccin",
-			IntralineStyle: "background",
-			ShowSymbols:    false,
+			ViewMode:         "unified",
+			SidebarVisible:   true,
+			ThemeName:        "catppuccin",
+			IntralineStyle:   "background",
+			ShowSymbols:      false,
+			IgnoreWhitespace: false,
 		},
 		startupConfig{
-			View:           &view,
-			Sidebar:        &sidebar,
-			Theme:          &theme,
-			IntralineStyle: &intralineStyle,
-			ShowSymbols:    &showSymbols,
+			View:             &view,
+			Sidebar:          &sidebar,
+			Theme:            &theme,
+			IntralineStyle:   &intralineStyle,
+			ShowSymbols:      &showSymbols,
+			IgnoreWhitespace: &ignoreWhitespace,
 		},
 		map[string]bool{
-			flagNameView:           true,
-			flagNameSidebar:        true,
-			flagNameTheme:          true,
-			flagNameIntralineStyle: true,
-			flagNameShowSymbols:    true,
+			flagNameView:             true,
+			flagNameSidebar:          true,
+			flagNameTheme:            true,
+			flagNameIntralineStyle:   true,
+			flagNameShowSymbols:      true,
+			flagNameIgnoreWhitespace: true,
 		},
 	)
 
@@ -217,32 +228,38 @@ func TestApplyStartupConfig_FlagsOverrideConfig(t *testing.T) {
 	require.Equal(t, "catppuccin", got.ThemeName)
 	require.Equal(t, "background", got.IntralineStyle)
 	require.False(t, got.ShowSymbols)
+	require.False(t, got.IgnoreWhitespace)
 }
 
 func TestApplyStartupConfig_ExplicitFalseBooleanFlagsWinOverConfig(t *testing.T) {
 	sidebar := true
 	showSymbols := true
+	ignoreWhitespace := true
 
 	got := applyStartupConfig(
 		startupFlagValues{
-			ViewMode:       "unified",
-			SidebarVisible: false,
-			ThemeName:      "catppuccin",
-			IntralineStyle: "background",
-			ShowSymbols:    false,
+			ViewMode:         "unified",
+			SidebarVisible:   false,
+			ThemeName:        "catppuccin",
+			IntralineStyle:   "background",
+			ShowSymbols:      false,
+			IgnoreWhitespace: false,
 		},
 		startupConfig{
-			Sidebar:     &sidebar,
-			ShowSymbols: &showSymbols,
+			Sidebar:          &sidebar,
+			ShowSymbols:      &showSymbols,
+			IgnoreWhitespace: &ignoreWhitespace,
 		},
 		map[string]bool{
-			flagNameSidebar:     true,
-			flagNameShowSymbols: true,
+			flagNameSidebar:          true,
+			flagNameShowSymbols:      true,
+			flagNameIgnoreWhitespace: true,
 		},
 	)
 
 	require.False(t, got.SidebarVisible)
 	require.False(t, got.ShowSymbols)
+	require.False(t, got.IgnoreWhitespace)
 }
 
 func writeTestConfig(t *testing.T, path string, content string) {

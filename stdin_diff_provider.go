@@ -6,7 +6,7 @@ type StdinDiffProvider struct {
 	Diff    string
 }
 
-func (p StdinDiffProvider) LoadDiff(staged bool) (string, error) {
+func (p StdinDiffProvider) LoadDiff(staged bool, _ bool) (string, error) {
 	if staged {
 		return "", nil
 	}

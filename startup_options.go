@@ -9,7 +9,7 @@ import (
 
 const themeAliasCatpuccin = "catpuccin"
 
-func startupInitialStateFromFlags(viewMode string, sidebarVisible bool, themeName string, intralineStyle string, showSymbols bool) (DvInitialState, error) {
+func startupInitialStateFromFlags(viewMode string, sidebarVisible bool, themeName string, intralineStyle string, showSymbols bool, ignoreWhitespace bool) (DvInitialState, error) {
 	layoutMode, err := parseDiffLayoutMode(viewMode)
 	if err != nil {
 		return DvInitialState{}, err
@@ -26,11 +26,12 @@ func startupInitialStateFromFlags(viewMode string, sidebarVisible bool, themeNam
 	}
 
 	return DvInitialState{
-		LayoutMode:      layoutMode,
-		SidebarVisible:  sidebarVisible,
-		ThemeName:       parsedThemeName,
-		IntralineStyle:  parsedIntralineStyle,
-		ShowChangeSigns: showSymbols,
+		LayoutMode:       layoutMode,
+		SidebarVisible:   sidebarVisible,
+		ThemeName:        parsedThemeName,
+		IntralineStyle:   parsedIntralineStyle,
+		ShowChangeSigns:  showSymbols,
+		IgnoreWhitespace: ignoreWhitespace,
 	}, nil
 }
 

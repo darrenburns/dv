@@ -12,13 +12,27 @@ func TestStdinDiffProvider_LoadDiff(t *testing.T) {
 		Diff:    diffForPaths("a.txt"),
 	}
 
-	unstaged, err := provider.LoadDiff(false)
+	unstaged, err := provider.LoadDiff(false, false)
 	require.NoError(t, err)
 	require.Equal(t, provider.Diff, unstaged)
 
-	staged, err := provider.LoadDiff(true)
+	staged, err := provider.LoadDiff(true, false)
 	require.NoError(t, err)
 	require.Empty(t, staged)
+}
+
+func TestStdinDiffProvider_LoadDiffIgnoreWhitespaceFlagDoesNotChangeOutput(t *testing.T) {
+	provider := StdinDiffProvider{
+		WorkDir: "/tmp/repo",
+		Diff:    diffForPaths("a.txt"),
+	}
+
+	defaultDiff, err := provider.LoadDiff(false, false)
+	require.NoError(t, err)
+
+	ignoreWhitespaceDiff, err := provider.LoadDiff(false, true)
+	require.NoError(t, err)
+	require.Equal(t, defaultDiff, ignoreWhitespaceDiff)
 }
 
 func TestStdinDiffProvider_SectionsAndManualRefresh(t *testing.T) {
