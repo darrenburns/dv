@@ -573,6 +573,8 @@ func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	keybinds := app.Keybinds()
 
+	require.True(tt, keybindIsHidden(keybinds, "J"))
+	require.True(tt, keybindIsHidden(keybinds, "K"))
 	require.True(tt, keybindIsHidden(keybinds, "s"))
 	require.True(tt, keybindIsHidden(keybinds, "r"))
 	require.True(tt, keybindIsHidden(keybinds, "d"))
@@ -1750,6 +1752,56 @@ func TestDv_DiffScrollStateHorizontalCallbacksNoopWhenWrappedInSideBySideMode(tt
 	handled := app.diffScrollState.ScrollRight(1)
 	require.False(tt, handled)
 	require.Equal(tt, 9, app.diffViewState.ScrollX.Peek())
+}
+
+func TestDv_DiffJumpKeybindsMoveByTenLinesWhenViewerFocused(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+
+	rendered := buildTestRenderedFile(40, 80)
+	app.diffViewState.SetRendered(rendered)
+	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns)
+	app.diffViewState.SetViewport(80, 10, gutterWidth)
+	app.setDiffVerticalOffset(5)
+	app.focusedWidgetID = diffViewerScrollID
+
+	jumpDown, ok := findKeybindByKey(app.Keybinds(), "J")
+	require.True(tt, ok)
+	require.NotNil(tt, jumpDown.Action)
+	jumpDown.Action()
+	require.Equal(tt, 15, app.diffScrollState.Offset.Peek())
+	require.Equal(tt, 15, app.diffViewState.ScrollY.Peek())
+
+	app.setDiffVerticalOffset(25)
+	jumpDown.Action()
+	// 40 lines, viewport height is 10, so max scroll amount clamps to 30.
+	require.Equal(tt, 30, app.diffScrollState.Offset.Peek())
+	require.Equal(tt, 30, app.diffViewState.ScrollY.Peek())
+
+	jumpUp, ok := findKeybindByKey(app.Keybinds(), "K")
+	require.True(tt, ok)
+	require.NotNil(tt, jumpUp.Action)
+	jumpUp.Action()
+	require.Equal(tt, 20, app.diffScrollState.Offset.Peek())
+	require.Equal(tt, 20, app.diffViewState.ScrollY.Peek())
+}
+
+func TestDv_DiffJumpKeybindsNoopWhenViewerNotFocused(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+
+	rendered := buildTestRenderedFile(40, 80)
+	app.diffViewState.SetRendered(rendered)
+	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns)
+	app.diffViewState.SetViewport(80, 10, gutterWidth)
+	app.setDiffVerticalOffset(7)
+	app.focusedWidgetID = diffFilesTreeID
+
+	jumpDown, ok := findKeybindByKey(app.Keybinds(), "J")
+	require.True(tt, ok)
+	require.NotNil(tt, jumpDown.Action)
+	jumpDown.Action()
+
+	require.Equal(tt, 7, app.diffScrollState.Offset.Peek())
+	require.Equal(tt, 7, app.diffViewState.ScrollY.Peek())
 }
 
 func TestDv_ShiftSideBySideSplitActionsMoveDividerByOneCell(tt *testing.T) {

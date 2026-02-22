@@ -20,6 +20,7 @@ const (
 	diffSplitPaneID      = "terma-diff-split"
 	diffCommandPaletteID = "terma-diff-command-palette"
 	diffThemesPalette    = "Themes"
+	diffJumpScrollLines  = 10
 )
 
 type DiffLayoutMode int
@@ -442,6 +443,8 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "]", Name: "Next file", Action: func() { a.moveFileCursor(1) }},
 		{Key: "p", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
 		{Key: "[", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
+		{Key: "J", Name: "Jump down 10", Action: func() { a.jumpDiffVertical(diffJumpScrollLines) }, Hidden: true},
+		{Key: "K", Name: "Jump up 10", Action: func() { a.jumpDiffVertical(-diffJumpScrollLines) }, Hidden: true},
 		{Key: "/", Name: "Filter files", Action: a.openTreeFilter, Hidden: !showFilterFiles},
 		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
@@ -1431,6 +1434,13 @@ func (a *Dv) currentDiffVerticalOffset() int {
 		return viewOffset
 	}
 	return scrollOffset
+}
+
+func (a *Dv) jumpDiffVertical(delta int) {
+	if delta == 0 || a.focusedWidgetID != diffViewerScrollID {
+		return
+	}
+	a.setDiffVerticalOffset(a.currentDiffVerticalOffset() + delta)
 }
 
 func diffFileScrollKey(section DiffSection, filePath string) string {
