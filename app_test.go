@@ -115,6 +115,67 @@ func TestDv_NextPrevStartsAtFilteredSetWhenActiveFileExcluded(t *testing.T) {
 	require.Equal(t, "a.go", app.activePath)
 }
 
+func TestDv_RestoresScrollOffsetPerFile(t *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt", "b.txt")},
+	}, false)
+
+	require.Equal(t, "a.txt", app.activePath)
+	app.diffScrollState.Offset.Set(2)
+	app.diffViewState.ScrollY.Set(2)
+
+	require.True(t, app.selectFilePath("b.txt"))
+	require.Equal(t, 0, app.diffViewState.ScrollY.Peek())
+	require.Equal(t, 0, app.diffScrollState.Offset.Peek())
+
+	app.diffScrollState.Offset.Set(1)
+	app.diffViewState.ScrollY.Set(1)
+
+	require.True(t, app.selectFilePath("a.txt"))
+	require.Equal(t, 2, app.diffViewState.ScrollY.Peek())
+	require.Equal(t, 2, app.diffScrollState.Offset.Peek())
+
+	require.True(t, app.selectFilePath("b.txt"))
+	require.Equal(t, 1, app.diffViewState.ScrollY.Peek())
+	require.Equal(t, 1, app.diffScrollState.Offset.Peek())
+}
+
+func TestDv_RestoresScrollOffsetForSamePathAcrossSections(t *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPathWithStats("same.go", 3, 0)},
+		stagedDiffs:   []string{diffForPathWithStats("same.go", 2, 0)},
+	}, false)
+
+	require.Equal(t, DiffSectionUnstaged, app.activeSection)
+	require.Equal(t, "same.go", app.activePath)
+
+	app.diffScrollState.Offset.Set(2)
+	app.diffViewState.ScrollY.Set(2)
+
+	app.switchSectionFocus()
+	require.Equal(t, DiffSectionStaged, app.activeSection)
+	require.Equal(t, "same.go", app.activePath)
+	require.Equal(t, 0, app.diffViewState.ScrollY.Peek())
+	require.Equal(t, 0, app.diffScrollState.Offset.Peek())
+
+	app.diffScrollState.Offset.Set(1)
+	app.diffViewState.ScrollY.Set(1)
+
+	app.switchSectionFocus()
+	require.Equal(t, DiffSectionUnstaged, app.activeSection)
+	require.Equal(t, "same.go", app.activePath)
+	require.Equal(t, 2, app.diffViewState.ScrollY.Peek())
+	require.Equal(t, 2, app.diffScrollState.Offset.Peek())
+
+	app.switchSectionFocus()
+	require.Equal(t, DiffSectionStaged, app.activeSection)
+	require.Equal(t, "same.go", app.activePath)
+	require.Equal(t, 1, app.diffViewState.ScrollY.Peek())
+	require.Equal(t, 1, app.diffScrollState.Offset.Peek())
+}
+
 func TestDv_DirectoryCursorShowsSummaryInViewer(t *testing.T) {
 	provider := &scriptedDiffProvider{
 		repoRoot: "/tmp/repo",

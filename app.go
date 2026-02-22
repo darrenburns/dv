@@ -78,6 +78,11 @@ type diffScrollAnchor struct {
 	newLine int
 }
 
+type fileScrollState struct {
+	mode   DiffLayoutMode
+	offset int
+}
+
 type diffSectionState struct {
 	files              []*DiffFile
 	roots              []t.TreeNode[DiffTreeNodeData]
@@ -105,6 +110,8 @@ type Dv struct {
 	activePath  string
 	activeIsDir bool
 	activeKind  DiffTreeNodeKind
+
+	activeFileSection DiffSection
 
 	renderedByPath     map[string]*RenderedFile
 	sideRenderedByPath map[string]*SideBySideRenderedFile
@@ -149,6 +156,8 @@ type Dv struct {
 	layoutToggleScrollTargetOffset  int
 	layoutToggleScrollActivePath    string
 	layoutToggleScrollActiveSection DiffSection
+
+	fileScrollOffsets map[string]fileScrollState
 }
 
 func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv {
@@ -196,6 +205,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		lastNonDividerFocus:  diffViewerScrollID,
 		focusReturnID:        diffViewerScrollID,
 		copyPathToClipboard:  copyPathToClipboardOSC52,
+		fileScrollOffsets:    map[string]fileScrollState{},
 	}
 	app.configureDiffHorizontalScroll()
 	app.commandPalette = app.newCommandPalette()
@@ -375,6 +385,7 @@ func (a *Dv) setActiveSectionSummary(section DiffSection) {
 	a.activePath = section.DisplayName() + " changes"
 	a.activeIsDir = false
 	a.activeKind = DiffTreeNodeSection
+	a.activeFileSection = ""
 	if state == nil {
 		return
 	}
@@ -389,6 +400,7 @@ func (a *Dv) setLoadError(message string) {
 	a.activePath = ""
 	a.activeIsDir = false
 	a.activeKind = DiffTreeNodeUnknown
+	a.activeFileSection = ""
 	roots := make([]t.TreeNode[DiffTreeNodeData], 0, len(a.sectionOrder))
 	for _, section := range a.sectionOrder {
 		roots = append(roots, t.TreeNode[DiffTreeNodeData]{
@@ -941,6 +953,8 @@ func (a *Dv) copyActiveFilePath() {
 }
 
 func (a *Dv) refreshDiff() {
+	a.rememberActiveFileScrollOffset()
+
 	if repoRoot, err := a.provider.RepoRoot(); err == nil {
 		a.repoRoot = repoRoot
 	}
@@ -1061,6 +1075,7 @@ func (a *Dv) refreshDiff() {
 		a.activePath = ""
 		a.activeIsDir = false
 		a.activeKind = DiffTreeNodeUnknown
+		a.activeFileSection = ""
 		a.treeState.CursorPath.Set(nil)
 		a.treeFilterNoMatches = false
 		a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
@@ -1144,6 +1159,8 @@ func (a *Dv) selectFilePath(filePath string) bool {
 }
 
 func (a *Dv) onTreeCursorChange(node DiffTreeNodeData) {
+	a.rememberActiveFileScrollOffset()
+
 	if node.Section != "" {
 		a.setActiveSection(node.Section)
 	}
@@ -1175,11 +1192,12 @@ func (a *Dv) onTreeCursorChange(node DiffTreeNodeData) {
 			sideRendered = buildSideBySideFromRendered(rendered)
 		}
 		a.activeKind = DiffTreeNodeFile
+		a.activeFileSection = a.activeSection
 		if state := a.sectionState(a.activeSection); state != nil {
 			state.lastSelectedPath = node.Path
 		}
 		a.diffViewState.SetRenderedPair(rendered, sideRendered)
-		a.diffScrollState.SetOffset(0)
+		a.restoreFileScrollOffset(node.Path)
 	}
 }
 
@@ -1190,6 +1208,7 @@ func (a *Dv) setActiveFile(file *DiffFile) {
 	a.activePath = file.DisplayPath
 	a.activeIsDir = false
 	a.activeKind = DiffTreeNodeFile
+	a.activeFileSection = a.activeSection
 	if state := a.sectionState(a.activeSection); state != nil {
 		state.lastSelectedPath = file.DisplayPath
 	}
@@ -1204,7 +1223,7 @@ func (a *Dv) setActiveFile(file *DiffFile) {
 		a.sideRenderedByPath[file.DisplayPath] = sideRendered
 	}
 	a.diffViewState.SetRenderedPair(rendered, sideRendered)
-	a.diffScrollState.SetOffset(0)
+	a.restoreFileScrollOffset(file.DisplayPath)
 }
 
 func (a *Dv) setActiveDirectory(node DiffTreeNodeData) {
@@ -1214,6 +1233,7 @@ func (a *Dv) setActiveDirectory(node DiffTreeNodeData) {
 	a.activePath = node.Path
 	a.activeIsDir = true
 	a.activeKind = DiffTreeNodeDirectory
+	a.activeFileSection = ""
 	a.diffViewState.SetRendered(buildDirectorySummaryRenderedFile(node))
 	a.diffScrollState.SetOffset(0)
 }
@@ -1376,6 +1396,90 @@ func (a *Dv) currentDiffVerticalOffset() int {
 		return viewOffset
 	}
 	return scrollOffset
+}
+
+func diffFileScrollKey(section DiffSection, filePath string) string {
+	if filePath == "" {
+		return ""
+	}
+	return string(section) + "\x00" + filePath
+}
+
+func (a *Dv) rememberActiveFileScrollOffset() {
+	if a.activeKind != DiffTreeNodeFile || a.activeIsDir || a.activePath == "" {
+		return
+	}
+	section := a.activeSection
+	if a.activeFileSection != "" {
+		section = a.activeFileSection
+	}
+	a.rememberFileScrollOffset(section, a.activePath)
+}
+
+func (a *Dv) rememberFileScrollOffset(section DiffSection, filePath string) {
+	key := diffFileScrollKey(section, filePath)
+	if key == "" {
+		return
+	}
+	if a.fileScrollOffsets == nil {
+		a.fileScrollOffsets = map[string]fileScrollState{}
+	}
+
+	offset := a.currentDiffVerticalOffset()
+	offset = a.clampDiffOffsetForViewport(a.diffLayoutMode, offset)
+	a.fileScrollOffsets[key] = fileScrollState{
+		mode:   a.diffLayoutMode,
+		offset: offset,
+	}
+}
+
+func (a *Dv) restoreFileScrollOffset(filePath string) {
+	targetOffset := 0
+	if a.fileScrollOffsets != nil {
+		key := diffFileScrollKey(a.activeSection, filePath)
+		if state, ok := a.fileScrollOffsets[key]; ok {
+			targetOffset = state.offset
+			if state.mode != a.diffLayoutMode {
+				targetOffset = a.mapDiffVerticalOffsetForLayoutToggle(state.mode, a.diffLayoutMode, targetOffset)
+			} else {
+				targetOffset = a.clampDiffOffsetForLayout(a.diffLayoutMode, targetOffset)
+			}
+		}
+	}
+	a.setDiffVerticalOffset(targetOffset)
+}
+
+func (a *Dv) setDiffVerticalOffset(offset int) {
+	offset = a.clampDiffOffsetForViewport(a.diffLayoutMode, offset)
+	if a.diffScrollState != nil {
+		a.diffScrollState.Offset.Set(offset)
+	}
+	if a.diffViewState != nil {
+		a.diffViewState.ScrollY.Set(offset)
+	}
+}
+
+func (a *Dv) clampDiffOffsetForViewport(mode DiffLayoutMode, offset int) int {
+	if offset <= 0 {
+		return 0
+	}
+
+	rows := a.diffLayoutVisualRows(mode)
+	if rows <= 0 {
+		return 0
+	}
+
+	maxOffset := rows - 1
+	if a.diffViewState != nil {
+		viewportHeight := a.diffViewState.ViewportHeight()
+		if viewportHeight > 0 {
+			maxOffset = rows - viewportHeight
+			if maxOffset < 0 {
+				maxOffset = 0
+			}
+		}
+	}
+	return clampInt(offset, 0, maxOffset)
 }
 
 func (a *Dv) canRestoreToggleLayoutScroll(sourceMode DiffLayoutMode, targetMode DiffLayoutMode, sourceOffset int) bool {
@@ -1896,11 +2000,14 @@ func (a *Dv) syncTreeFilterSelection() {
 }
 
 func (a *Dv) setTreeFilterNoMatches(query string) {
+	a.rememberActiveFileScrollOffset()
+
 	a.treeFilterNoMatches = true
 	a.treeState.CursorPath.Set(nil)
 	a.activePath = ""
 	a.activeIsDir = false
 	a.activeKind = DiffTreeNodeUnknown
+	a.activeFileSection = ""
 	a.diffViewState.SetRendered(messageToRendered("No matches", a.noFilterMatchesMessage(query)))
 	a.diffScrollState.SetOffset(0)
 }
