@@ -1372,7 +1372,7 @@ func TestDv_ViewerTitleIncludesLineStats(tt *testing.T) {
 
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "1/1", positionText.Content)
+	require.Equal(tt, "Unstaged 1/1", positionText.Content)
 }
 
 func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
@@ -1393,7 +1393,7 @@ func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
 	require.NotContains(tt, strings.Join(addOnlySpanTexts, ""), "-0")
 	addOnlyPosition, ok := addOnlyRow.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "1/1", addOnlyPosition.Content)
+	require.Equal(tt, "Unstaged 1/1", addOnlyPosition.Content)
 
 	delOnlyApp := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
@@ -1409,7 +1409,7 @@ func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
 	require.NotContains(tt, strings.Join(delOnlySpanTexts, ""), "+0")
 	delOnlyPosition, ok := delOnlyRow.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "1/1", delOnlyPosition.Content)
+	require.Equal(tt, "Unstaged 1/1", delOnlyPosition.Content)
 }
 
 func TestDv_ViewerTitleShowsFilePositionBySectionOrder(tt *testing.T) {
@@ -1426,7 +1426,7 @@ func TestDv_ViewerTitleShowsFilePositionBySectionOrder(tt *testing.T) {
 	require.True(tt, ok)
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "2/3", positionText.Content)
+	require.Equal(tt, "Unstaged 2/3", positionText.Content)
 }
 
 func TestDv_ViewerTitleFilePositionIsSectionScoped(tt *testing.T) {
@@ -1444,8 +1444,8 @@ func TestDv_ViewerTitleFilePositionIsSectionScoped(tt *testing.T) {
 	require.True(tt, ok)
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "1/2", positionText.Content)
-	require.NotEqual(tt, "1/3", positionText.Content)
+	require.Equal(tt, "Staged 1/2", positionText.Content)
+	require.NotEqual(tt, "Staged 1/3", positionText.Content)
 }
 
 func TestDv_ViewerTitleFilePositionUsesUnfilteredSectionCount(tt *testing.T) {
@@ -1464,7 +1464,7 @@ func TestDv_ViewerTitleFilePositionUsesUnfilteredSectionCount(tt *testing.T) {
 	require.True(tt, ok)
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "1/3", positionText.Content)
+	require.Equal(tt, "Unstaged 1/3", positionText.Content)
 }
 
 func TestDv_ViewerTitleNonFileStateHasNoFilePosition(tt *testing.T) {

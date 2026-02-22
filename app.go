@@ -902,7 +902,7 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 			},
 			t.Spacer{Width: t.Flex(1)},
 			t.Text{
-				Content: fmt.Sprintf("%d/%d", current, total),
+				Content: fmt.Sprintf("%s %d/%d", a.activeSection.DisplayName(), current, total),
 				Style: t.Style{
 					ForegroundColor: theme.TextMuted,
 				},
