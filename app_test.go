@@ -360,7 +360,7 @@ func TestDv_PipeModeHeaderOmitsIgnoreWhitespaceIndicator(tt *testing.T) {
 	require.True(tt, ok)
 	text := strings.Join(rowTextContents(row), " ")
 	require.Contains(tt, text, "unified [v]")
-	require.NotContains(tt, text, "ignore-ws:")
+	require.NotContains(tt, text, "whitespace:")
 	require.NotContains(tt, text, "[x]")
 }
 
@@ -452,7 +452,7 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	require.True(tt, wrap.IsSelectable())
 	require.Equal(tt, "[w]", wrap.Hint)
 
-	layoutMode := findPaletteItemByLabel(level.Items, "Toggle side-by-side mode")
+	layoutMode := findPaletteItemByLabel(level.Items, "Toggle split mode")
 	require.True(tt, layoutMode.IsSelectable())
 	require.Equal(tt, "[v]", layoutMode.Hint)
 
@@ -543,7 +543,7 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 			dividerIdx = idx
 		case item.Label == "Toggle line wrap":
 			wrapIdx = idx
-		case item.Label == "Toggle side-by-side mode":
+		case item.Label == "Toggle split mode":
 			layoutModeIdx = idx
 		case item.Label == "Toggle +/- symbols":
 			signsIdx = idx
@@ -610,7 +610,7 @@ func TestDv_KeybindsIncludeSideBySideToggle(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	keybind, ok := findKeybindByKey(app.Keybinds(), "v")
 	require.True(tt, ok)
-	require.Equal(tt, "Toggle side-by-side", keybind.Name)
+	require.Equal(tt, "Toggle split", keybind.Name)
 	require.True(tt, keybind.Hidden)
 }
 
@@ -2066,10 +2066,10 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	require.NotContains(tt, text, "Mode:")
 	require.Contains(tt, text, "[t]")
 	require.Contains(tt, text, "unified [v]")
-	require.Contains(tt, text, "ignore-ws:off [x]")
+	require.Contains(tt, text, "whitespace:off [x]")
 	branchIdx := indexOfTextContaining(texts, "feature/layout-mode")
 	themeIdx := indexOfTextContaining(texts, "[t]")
-	modeIdx := indexOfTextContaining(texts, "unified [v] ignore-ws:off [x]")
+	modeIdx := indexOfTextContaining(texts, "unified [v] whitespace:off [x]")
 	require.GreaterOrEqual(tt, branchIdx, 0)
 	require.GreaterOrEqual(tt, themeIdx, 0)
 	require.Greater(tt, modeIdx, branchIdx)
@@ -2081,11 +2081,11 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	require.True(tt, ok)
 	texts = rowTextContents(row)
 	text = strings.Join(texts, " ")
-	require.Contains(tt, text, "side-by-side [v]")
-	require.Contains(tt, text, "ignore-ws:off [x]")
+	require.Contains(tt, text, "split [v]")
+	require.Contains(tt, text, "whitespace:off [x]")
 	branchIdx = indexOfTextContaining(texts, "feature/layout-mode")
 	themeIdx = indexOfTextContaining(texts, "[t]")
-	modeIdx = indexOfTextContaining(texts, "side-by-side [v] ignore-ws:off [x]")
+	modeIdx = indexOfTextContaining(texts, "split [v] whitespace:off [x]")
 	require.GreaterOrEqual(tt, branchIdx, 0)
 	require.GreaterOrEqual(tt, themeIdx, 0)
 	require.Greater(tt, modeIdx, branchIdx)
@@ -2096,7 +2096,7 @@ func TestDv_HeaderShowsLayoutModeAndToggleHint(tt *testing.T) {
 	row, ok = header.(t.Row)
 	require.True(tt, ok)
 	text = strings.Join(rowTextContents(row), " ")
-	require.Contains(tt, text, "ignore-ws:on [x]")
+	require.Contains(tt, text, "whitespace:on [x]")
 }
 
 func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
@@ -2112,7 +2112,7 @@ func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
 	row, ok := widget.(t.Row)
 	require.True(tt, ok)
 	joined := strings.Join(rowTextContents(row), "")
-	require.NotContains(tt, joined, "side-by-side")
+	require.NotContains(tt, joined, "split")
 	require.NotContains(tt, joined, "unified")
 }
 

@@ -452,7 +452,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "s", Name: "Switch section", Action: a.switchSectionFocus, Hidden: true},
 		{Key: "y", Name: "Copy file path", Action: a.copyActiveFilePath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
-		{Key: "v", Name: "Toggle side-by-side", Action: a.toggleDiffLayoutMode, Hidden: true},
+		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
 		{Key: "ctrl+h", Name: "Shift split left", Action: a.shiftSideBySideSplitLeft, Hidden: true},
 		{Key: "ctrl+l", Name: "Shift split right", Action: a.shiftSideBySideSplitRight, Hidden: true},
 		{Key: "i", Name: "Toggle intraline style", Action: a.toggleDiffIntralineStyle, Hidden: true},
@@ -940,9 +940,9 @@ func (a *Dv) buildHeaderModeIndicator(theme t.ThemeData) t.Widget {
 		}),
 	}
 	if a.canToggleDiffIgnoreWhitespace() {
-		ignoreWsLabel := "ignore-ws:off"
+		ignoreWsLabel := "whitespace:off"
 		if a.diffIgnoreWhitespace {
-			ignoreWsLabel = "ignore-ws:on"
+			ignoreWsLabel = "whitespace:on"
 		}
 		spans = append(spans,
 			t.PlainSpan(" "),
@@ -960,7 +960,7 @@ func (a *Dv) buildHeaderModeIndicator(theme t.ThemeData) t.Widget {
 
 func (a *Dv) diffLayoutModeLabel() string {
 	if a.diffLayoutMode == DiffLayoutSideBySide {
-		return "side-by-side"
+		return "split"
 	}
 	return "unified"
 }
@@ -2307,8 +2307,8 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			Action:     a.paletteAction(a.toggleDiffWrap),
 		},
 		t.CommandPaletteItem{
-			Label:      "Toggle side-by-side mode",
-			FilterText: "Toggle side by side mode split unified layout view",
+			Label:      "Toggle split mode",
+			FilterText: "Toggle split mode side by side unified layout view",
 			Hint:       "[v]",
 			Action:     a.paletteAction(a.toggleDiffLayoutMode),
 		},
