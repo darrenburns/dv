@@ -540,6 +540,7 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 				Position:       t.FloatPositionTopCenter,
 				Offset:         t.Offset{Y: 1},
 				BackdropColor:  t.Black.WithAlpha(0.05),
+				OnSelect:       a.handlePaletteSelect,
 				OnCursorChange: a.handlePaletteCursorChange,
 				OnDismiss:      a.handlePaletteDismiss,
 			},
@@ -2168,6 +2169,7 @@ func (a *Dv) openThemePalette() {
 	a.commandPalette.SetItems(a.commandPaletteItems())
 	a.commandPalette.Open()
 	a.commandPalette.PushLevel(diffThemesPalette, a.themeItems())
+	a.setPaletteLevelFilterMode(a.commandPalette.CurrentLevel())
 	if item, ok := a.commandPalette.CurrentItem(); ok {
 		a.handlePaletteCursorChange(item)
 	}
@@ -2258,7 +2260,39 @@ func focusedWidgetID(ctx t.BuildContext) string {
 }
 
 func (a *Dv) newCommandPalette() *t.CommandPaletteState {
-	return t.NewCommandPaletteState("Commands", a.commandPaletteItems())
+	state := t.NewCommandPaletteState("Commands", a.commandPaletteItems())
+	a.setPaletteLevelFilterMode(state.CurrentLevel())
+	return state
+}
+
+func (a *Dv) setPaletteLevelFilterMode(level *t.CommandPaletteLevel) {
+	if level == nil || level.FilterState == nil {
+		return
+	}
+	level.FilterState.Mode.Set(t.FilterFuzzy)
+}
+
+func (a *Dv) handlePaletteSelect(item t.CommandPaletteItem) {
+	if item.Children != nil {
+		title := item.ChildrenTitle
+		if title == "" {
+			title = item.Label
+		}
+		if a.commandPalette == nil {
+			return
+		}
+		a.commandPalette.PushLevel(title, item.Children())
+		a.setPaletteLevelFilterMode(a.commandPalette.CurrentLevel())
+		if current, ok := a.commandPalette.CurrentItem(); ok {
+			a.handlePaletteCursorChange(current)
+		}
+		t.RequestFocus(diffCommandPaletteID + "-input")
+		return
+	}
+
+	if item.Action != nil {
+		item.Action()
+	}
 }
 
 func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {

@@ -472,6 +472,31 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	require.Equal(tt, "[d]", divider.Hint)
 }
 
+func TestDv_CommandPaletteUsesFuzzyFilterAtRoot(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+	require.NotNil(tt, level.FilterState)
+	require.Equal(tt, t.FilterFuzzy, level.FilterState.Mode.Peek())
+}
+
+func TestDv_CommandPaletteSelectingChildrenUsesFuzzyFilter(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	themeItem := findPaletteItemByLabel(level.Items, "Theme")
+	require.NotNil(tt, themeItem.Children)
+
+	app.handlePaletteSelect(themeItem)
+
+	level = app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+	require.Equal(tt, diffThemesPalette, level.Title)
+	require.NotNil(tt, level.FilterState)
+	require.Equal(tt, t.FilterFuzzy, level.FilterState.Mode.Peek())
+}
+
 func TestDv_CommandPaletteShowsResetSplitOnlyInSideBySideMode(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	app.togglePalette()
@@ -784,6 +809,8 @@ func TestDv_ThemeMenuShortcutOpensThemesSubmenu(tt *testing.T) {
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 	require.Equal(tt, diffThemesPalette, level.Title)
+	require.NotNil(tt, level.FilterState)
+	require.Equal(tt, t.FilterFuzzy, level.FilterState.Mode.Peek())
 
 	currentItem, ok := app.commandPalette.CurrentItem()
 	require.True(tt, ok)
