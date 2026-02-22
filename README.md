@@ -60,6 +60,7 @@ Some things that aren't as clear at the moment:
   * As a shortcut you can use `ctrl+h`/`ctrl+l` to shift it left/right.
 * Tab and shift-tab move focus
 * Press `/` from the file tree or diff view to filter files (if the sidebar is hidden, this opens it). While the filter input is focused, `up`/`down` move through matching files, `tab` moves focus back to the tree, and `esc` clears the filter.
+* Press `y` to copy the active file path to your clipboard (also available via the command palette).
 
 ## Startup options
 

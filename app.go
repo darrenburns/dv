@@ -2,9 +2,12 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
+	uv "github.com/charmbracelet/ultraviolet"
+	"github.com/charmbracelet/x/ansi"
 	t "github.com/darrenburns/terma"
 )
 
@@ -96,6 +99,8 @@ type Dv struct {
 	branch   string
 	loadErr  string
 	files    []*DiffFile
+
+	copyPathToClipboard func(string) error
 
 	activePath  string
 	activeIsDir bool
@@ -190,12 +195,18 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		manualRefreshEnabled: manualRefreshEnabled,
 		lastNonDividerFocus:  diffViewerScrollID,
 		focusReturnID:        diffViewerScrollID,
+		copyPathToClipboard:  copyPathToClipboardOSC52,
 	}
 	app.configureDiffHorizontalScroll()
 	app.commandPalette = app.newCommandPalette()
 	app.refreshDiff()
 	t.RequestFocus(diffViewerScrollID)
 	return app
+}
+
+func copyPathToClipboardOSC52(path string) error {
+	_, err := os.Stdout.WriteString(ansi.SetClipboard(uv.SystemClipboard, path))
+	return err
 }
 
 func newDiffSectionState() *diffSectionState {
@@ -417,6 +428,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
 		{Key: "s", Name: "Switch section", Action: a.switchSectionFocus, Hidden: true},
+		{Key: "y", Name: "Copy file path", Action: a.copyActiveFilePath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle side-by-side", Action: a.toggleDiffLayoutMode, Hidden: true},
 		{Key: "ctrl+h", Name: "Shift split left", Action: a.shiftSideBySideSplitLeft, Hidden: true},
@@ -914,6 +926,20 @@ func (a *Dv) manualRefresh() {
 	a.refreshDiff()
 }
 
+func (a *Dv) canCopyActiveFilePath() bool {
+	return a.activeKind == DiffTreeNodeFile && a.activePath != ""
+}
+
+func (a *Dv) copyActiveFilePath() {
+	if !a.canCopyActiveFilePath() {
+		return
+	}
+	if a.copyPathToClipboard == nil {
+		return
+	}
+	_ = a.copyPathToClipboard(a.activePath)
+}
+
 func (a *Dv) refreshDiff() {
 	if repoRoot, err := a.provider.RepoRoot(); err == nil {
 		a.repoRoot = repoRoot
@@ -1270,7 +1296,6 @@ func (a *Dv) toggleDiffLayoutMode() {
 
 	a.rememberToggleLayoutScroll(sourceMode, targetMode, sourceOffset, targetOffset)
 	a.diffLayoutMode = targetMode
-	a.refreshCommandPaletteItems()
 	a.clampDiffHorizontalScroll()
 
 	if a.diffScrollState != nil {
@@ -1967,6 +1992,7 @@ func (a *Dv) togglePalette() {
 	}
 	a.themePreviewBase = ""
 	a.themeCursorSynced = false
+	a.commandPalette.SetItems(a.commandPaletteItems())
 	a.commandPalette.Open()
 }
 
@@ -1979,6 +2005,7 @@ func (a *Dv) openThemePalette() {
 	a.commandPalette.Close(false)
 	a.themePreviewBase = ""
 	a.themeCursorSynced = false
+	a.commandPalette.SetItems(a.commandPaletteItems())
 	a.commandPalette.Open()
 	a.commandPalette.PushLevel(diffThemesPalette, a.themeItems())
 	if item, ok := a.commandPalette.CurrentItem(); ok {
@@ -2084,13 +2111,21 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			Action:     a.paletteAction(a.switchSectionFocus),
 		})
 	}
+	items = append(items, t.CommandPaletteItem{
+		Label:      "Refresh",
+		FilterText: "Refresh reload diff",
+		Hint:       "[r]",
+		Action:     a.paletteAction(a.manualRefresh),
+	})
+	if a.canCopyActiveFilePath() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Copy file path",
+			FilterText: "Copy file path clipboard",
+			Hint:       "[y]",
+			Action:     a.paletteAction(a.copyActiveFilePath),
+		})
+	}
 	items = append(items,
-		t.CommandPaletteItem{
-			Label:      "Refresh",
-			FilterText: "Refresh reload diff",
-			Hint:       "[r]",
-			Action:     a.paletteAction(a.manualRefresh),
-		},
 		t.CommandPaletteItem{Divider: "Layout"},
 		t.CommandPaletteItem{
 			Label:      "Toggle sidebar",
@@ -2146,17 +2181,6 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		},
 	)
 	return items
-}
-
-func (a *Dv) refreshCommandPaletteItems() {
-	if a.commandPalette == nil {
-		return
-	}
-	level := a.commandPalette.CurrentLevel()
-	if level == nil || level.Title != "Commands" {
-		return
-	}
-	a.commandPalette.SetItems(a.commandPaletteItems())
 }
 
 func (a *Dv) themeItems() []t.CommandPaletteItem {

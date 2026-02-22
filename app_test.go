@@ -341,7 +341,11 @@ func TestDv_PipeModeManualRefreshIsNoop(tt *testing.T) {
 }
 
 func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
-	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt")},
+	}, false)
+	app.togglePalette()
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 
@@ -352,6 +356,10 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	refresh := findPaletteItemByLabel(level.Items, "Refresh")
 	require.True(tt, refresh.IsSelectable())
 	require.Equal(tt, "[r]", refresh.Hint)
+
+	copyPath := findPaletteItemByLabel(level.Items, "Copy file path")
+	require.True(tt, copyPath.IsSelectable())
+	require.Equal(tt, "[y]", copyPath.Hint)
 
 	sidebar := findPaletteItemByLabel(level.Items, "Toggle sidebar")
 	require.True(tt, sidebar.IsSelectable())
@@ -379,20 +387,25 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 
 func TestDv_CommandPaletteShowsResetSplitOnlyInSideBySideMode(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app.togglePalette()
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 
 	reset := findPaletteItemByLabel(level.Items, "Reset pane split")
 	require.Empty(tt, reset.Label)
 
+	app.togglePalette()
 	app.toggleDiffLayoutMode()
+	app.togglePalette()
 	level = app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 	reset = findPaletteItemByLabel(level.Items, "Reset pane split")
 	require.Equal(tt, "Reset pane split", reset.Label)
 	require.True(tt, reset.IsSelectable())
 
+	app.togglePalette()
 	app.toggleDiffLayoutMode()
+	app.togglePalette()
 	level = app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 	reset = findPaletteItemByLabel(level.Items, "Reset pane split")
@@ -403,6 +416,7 @@ func TestDv_CommandPaletteResetSplitActionResetsToEvenRatio(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	app.toggleDiffLayoutMode()
 	app.diffViewState.SetSideBySideSplitRatio(0.73)
+	app.togglePalette()
 
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
@@ -477,6 +491,7 @@ func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 	require.True(tt, keybindIsHidden(keybinds, "v"))
 	require.True(tt, keybindIsHidden(keybinds, "i"))
 	require.True(tt, keybindIsHidden(keybinds, "b"))
+	require.True(tt, keybindIsHidden(keybinds, "y"))
 	require.False(tt, keybindIsHidden(keybinds, "ctrl+p"))
 	require.True(tt, keybindIsHidden(keybinds, "t"))
 }
@@ -543,6 +558,78 @@ func TestDv_KeybindsIncludeThemeMenuShortcut(tt *testing.T) {
 	require.True(tt, ok)
 	require.Equal(tt, "Theme menu", keybind.Name)
 	require.True(tt, keybind.Hidden)
+}
+
+func TestDv_CopyFilePathKeybindCopiesActiveFilePath(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	copied := ""
+	copyCalls := 0
+	app.copyPathToClipboard = func(path string) error {
+		copyCalls++
+		copied = path
+		return nil
+	}
+
+	keybind, ok := findKeybindByKey(app.Keybinds(), "y")
+	require.True(tt, ok)
+	require.NotNil(tt, keybind.Action)
+
+	keybind.Action()
+
+	require.Equal(tt, 1, copyCalls)
+	require.Equal(tt, app.activePath, copied)
+}
+
+func TestDv_CopyFilePathPaletteActionCopiesActiveFilePath(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	copied := ""
+	copyCalls := 0
+	app.copyPathToClipboard = func(path string) error {
+		copyCalls++
+		copied = path
+		return nil
+	}
+
+	app.togglePalette()
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	copyPath := findPaletteItemByLabel(level.Items, "Copy file path")
+	require.True(tt, copyPath.IsSelectable())
+	require.NotNil(tt, copyPath.Action)
+
+	copyPath.Action()
+
+	require.Equal(tt, 1, copyCalls)
+	require.Equal(tt, app.activePath, copied)
+}
+
+func TestDv_CopyFilePathNoopWhenSelectionNotFile(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	copyCalls := 0
+	app.copyPathToClipboard = func(path string) error {
+		copyCalls++
+		return nil
+	}
+
+	app.setActiveSectionSummary(app.activeSection)
+	app.togglePalette()
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+	copyPath := findPaletteItemByLabel(level.Items, "Copy file path")
+	require.Empty(tt, copyPath.Label)
+	require.Nil(tt, copyPath.Action)
+
+	keybind, ok := findKeybindByKey(app.Keybinds(), "y")
+	require.True(tt, ok)
+	require.NotNil(tt, keybind.Action)
+	keybind.Action()
+
+	require.Equal(tt, 0, copyCalls)
 }
 
 func TestDv_FilterFilesKeybindVisibleWhenTreeOrViewerFocused(tt *testing.T) {
