@@ -1950,7 +1950,7 @@ func (a *Dv) focusDividerFromPalette() {
 func (a *Dv) exitDividerFocus() {
 	a.dividerFocusRequested = false
 	target := a.focusReturnID
-	if target == "" || target == diffSplitPaneID {
+	if isInvalidDividerReturnTarget(target) {
 		target = diffViewerScrollID
 	}
 	t.RequestFocus(target)
@@ -2004,10 +2004,21 @@ func (a *Dv) syncFocusState(ctx t.BuildContext) {
 
 func (a *Dv) dividerReturnTarget() string {
 	target := a.lastNonDividerFocus
-	if target == "" || target == diffSplitPaneID {
+	if isInvalidDividerReturnTarget(target) {
 		target = diffViewerScrollID
 	}
 	return target
+}
+
+// We can't assume that the previous widget that was focused is still available (e.g. command palette).
+func isInvalidDividerReturnTarget(target string) bool {
+	if target == "" || target == diffSplitPaneID {
+		return true
+	}
+	if target == diffCommandPaletteID {
+		return true
+	}
+	return strings.HasPrefix(target, diffCommandPaletteID+"-")
 }
 
 func dividerFocusForeground(theme t.ThemeData) t.ColorProvider {

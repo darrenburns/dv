@@ -1687,6 +1687,39 @@ func TestDv_FocusDividerNoopWhenSidebarHidden(tt *testing.T) {
 	require.False(tt, app.dividerFocusRequested)
 }
 
+func TestDv_DividerReturnTargetFallsBackFromCommandPalette(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app.lastNonDividerFocus = diffCommandPaletteID
+
+	require.Equal(tt, diffViewerScrollID, app.dividerReturnTarget())
+}
+
+func TestDv_DividerReturnTargetFallsBackFromCommandPaletteInput(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app.lastNonDividerFocus = diffCommandPaletteID + "-input"
+
+	require.Equal(tt, diffViewerScrollID, app.dividerReturnTarget())
+}
+
+func TestDv_FocusDividerFromPaletteUsesViewerFallbackTarget(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app.lastNonDividerFocus = diffCommandPaletteID + "-input"
+
+	app.focusDividerFromPalette()
+
+	require.True(tt, app.dividerFocusRequested)
+	require.Equal(tt, diffViewerScrollID, app.focusReturnID)
+}
+
+func TestIsInvalidDividerReturnTarget(tt *testing.T) {
+	require.True(tt, isInvalidDividerReturnTarget(""))
+	require.True(tt, isInvalidDividerReturnTarget(diffSplitPaneID))
+	require.True(tt, isInvalidDividerReturnTarget(diffCommandPaletteID))
+	require.True(tt, isInvalidDividerReturnTarget(diffCommandPaletteID+"-input"))
+	require.True(tt, isInvalidDividerReturnTarget(diffCommandPaletteID+"-list"))
+	require.False(tt, isInvalidDividerReturnTarget(diffViewerScrollID))
+}
+
 func TestDv_RefreshLoadsCurrentBranch(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
