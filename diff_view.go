@@ -514,6 +514,11 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 		return
 	}
 
+	blankLine := strings.Repeat(" ", ctx.Width)
+	for row := visibleStart; row < visibleEnd; row++ {
+		ctx.DrawText(0, row, blankLine)
+	}
+
 	gutterWidth := renderedGutterWidth(rendered, d.HideChangeSigns)
 	if d.LayoutMode == DiffLayoutSideBySide {
 		gutterWidth = sideBySideStateGutterWidth(
