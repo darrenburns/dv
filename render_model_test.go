@@ -82,6 +82,31 @@ func TestBuildRenderedFile_ExpandsTabsWithTabStops(t *testing.T) {
 	require.Equal(t, ansi.StringWidth("    foo bar"), line.ContentWidth)
 }
 
+func TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens(t *testing.T) {
+	file := &DiffFile{
+		NewPath:     "eslint.config.mjs",
+		DisplayPath: "eslint.config.mjs",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,1 +1,1 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineContext, Content: "            // @typescript-eslint/eslint-plugin", OldLine: 1, NewLine: 1},
+				},
+			},
+		},
+	}
+
+	rendered := buildRenderedFile(file)
+	require.NotNil(t, rendered)
+	require.Len(t, rendered.Lines, 2)
+
+	line := rendered.Lines[1]
+	expected := "            // @typescript-eslint/eslint-plugin"
+	require.Equal(t, expected, lineText(line))
+	require.NotContains(t, lineText(line), "\n")
+	require.Equal(t, ansi.StringWidth(expected), line.ContentWidth)
+}
+
 func TestBuildMetaRenderedFile_ProducesMetaLines(t *testing.T) {
 	rendered := buildMetaRenderedFile("Summary", []string{"Line one", "Line two"})
 	require.NotNil(t, rendered)

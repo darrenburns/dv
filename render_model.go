@@ -674,12 +674,13 @@ func lexLineSegments(lexer chroma.Lexer, content string) []RenderedSegment {
 
 	result := make([]RenderedSegment, 0, 8)
 	for token := iterator(); token != chroma.EOF; token = iterator() {
-		if token.Value == "" {
+		value := strings.TrimRight(token.Value, "\r\n")
+		if value == "" {
 			continue
 		}
 		role := tokenRoleFromChroma(token.Type)
 		result = append(result, RenderedSegment{
-			Text: token.Value,
+			Text: value,
 			Role: role,
 		})
 	}
