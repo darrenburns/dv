@@ -460,6 +460,8 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "]", Name: "Next file", Action: func() { a.moveFileCursor(1) }},
 		{Key: "p", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
 		{Key: "[", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }},
+		{Key: "ctrl+j", Name: "Next file", Action: func() { a.moveFileCursor(1) }, Hidden: true},
+		{Key: "ctrl+k", Name: "Prev file", Action: func() { a.moveFileCursor(-1) }, Hidden: true},
 		{Key: "J", Name: "Jump down 10", Action: func() { a.jumpDiffVertical(diffJumpScrollLines) }, Hidden: true},
 		{Key: "K", Name: "Jump up 10", Action: func() { a.jumpDiffVertical(-diffJumpScrollLines) }, Hidden: true},
 		{Key: "/", Name: "Filter files", Action: a.openTreeFilter, Hidden: !showFilterFiles},
