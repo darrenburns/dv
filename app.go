@@ -177,6 +177,7 @@ type Dv struct {
 	layoutToggleScrollActiveSection DiffSection
 
 	fileScrollOffsets map[string]fileScrollState
+	reviewedByFile    map[string]bool
 }
 
 func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv {
@@ -226,6 +227,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		focusReturnID:        diffViewerScrollID,
 		copyPathToClipboard:  copyPathToClipboardOSC52,
 		fileScrollOffsets:    map[string]fileScrollState{},
+		reviewedByFile:       map[string]bool{},
 	}
 	if app.isPipedDiffMode() {
 		app.diffIgnoreWhitespace = false
@@ -471,6 +473,8 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "ctrl+h", Name: "Shift split left", Action: a.shiftSideBySideSplitLeft, Hidden: true},
 		{Key: "ctrl+l", Name: "Shift split right", Action: a.shiftSideBySideSplitRight, Hidden: true},
 		{Key: "i", Name: "Toggle intraline style", Action: a.toggleDiffIntralineStyle, Hidden: true},
+		{Key: "m", Name: "Toggle reviewed", Action: a.toggleActiveFileReviewed, Hidden: true},
+		{Key: "M", Name: "Clear all reviewed", Action: a.clearAllReviewed, Hidden: true},
 		{Key: "d", Name: "Focus divider", Action: a.focusDivider, Hidden: true},
 		{Key: "ctrl+p", Name: "Command palette", Action: a.togglePalette},
 		{Key: "t", Name: "Theme menu", Action: a.openThemePalette, Hidden: true},
@@ -729,6 +733,10 @@ func (a *Dv) renderTreeNode(theme t.ThemeData, widgetFocused bool) func(node Dif
 		if nodeCtx.FilteredAncestor && node.NodeKind != DiffTreeNodeSection {
 			labelStyle.ForegroundColor = theme.TextMuted
 		}
+		isReviewed := node.NodeKind == DiffTreeNodeFile && a.isReviewed(node.Section, node.Path)
+		if isReviewed {
+			labelStyle.Strikethrough = true
+		}
 
 		if nodeCtx.Active {
 			if widgetFocused {
@@ -756,6 +764,11 @@ func (a *Dv) renderTreeNode(theme t.ThemeData, widgetFocused bool) func(node Dif
 			spans := t.HighlightSpans(node.Name, match.Ranges, highlightStyle)
 			if labelSuffix != "" {
 				spans = append(spans, t.Span{Text: labelSuffix})
+			}
+			if isReviewed {
+				for i := range spans {
+					spans[i].Style.Strikethrough = true
+				}
 			}
 			labelWidget = t.Text{
 				Spans: spans,
@@ -1117,9 +1130,14 @@ func findDirectoryNodeInTree(nodes []t.TreeNode[DiffTreeNodeData], directoryPath
 }
 
 func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
+	background := t.ColorProvider(theme.Background)
+	if section, path, ok := a.activeReviewTarget(); ok && a.isReviewed(section, path) {
+		background = reviewedViewerTitleBackground(theme)
+	}
+
 	style := t.Style{
 		Padding:         t.EdgeInsetsXY(1, 0),
-		BackgroundColor: theme.Background,
+		BackgroundColor: background,
 		ForegroundColor: theme.Text,
 		Bold:            true,
 	}
@@ -1734,6 +1752,35 @@ func diffFileScrollKey(section DiffSection, filePath string) string {
 	return string(section) + "\x00" + filePath
 }
 
+func diffFileReviewKey(section DiffSection, filePath string) string {
+	if filePath == "" {
+		return ""
+	}
+	return string(section) + "\x00" + filePath
+}
+
+func (a *Dv) activeReviewTarget() (section DiffSection, filePath string, ok bool) {
+	if a.activeKind != DiffTreeNodeFile || a.activeIsDir || a.activePath == "" {
+		return "", "", false
+	}
+	section = a.activeSection
+	if a.activeFileSection != "" {
+		section = a.activeFileSection
+	}
+	return section, a.activePath, true
+}
+
+func (a *Dv) isReviewed(section DiffSection, filePath string) bool {
+	if a.reviewedByFile == nil {
+		return false
+	}
+	key := diffFileReviewKey(section, filePath)
+	if key == "" {
+		return false
+	}
+	return a.reviewedByFile[key]
+}
+
 func (a *Dv) rememberActiveFileScrollOffset() {
 	if a.activeKind != DiffTreeNodeFile || a.activeIsDir || a.activePath == "" {
 		return
@@ -2194,6 +2241,32 @@ func (a *Dv) toggleDiffIntralineStyle() {
 	a.diffIntralineStyle = IntralineStyleModeBackground
 }
 
+func (a *Dv) toggleActiveFileReviewed() {
+	section, filePath, ok := a.activeReviewTarget()
+	if !ok {
+		return
+	}
+	if a.reviewedByFile == nil {
+		a.reviewedByFile = map[string]bool{}
+	}
+	key := diffFileReviewKey(section, filePath)
+	if key == "" {
+		return
+	}
+	if a.reviewedByFile[key] {
+		delete(a.reviewedByFile, key)
+		return
+	}
+	a.reviewedByFile[key] = true
+}
+
+func (a *Dv) clearAllReviewed() {
+	if len(a.reviewedByFile) == 0 {
+		return
+	}
+	clear(a.reviewedByFile)
+}
+
 func (a *Dv) clampDiffHorizontalScroll() {
 	if a.diffViewState == nil {
 		return
@@ -2522,6 +2595,13 @@ func sectionColor(theme t.ThemeData, section DiffSection) t.Color {
 	}
 }
 
+func reviewedViewerTitleBackground(theme t.ThemeData) t.ColorProvider {
+	return t.NewGradient(
+		theme.SuccessBg,
+		theme.Background,
+	).WithAngle(90)
+}
+
 func focusedWidgetID(ctx t.BuildContext) string {
 	focused := ctx.Focused()
 	if focused == nil {
@@ -2645,6 +2725,18 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		})
 	}
 	items = append(items,
+		t.CommandPaletteItem{
+			Label:      "Toggle reviewed",
+			FilterText: "Toggle reviewed mark file reviewed done checked",
+			Hint:       "[m]",
+			Action:     a.paletteAction(a.toggleActiveFileReviewed),
+		},
+		t.CommandPaletteItem{
+			Label:      "Clear all reviewed",
+			FilterText: "Clear all reviewed marks reset reviewed",
+			Hint:       "[M]",
+			Action:     a.paletteAction(a.clearAllReviewed),
+		},
 		t.CommandPaletteItem{
 			Label:      "Toggle intraline style",
 			FilterText: "Toggle intraline style highlight background underline changed characters",

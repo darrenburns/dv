@@ -279,6 +279,29 @@ func TestDv_SamePathCanExistInBothSectionsWithDistinctSelection(t *testing.T) {
 	require.Equal(t, 2, app.fileByPath["same.go"].Deletions)
 }
 
+func TestDv_ReviewedStateIsSectionScopedForSamePath(t *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPathWithStats("same.go", 1, 0)},
+		stagedDiffs:   []string{diffForPathWithStats("same.go", 0, 2)},
+	}, false)
+
+	unstagedSection, unstagedPath, ok := app.activeReviewTarget()
+	require.True(t, ok)
+	require.Equal(t, DiffSectionUnstaged, unstagedSection)
+	require.Equal(t, "same.go", unstagedPath)
+
+	app.toggleActiveFileReviewed()
+	require.True(t, app.isReviewed(unstagedSection, unstagedPath))
+
+	app.switchSectionFocus()
+	stagedSection, stagedPath, ok := app.activeReviewTarget()
+	require.True(t, ok)
+	require.Equal(t, DiffSectionStaged, stagedSection)
+	require.Equal(t, "same.go", stagedPath)
+	require.False(t, app.isReviewed(stagedSection, stagedPath))
+}
+
 func TestDv_PipeModeTreeShowsSingleFilesSection(t *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
@@ -463,6 +486,14 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	require.True(tt, ignoreWhitespace.IsSelectable())
 	require.Equal(tt, "[x]", ignoreWhitespace.Hint)
 
+	reviewed := findPaletteItemByLabel(level.Items, "Toggle reviewed")
+	require.True(tt, reviewed.IsSelectable())
+	require.Equal(tt, "[m]", reviewed.Hint)
+
+	clearReviewed := findPaletteItemByLabel(level.Items, "Clear all reviewed")
+	require.True(tt, clearReviewed.IsSelectable())
+	require.Equal(tt, "[M]", clearReviewed.Hint)
+
 	intraline := findPaletteItemByLabel(level.Items, "Toggle intraline style")
 	require.True(tt, intraline.IsSelectable())
 	require.Equal(tt, "[i]", intraline.Hint)
@@ -553,6 +584,8 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 	layoutModeIdx := -1
 	signsIdx := -1
 	ignoreWhitespaceIdx := -1
+	reviewedIdx := -1
+	clearReviewedIdx := -1
 	intralineIdx := -1
 	themeIdx := -1
 
@@ -574,6 +607,10 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 			signsIdx = idx
 		case item.Label == "Toggle ignore whitespace":
 			ignoreWhitespaceIdx = idx
+		case item.Label == "Toggle reviewed":
+			reviewedIdx = idx
+		case item.Label == "Clear all reviewed":
+			clearReviewedIdx = idx
 		case item.Label == "Toggle intraline style":
 			intralineIdx = idx
 		case item.Label == "Theme":
@@ -590,7 +627,9 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 	require.Greater(tt, layoutModeIdx, wrapIdx)
 	require.Greater(tt, signsIdx, layoutModeIdx)
 	require.Greater(tt, ignoreWhitespaceIdx, signsIdx)
-	require.Greater(tt, intralineIdx, ignoreWhitespaceIdx)
+	require.Greater(tt, reviewedIdx, ignoreWhitespaceIdx)
+	require.Greater(tt, clearReviewedIdx, reviewedIdx)
+	require.Greater(tt, intralineIdx, clearReviewedIdx)
 	require.Greater(tt, themeIdx, intralineIdx)
 }
 
@@ -608,6 +647,8 @@ func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 	require.True(tt, keybindIsHidden(keybinds, "w"))
 	require.True(tt, keybindIsHidden(keybinds, "v"))
 	require.True(tt, keybindIsHidden(keybinds, "i"))
+	require.True(tt, keybindIsHidden(keybinds, "m"))
+	require.True(tt, keybindIsHidden(keybinds, "M"))
 	require.True(tt, keybindIsHidden(keybinds, "x"))
 	require.True(tt, keybindIsHidden(keybinds, "b"))
 	require.True(tt, keybindIsHidden(keybinds, "y"))
@@ -644,6 +685,22 @@ func TestDv_KeybindsIncludeIntralineStyleToggle(tt *testing.T) {
 	keybind, ok := findKeybindByKey(app.Keybinds(), "i")
 	require.True(tt, ok)
 	require.Equal(tt, "Toggle intraline style", keybind.Name)
+	require.True(tt, keybind.Hidden)
+}
+
+func TestDv_KeybindsIncludeReviewedToggle(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "m")
+	require.True(tt, ok)
+	require.Equal(tt, "Toggle reviewed", keybind.Name)
+	require.True(tt, keybind.Hidden)
+}
+
+func TestDv_KeybindsIncludeClearAllReviewed(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "M")
+	require.True(tt, ok)
+	require.Equal(tt, "Clear all reviewed", keybind.Name)
 	require.True(tt, keybind.Hidden)
 }
 
@@ -1266,6 +1323,64 @@ func TestDv_RenderTreeNodeSectionIgnoresFilterHighlightAndDimming(tt *testing.T)
 	require.True(tt, label.Style.Bold)
 }
 
+func TestDv_RenderTreeNodeReviewedFileUsesStrikethrough(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("server.go")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	app.toggleActiveFileReviewed()
+	render := app.renderTreeNode(theme, false)
+	rowWidget := render(
+		DiffTreeNodeData{
+			Name:     "server.go",
+			Path:     "server.go",
+			Section:  DiffSectionUnstaged,
+			NodeKind: DiffTreeNodeFile,
+		},
+		t.TreeNodeContext{},
+		t.MatchResult{},
+	)
+
+	row, ok := rowWidget.(t.Row)
+	require.True(tt, ok)
+	require.NotEmpty(tt, row.Children)
+	label, ok := row.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.True(tt, label.Style.Strikethrough)
+}
+
+func TestDv_RenderTreeNodeReviewedMatchHighlightUsesStrikethroughSpans(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("server.go")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	app.toggleActiveFileReviewed()
+	render := app.renderTreeNode(theme, false)
+	rowWidget := render(
+		DiffTreeNodeData{
+			Name:     "server.go",
+			Path:     "server.go",
+			Section:  DiffSectionUnstaged,
+			NodeKind: DiffTreeNodeFile,
+		},
+		t.TreeNodeContext{},
+		t.MatchResult{
+			Matched: true,
+			Ranges:  []t.MatchRange{{Start: 0, End: len("server")}},
+		},
+	)
+
+	row, ok := rowWidget.(t.Row)
+	require.True(tt, ok)
+	require.NotEmpty(tt, row.Children)
+	label, ok := row.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.NotEmpty(tt, label.Spans)
+	for _, span := range label.Spans {
+		require.True(tt, span.Style.Strikethrough)
+	}
+}
+
 func TestDv_LeftPaneTreeHasOneCellLeftPadding(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	theme, ok := t.GetTheme(t.CurrentThemeName())
@@ -1439,6 +1554,28 @@ func TestDv_ViewerTitleIncludesLineStats(tt *testing.T) {
 	require.Equal(tt, theme.Error, metaText.Spans[2].Style.Foreground)
 	require.Equal(tt, "Unstaged 1/1", metaText.Spans[4].Text)
 	require.Equal(tt, theme.TextMuted, metaText.Spans[4].Style.Foreground)
+}
+
+func TestDv_ViewerTitleReviewedUsesSuccessTintedBackground(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	normalWidget := app.buildViewerTitle(theme)
+	normalRow, ok := normalWidget.(t.Row)
+	require.True(tt, ok)
+	require.NotNil(tt, normalRow.Style.BackgroundColor)
+	normalBg := normalRow.Style.BackgroundColor.ColorAt(3, 1, 1, 0)
+	require.Equal(tt, theme.Background, normalBg)
+
+	app.toggleActiveFileReviewed()
+
+	reviewedWidget := app.buildViewerTitle(theme)
+	reviewedRow, ok := reviewedWidget.(t.Row)
+	require.True(tt, ok)
+	require.NotNil(tt, reviewedRow.Style.BackgroundColor)
+	reviewedBg := reviewedRow.Style.BackgroundColor.ColorAt(3, 1, 1, 0)
+	require.NotEqual(tt, theme.Background, reviewedBg)
 }
 
 func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
@@ -2142,6 +2279,103 @@ func TestDv_ToggleDiffIntralineStyle(tt *testing.T) {
 
 	app.toggleDiffIntralineStyle()
 	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+}
+
+func TestDv_ToggleActiveFileReviewed(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	section, filePath, ok := app.activeReviewTarget()
+	require.True(tt, ok)
+	require.False(tt, app.isReviewed(section, filePath))
+
+	app.toggleActiveFileReviewed()
+	require.True(tt, app.isReviewed(section, filePath))
+
+	app.toggleActiveFileReviewed()
+	require.False(tt, app.isReviewed(section, filePath))
+}
+
+func TestDv_ToggleActiveFileReviewedNoopForNonFile(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	roots := app.treeState.Nodes.Peek()
+	require.Len(tt, roots, 2)
+	app.onTreeCursorChange(roots[0].Data)
+	require.Equal(tt, DiffTreeNodeSection, app.activeKind)
+
+	app.toggleActiveFileReviewed()
+	require.Empty(tt, app.reviewedByFile)
+}
+
+func TestDv_ClearAllReviewedClearsMarksWithoutChangingSelection(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPaths("a.txt")},
+		stagedDiffs:   []string{diffForPaths("b.txt")},
+	}, false)
+
+	section, filePath, ok := app.activeReviewTarget()
+	require.True(tt, ok)
+	app.toggleActiveFileReviewed()
+	require.True(tt, app.isReviewed(section, filePath))
+
+	app.switchSectionFocus()
+	section, filePath, ok = app.activeReviewTarget()
+	require.True(tt, ok)
+	app.toggleActiveFileReviewed()
+	require.True(tt, app.isReviewed(section, filePath))
+	require.Len(tt, app.reviewedByFile, 2)
+
+	activeSection := app.activeSection
+	activePath := app.activePath
+	app.clearAllReviewed()
+	require.Empty(tt, app.reviewedByFile)
+	require.Equal(tt, activeSection, app.activeSection)
+	require.Equal(tt, activePath, app.activePath)
+
+	app.clearAllReviewed()
+	require.Empty(tt, app.reviewedByFile)
+}
+
+func TestDv_ReviewedMarksPersistAcrossRefresh(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs: []string{
+			diffForPaths("a.txt"),
+			diffForPaths("a.txt"),
+			diffForPaths("a.txt"),
+			diffForPaths("a.txt"),
+		},
+	}
+	app := newTestDv(provider, false)
+	section, filePath, ok := app.activeReviewTarget()
+	require.True(tt, ok)
+
+	app.toggleActiveFileReviewed()
+	require.True(tt, app.isReviewed(section, filePath))
+	app.refreshDiff()
+	require.True(tt, app.isReviewed(section, filePath))
+}
+
+func TestDv_CommandPaletteReviewedActionsToggleAndClear(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	toggleItem := findPaletteItemByLabel(level.Items, "Toggle reviewed")
+	require.True(tt, toggleItem.IsSelectable())
+	require.NotNil(tt, toggleItem.Action)
+	clearItem := findPaletteItemByLabel(level.Items, "Clear all reviewed")
+	require.True(tt, clearItem.IsSelectable())
+	require.NotNil(tt, clearItem.Action)
+
+	section, filePath, ok := app.activeReviewTarget()
+	require.True(tt, ok)
+	require.False(tt, app.isReviewed(section, filePath))
+
+	toggleItem.Action()
+	require.True(tt, app.isReviewed(section, filePath))
+
+	clearItem.Action()
+	require.False(tt, app.isReviewed(section, filePath))
 }
 
 func TestDv_CommandPaletteIntralineStyleActionTogglesMode(tt *testing.T) {
