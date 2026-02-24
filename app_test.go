@@ -1802,6 +1802,20 @@ func TestDv_ToggleDiffLayoutModeRoundTripRestoresExactVerticalScroll(tt *testing
 	require.Equal(tt, 1, app.diffViewState.ScrollY.Peek())
 }
 
+func TestDv_ToggleDiffLayoutModeKeepsScrollableOffsetWhenScrollMetricsAreStale(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+
+	// Simulate stale ScrollState layout metadata where SetOffset would clamp to 0.
+	app.diffScrollState.Offset.Set(0)
+	app.diffViewState.ScrollY.Set(2)
+
+	app.toggleDiffLayoutMode()
+	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
+	require.Equal(tt, 1, app.diffViewState.ScrollY.Peek())
+	require.Equal(tt, 1, app.diffScrollState.Offset.Peek())
+}
+
 func TestDv_DiffScrollStateHorizontalCallbacksMoveAndClamp(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 

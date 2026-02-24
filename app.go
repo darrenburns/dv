@@ -1623,13 +1623,7 @@ func (a *Dv) toggleDiffLayoutMode() {
 	a.rememberToggleLayoutScroll(sourceMode, targetMode, sourceOffset, targetOffset)
 	a.diffLayoutMode = targetMode
 	a.clampDiffHorizontalScroll()
-
-	if a.diffScrollState != nil {
-		a.diffScrollState.SetOffset(targetOffset)
-	}
-	if a.diffViewState != nil {
-		a.diffViewState.ScrollY.Set(targetOffset)
-	}
+	a.setDiffVerticalOffset(targetOffset)
 }
 
 func (a *Dv) resetSideBySideSplit() {
