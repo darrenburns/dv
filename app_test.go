@@ -1429,7 +1429,11 @@ func TestDv_LeftPaneHeaderRightAlignsTotals(tt *testing.T) {
 	require.True(tt, ok)
 	require.Len(tt, right.Spans, 3)
 	require.Equal(tt, "+2", right.Spans[0].Text)
+	require.True(tt, right.Spans[0].Style.Bold)
+	require.Equal(tt, theme.Success, right.Spans[0].Style.Foreground)
 	require.Equal(tt, "-2", right.Spans[2].Text)
+	require.True(tt, right.Spans[2].Style.Bold)
+	require.Equal(tt, theme.Error, right.Spans[2].Style.Foreground)
 }
 
 func TestDv_SidebarSummaryLabelEmptyWhenNoSeenFiles(tt *testing.T) {
