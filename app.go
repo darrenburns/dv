@@ -1134,21 +1134,39 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 
 	file, ok := a.fileByPath[a.activePath]
 	if !ok || file == nil {
-		return t.Text{
-			Content: title,
-			Style:   style,
+		return viewerPathText{
+			Text: t.Text{
+				Content: title,
+				Style:   style,
+			},
+			FullPath: title,
 		}
 	}
 
-	spans := []t.Span{t.BoldSpan(title)}
+	metaSpans := make([]t.Span, 0, 8)
 	if statSpans := nonZeroChangeStatSpans(file.Additions, file.Deletions, theme, true); len(statSpans) > 0 {
-		spans = append(spans, t.BoldSpan(" "))
-		spans = append(spans, statSpans...)
+		metaSpans = append(metaSpans, statSpans...)
 	}
 
 	current, total, hasPosition := a.viewerFilePosition()
-	if !hasPosition {
-		return t.Text{Spans: spans, Style: style}
+	if hasPosition {
+		if len(metaSpans) > 0 {
+			metaSpans = append(metaSpans, t.PlainSpan(" "))
+		}
+		metaSpans = append(metaSpans, t.StyledSpan(
+			fmt.Sprintf("%s %d/%d", a.activeSection.DisplayName(), current, total),
+			t.SpanStyle{Foreground: theme.TextMuted},
+		))
+	}
+
+	if len(metaSpans) == 0 {
+		return viewerPathText{
+			Text: t.Text{
+				Content: title,
+				Style:   style,
+			},
+			FullPath: title,
+		}
 	}
 
 	return t.Row{
@@ -1158,16 +1176,20 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 			ForegroundColor: style.ForegroundColor,
 		},
 		Children: []t.Widget{
-			t.Text{
-				Spans: spans,
-				Style: t.Style{
-					ForegroundColor: theme.Text,
-					Bold:            true,
+			viewerPathText{
+				Text: t.Text{
+					Content: title,
+					Style: t.Style{
+						Width:           t.Flex(1),
+						ForegroundColor: theme.Text,
+						Bold:            true,
+					},
 				},
+				FullPath: title,
 			},
-			t.Spacer{Width: t.Flex(1)},
+			t.Spacer{Width: t.Cells(1)},
 			t.Text{
-				Content: fmt.Sprintf("%s %d/%d", a.activeSection.DisplayName(), current, total),
+				Spans: metaSpans,
 				Style: t.Style{
 					ForegroundColor: theme.TextMuted,
 				},

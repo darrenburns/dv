@@ -1417,24 +1417,28 @@ func TestDv_ViewerTitleIncludesLineStats(tt *testing.T) {
 	require.True(tt, ok)
 	require.Len(tt, row.Children, 3)
 
-	titleText, ok := row.Children[0].(t.Text)
+	titleText, ok := row.Children[0].(viewerPathText)
 	require.True(tt, ok)
-	require.Len(tt, titleText.Spans, 5)
-	require.Equal(tt, "a.txt", titleText.Spans[0].Text)
-	require.True(tt, titleText.Spans[0].Style.Bold)
-	require.Equal(tt, "+1", titleText.Spans[2].Text)
-	require.True(tt, titleText.Spans[2].Style.Bold)
-	require.Equal(tt, theme.Success, titleText.Spans[2].Style.Foreground)
-	require.Equal(tt, "-1", titleText.Spans[4].Text)
-	require.True(tt, titleText.Spans[4].Style.Bold)
-	require.Equal(tt, theme.Error, titleText.Spans[4].Style.Foreground)
+	require.Equal(tt, "a.txt", titleText.FullPath)
+	require.True(tt, titleText.Style.Bold)
+	require.True(tt, titleText.Style.Width.IsFlex())
 
-	_, ok = row.Children[1].(t.Spacer)
+	spacer, ok := row.Children[1].(t.Spacer)
 	require.True(tt, ok)
+	require.True(tt, spacer.Width.IsCells())
+	require.Equal(tt, 1, spacer.Width.CellsValue())
 
-	positionText, ok := row.Children[2].(t.Text)
+	metaText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "Unstaged 1/1", positionText.Content)
+	require.Len(tt, metaText.Spans, 5)
+	require.Equal(tt, "+1", metaText.Spans[0].Text)
+	require.True(tt, metaText.Spans[0].Style.Bold)
+	require.Equal(tt, theme.Success, metaText.Spans[0].Style.Foreground)
+	require.Equal(tt, "-1", metaText.Spans[2].Text)
+	require.True(tt, metaText.Spans[2].Style.Bold)
+	require.Equal(tt, theme.Error, metaText.Spans[2].Style.Foreground)
+	require.Equal(tt, "Unstaged 1/1", metaText.Spans[4].Text)
+	require.Equal(tt, theme.TextMuted, metaText.Spans[4].Style.Foreground)
 }
 
 func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
@@ -1448,14 +1452,14 @@ func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
 	addOnlyWidget := addOnlyApp.buildViewerTitle(theme)
 	addOnlyRow, ok := addOnlyWidget.(t.Row)
 	require.True(tt, ok)
-	addOnlyTitle, ok := addOnlyRow.Children[0].(t.Text)
+	addOnlyTitle, ok := addOnlyRow.Children[0].(viewerPathText)
 	require.True(tt, ok)
-	addOnlySpanTexts := spanTexts(addOnlyTitle.Spans)
-	require.Equal(tt, []string{"added.go", " ", "+3"}, addOnlySpanTexts)
+	require.Equal(tt, "added.go", addOnlyTitle.FullPath)
+	addOnlyMeta, ok := addOnlyRow.Children[2].(t.Text)
+	require.True(tt, ok)
+	addOnlySpanTexts := spanTexts(addOnlyMeta.Spans)
+	require.Equal(tt, []string{"+3", " ", "Unstaged 1/1"}, addOnlySpanTexts)
 	require.NotContains(tt, strings.Join(addOnlySpanTexts, ""), "-0")
-	addOnlyPosition, ok := addOnlyRow.Children[2].(t.Text)
-	require.True(tt, ok)
-	require.Equal(tt, "Unstaged 1/1", addOnlyPosition.Content)
 
 	delOnlyApp := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
@@ -1464,14 +1468,14 @@ func TestDv_ViewerTitleOmitsZeroStats(tt *testing.T) {
 	delOnlyWidget := delOnlyApp.buildViewerTitle(theme)
 	delOnlyRow, ok := delOnlyWidget.(t.Row)
 	require.True(tt, ok)
-	delOnlyTitle, ok := delOnlyRow.Children[0].(t.Text)
+	delOnlyTitle, ok := delOnlyRow.Children[0].(viewerPathText)
 	require.True(tt, ok)
-	delOnlySpanTexts := spanTexts(delOnlyTitle.Spans)
-	require.Equal(tt, []string{"removed.go", " ", "-2"}, delOnlySpanTexts)
+	require.Equal(tt, "removed.go", delOnlyTitle.FullPath)
+	delOnlyMeta, ok := delOnlyRow.Children[2].(t.Text)
+	require.True(tt, ok)
+	delOnlySpanTexts := spanTexts(delOnlyMeta.Spans)
+	require.Equal(tt, []string{"-2", " ", "Unstaged 1/1"}, delOnlySpanTexts)
 	require.NotContains(tt, strings.Join(delOnlySpanTexts, ""), "+0")
-	delOnlyPosition, ok := delOnlyRow.Children[2].(t.Text)
-	require.True(tt, ok)
-	require.Equal(tt, "Unstaged 1/1", delOnlyPosition.Content)
 }
 
 func TestDv_ViewerTitleShowsFilePositionBySectionOrder(tt *testing.T) {
@@ -1488,7 +1492,7 @@ func TestDv_ViewerTitleShowsFilePositionBySectionOrder(tt *testing.T) {
 	require.True(tt, ok)
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "Unstaged 2/3", positionText.Content)
+	require.Contains(tt, strings.Join(spanTexts(positionText.Spans), ""), "Unstaged 2/3")
 }
 
 func TestDv_ViewerTitleFilePositionIsSectionScoped(tt *testing.T) {
@@ -1506,8 +1510,9 @@ func TestDv_ViewerTitleFilePositionIsSectionScoped(tt *testing.T) {
 	require.True(tt, ok)
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "Staged 1/2", positionText.Content)
-	require.NotEqual(tt, "Staged 1/3", positionText.Content)
+	joined := strings.Join(spanTexts(positionText.Spans), "")
+	require.Contains(tt, joined, "Staged 1/2")
+	require.NotContains(tt, joined, "Staged 1/3")
 }
 
 func TestDv_ViewerTitleFilePositionUsesUnfilteredSectionCount(tt *testing.T) {
@@ -1526,7 +1531,7 @@ func TestDv_ViewerTitleFilePositionUsesUnfilteredSectionCount(tt *testing.T) {
 	require.True(tt, ok)
 	positionText, ok := row.Children[2].(t.Text)
 	require.True(tt, ok)
-	require.Equal(tt, "Unstaged 1/3", positionText.Content)
+	require.Contains(tt, strings.Join(spanTexts(positionText.Spans), ""), "Unstaged 1/3")
 }
 
 func TestDv_ViewerTitleNonFileStateHasNoFilePosition(tt *testing.T) {
@@ -2499,19 +2504,32 @@ func spanTexts(spans []t.Span) []string {
 func rowTextContents(row t.Row) []string {
 	texts := []string{}
 	for _, child := range row.Children {
-		text, ok := child.(t.Text)
-		if !ok {
-			continue
-		}
-		if len(text.Spans) > 0 {
-			var builder strings.Builder
-			for _, span := range text.Spans {
-				builder.WriteString(span.Text)
+		switch text := child.(type) {
+		case t.Text:
+			if len(text.Spans) > 0 {
+				var builder strings.Builder
+				for _, span := range text.Spans {
+					builder.WriteString(span.Text)
+				}
+				texts = append(texts, builder.String())
+				continue
 			}
-			texts = append(texts, builder.String())
-			continue
+			texts = append(texts, text.Content)
+		case viewerPathText:
+			if text.FullPath != "" {
+				texts = append(texts, text.FullPath)
+				continue
+			}
+			if len(text.Spans) > 0 {
+				var builder strings.Builder
+				for _, span := range text.Spans {
+					builder.WriteString(span.Text)
+				}
+				texts = append(texts, builder.String())
+				continue
+			}
+			texts = append(texts, text.Content)
 		}
-		texts = append(texts, text.Content)
 	}
 	return texts
 }
