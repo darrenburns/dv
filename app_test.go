@@ -440,7 +440,7 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	require.True(tt, refresh.IsSelectable())
 	require.Equal(tt, "[r]", refresh.Hint)
 
-	copyPath := findPaletteItemByLabel(level.Items, "Copy file path")
+	copyPath := findPaletteItemByLabel(level.Items, "Copy path")
 	require.True(tt, copyPath.IsSelectable())
 	require.Equal(tt, "[y]", copyPath.Hint)
 
@@ -734,7 +734,7 @@ func TestDv_CopyFilePathPaletteActionCopiesActiveFilePath(tt *testing.T) {
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 
-	copyPath := findPaletteItemByLabel(level.Items, "Copy file path")
+	copyPath := findPaletteItemByLabel(level.Items, "Copy path")
 	require.True(tt, copyPath.IsSelectable())
 	require.NotNil(tt, copyPath.Action)
 
@@ -742,6 +742,37 @@ func TestDv_CopyFilePathPaletteActionCopiesActiveFilePath(tt *testing.T) {
 
 	require.Equal(tt, 1, copyCalls)
 	require.Equal(tt, app.activePath, copied)
+}
+
+func TestDv_CopyFilePathKeybindCopiesActiveDirectoryPath(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("pkg/a.go", "pkg/b.go")},
+	}, false)
+
+	dirPath, ok := findTreePathByDataPath(app.treeState.Nodes.Peek(), "pkg")
+	require.True(tt, ok)
+	node, ok := app.treeState.NodeAtPath(dirPath)
+	require.True(tt, ok)
+	app.onTreeCursorChange(node.Data)
+	require.Equal(tt, DiffTreeNodeDirectory, app.activeKind)
+	require.Equal(tt, "pkg", app.activePath)
+
+	copied := ""
+	copyCalls := 0
+	app.copyPathToClipboard = func(path string) error {
+		copyCalls++
+		copied = path
+		return nil
+	}
+
+	keybind, ok := findKeybindByKey(app.Keybinds(), "y")
+	require.True(tt, ok)
+	require.NotNil(tt, keybind.Action)
+	keybind.Action()
+
+	require.Equal(tt, 1, copyCalls)
+	require.Equal(tt, "pkg", copied)
 }
 
 func TestDv_CopyFilePathNoopWhenSelectionNotFile(tt *testing.T) {
@@ -758,7 +789,7 @@ func TestDv_CopyFilePathNoopWhenSelectionNotFile(tt *testing.T) {
 
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
-	copyPath := findPaletteItemByLabel(level.Items, "Copy file path")
+	copyPath := findPaletteItemByLabel(level.Items, "Copy path")
 	require.Empty(tt, copyPath.Label)
 	require.Nil(tt, copyPath.Action)
 
@@ -1033,20 +1064,24 @@ func TestDv_HandleEscapeClearsActiveTreeFilter(tt *testing.T) {
 
 func TestDv_FilterNoMatchesSetsExplicitState(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt", "b.txt")}}, false)
+	initialRendered := app.diffViewState.Rendered.Peek()
+	initialSideBySide := app.diffViewState.SideBySide.Peek()
+	initialPath := app.activePath
 
 	app.onTreeFilterChange("zzz")
 
 	require.True(tt, app.treeFilterNoMatches)
-	require.Equal(tt, "", app.activePath)
+	require.Equal(tt, initialPath, app.activePath)
 	require.False(tt, app.activeIsDir)
-	require.Equal(tt, "No matches", app.viewerTitle())
+	require.Equal(tt, DiffTreeNodeFile, app.activeKind)
+	require.Equal(tt, initialPath, app.viewerTitle())
 	require.Equal(tt, "Unstaged: 2 Staged: 0", app.sidebarSummaryLabel())
+	require.Nil(tt, app.treeState.CursorPath.Peek())
 
 	rendered := app.diffViewState.Rendered.Peek()
 	require.NotNil(tt, rendered)
-	require.Equal(tt, "No matches", rendered.Title)
-	require.GreaterOrEqual(tt, len(rendered.Lines), 1)
-	require.Contains(tt, lineText(rendered.Lines[0]), `No files match "zzz".`)
+	require.Same(tt, initialRendered, rendered)
+	require.Same(tt, initialSideBySide, app.diffViewState.SideBySide.Peek())
 }
 
 func TestDv_ClearTreeFilterResetsNoMatchesState(tt *testing.T) {
@@ -1512,6 +1547,79 @@ func TestDv_ViewerTitleNonFileStateHasNoFilePosition(tt *testing.T) {
 	require.Equal(tt, "Unstaged changes", text.Content)
 }
 
+func TestDv_RightPaneShowsSectionInfoCard(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt")},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	roots := app.treeState.Nodes.Peek()
+	require.Len(tt, roots, 2)
+	app.onTreeCursorChange(roots[0].Data)
+
+	widget := app.buildRightPane(theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok := column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+	card, ok := scrollable.Child.(t.Column)
+	require.True(tt, ok)
+	texts := widgetTextContents(card)
+	require.Equal(tt, -1, indexOfTextContaining(texts, "Unstaged changes"))
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "Changed files in this section: 1."), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "Touched files:"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "+1"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "-1"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[ctrl+p] Open command palette"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[n]/[p] Jump between files"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[/] Filter files"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[r] Refresh diff"), 0)
+	require.NotEqual(tt, theme.Background, card.Style.BackgroundColor.ColorAt(10, 1, 5, 0))
+
+	app.onTreeCursorChange(roots[1].Data)
+	widget = app.buildRightPane(theme)
+	column, ok = widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok = column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+	stagedCard, ok := scrollable.Child.(t.Column)
+	require.True(tt, ok)
+	require.NotEqual(tt, theme.Background, stagedCard.Style.BackgroundColor.ColorAt(10, 1, 5, 0))
+}
+
+func TestDv_RightPaneShowsDirectoryInfoCard(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("pkg/a.go", "pkg/b.go", "README.md")},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	dirPath, ok := findTreePathByDataPath(app.treeState.Nodes.Peek(), "pkg")
+	require.True(tt, ok)
+	node, ok := app.treeState.NodeAtPath(dirPath)
+	require.True(tt, ok)
+	app.onTreeCursorChange(node.Data)
+
+	widget := app.buildRightPane(theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok := column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+	card, ok := scrollable.Child.(t.Column)
+	require.True(tt, ok)
+	texts := widgetTextContents(card)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "Directory: pkg/"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "Changed files in this directory: 2."), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "Touched files:"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "+2"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "-2"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[ctrl+p] Open command palette"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[y] Copy this directory path"), 0)
+}
+
 func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	theme, ok := t.GetTheme(t.CurrentThemeName())
@@ -1530,7 +1638,6 @@ func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	require.Equal(tt, 1, emptyState.Style.Padding.Top)
 	require.Equal(tt, 2, emptyState.Style.Padding.Left)
 	require.Equal(tt, 2, emptyState.Style.Padding.Right)
-	require.Len(tt, emptyState.Children, 3)
 
 	heading, ok := emptyState.Children[0].(t.Text)
 	require.True(tt, ok)
@@ -1540,6 +1647,11 @@ func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	details, ok := emptyState.Children[2].(t.Text)
 	require.True(tt, ok)
 	require.Equal(tt, "Make edits or stage files, then press r to refresh.", details.Content)
+	texts := widgetTextContents(emptyState)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "Next actions"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[ctrl+p] Open command palette"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[r] Refresh diff"), 0)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[x] Toggle ignore whitespace"), 0)
 
 	app.toggleMode()
 	widget = app.buildRightPane(theme)
@@ -1578,6 +1690,8 @@ func TestDv_EmptyStateMentionsIgnoreWhitespaceWhenEnabled(tt *testing.T) {
 	require.True(tt, ok)
 	require.Contains(tt, details.Content, "Whitespace-only changes are hidden")
 	require.Contains(tt, details.Content, "Press x")
+	texts := widgetTextContents(emptyState)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[x] Toggle ignore whitespace"), 0)
 }
 
 func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
@@ -1596,7 +1710,6 @@ func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 	require.True(tt, ok)
 	emptyState, ok := scrollable.Child.(t.Column)
 	require.True(tt, ok)
-	require.Len(tt, emptyState.Children, 3)
 
 	heading, ok := emptyState.Children[0].(t.Text)
 	require.True(tt, ok)
@@ -1606,6 +1719,11 @@ func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 	require.True(tt, ok)
 	require.NotContains(tt, details.Content, "press r")
 	require.NotContains(tt, details.Content, "Press r")
+	texts := widgetTextContents(emptyState)
+	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[ctrl+p] Open command palette"), 0)
+	require.Equal(tt, -1, indexOfTextContaining(texts, "[r] Refresh diff"))
+	require.Equal(tt, -1, indexOfTextContaining(texts, "[s] Switch section"))
+	require.Equal(tt, -1, indexOfTextContaining(texts, "[x] Toggle ignore whitespace"))
 }
 
 func TestDv_ToggleSidebarVisibility(tt *testing.T) {
@@ -2382,6 +2500,36 @@ func rowTextContents(row t.Row) []string {
 		texts = append(texts, text.Content)
 	}
 	return texts
+}
+
+func widgetTextContents(widget t.Widget) []string {
+	switch w := widget.(type) {
+	case t.Text:
+		if len(w.Spans) > 0 {
+			var builder strings.Builder
+			for _, span := range w.Spans {
+				builder.WriteString(span.Text)
+			}
+			return []string{builder.String()}
+		}
+		return []string{w.Content}
+	case t.Row:
+		texts := []string{}
+		for _, child := range w.Children {
+			texts = append(texts, widgetTextContents(child)...)
+		}
+		return texts
+	case t.Column:
+		texts := []string{}
+		for _, child := range w.Children {
+			texts = append(texts, widgetTextContents(child)...)
+		}
+		return texts
+	case t.Scrollable:
+		return widgetTextContents(w.Child)
+	default:
+		return nil
+	}
 }
 
 func indexOfTextContaining(texts []string, needle string) int {

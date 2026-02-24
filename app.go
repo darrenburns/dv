@@ -99,6 +99,21 @@ type diffSectionState struct {
 	deletions          int
 }
 
+type infoCardStat struct {
+	Label      string
+	Value      string
+	ValueColor t.Color
+	Colorized  bool
+}
+
+type infoCardModel struct {
+	Heading    string
+	Details    string
+	Stats      []infoCardStat
+	Actions    []string
+	Background t.ColorProvider
+}
+
 // Dv is a read-only, syntax-highlighted git diff viewer.
 type Dv struct {
 	provider DiffProvider
@@ -450,7 +465,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
 		{Key: "s", Name: "Switch section", Action: a.switchSectionFocus, Hidden: true},
-		{Key: "y", Name: "Copy file path", Action: a.copyActiveFilePath, Hidden: true},
+		{Key: "y", Name: "Copy path", Action: a.copyActiveFilePath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
 		{Key: "ctrl+h", Name: "Shift split left", Action: a.shiftSideBySideSplitLeft, Hidden: true},
@@ -789,8 +804,8 @@ func (a *Dv) buildRightPane(theme t.ThemeData) t.Widget {
 		},
 	}
 	viewerContent := t.Widget(viewer)
-	if a.shouldShowDiffEmptyState() {
-		viewerContent = a.buildDiffEmptyState(theme)
+	if infoCard, ok := a.buildNonFileInfoCard(theme); ok {
+		viewerContent = infoCard
 	}
 
 	return t.Column{
@@ -822,34 +837,283 @@ func (a *Dv) shouldShowDiffEmptyState() bool {
 		a.totalFileCount() == 0
 }
 
+func (a *Dv) buildNonFileInfoCard(theme t.ThemeData) (t.Widget, bool) {
+	if a.loadErr != "" {
+		return nil, false
+	}
+	switch a.activeKind {
+	case DiffTreeNodeSection:
+		return a.buildSectionInfoCard(theme), true
+	case DiffTreeNodeDirectory:
+		return a.buildDirectoryInfoCard(theme), true
+	case DiffTreeNodeUnknown:
+		if a.shouldShowDiffEmptyState() {
+			return a.buildDiffEmptyState(theme), true
+		}
+	}
+	return nil, false
+}
+
 func (a *Dv) buildDiffEmptyState(theme t.ThemeData) t.Widget {
 	heading, details := a.emptyMessageParts()
-	return t.Column{
-		Style: t.Style{
-			Width:           t.Flex(1),
-			Height:          t.Auto,
-			Padding:         t.EdgeInsets{Top: 1, Left: 2, Right: 2},
-			BackgroundColor: theme.Background,
+	return a.buildInfoCard(theme, infoCardModel{
+		Heading: heading,
+		Details: details,
+		Actions: a.emptyStateActionHints(),
+	})
+}
+
+func (a *Dv) buildSectionInfoCard(theme t.ThemeData) t.Widget {
+	state := a.sectionState(a.activeSection)
+	fileCount := 0
+	additions := 0
+	deletions := 0
+	if state != nil {
+		fileCount = len(state.orderedFilePaths)
+		additions = state.additions
+		deletions = state.deletions
+	}
+
+	details := fmt.Sprintf("Changed files in this section: %d.", fileCount)
+	if fileCount == 0 {
+		details = "No files in this section."
+	}
+
+	actions := []string{
+		a.actionHint("Command palette", "Open command palette"),
+		a.dualActionHint("Next file", "Prev file", "Jump between files"),
+		a.actionHint("Filter files", "Filter files"),
+	}
+	if a.manualRefreshEnabled {
+		actions = append(actions, a.actionHint("Refresh", "Refresh diff"))
+	}
+
+	return a.buildInfoCard(theme, infoCardModel{
+		Details:    details,
+		Background: sectionInfoCardBackground(theme, a.activeSection),
+		Stats: []infoCardStat{
+			{Label: "Touched files", Value: fmt.Sprintf("%d", fileCount)},
+			{Label: "Additions", Value: fmt.Sprintf("+%d", additions), ValueColor: theme.Success, Colorized: true},
+			{Label: "Deletions", Value: fmt.Sprintf("-%d", deletions), ValueColor: theme.Error, Colorized: true},
 		},
-		Children: []t.Widget{
+		Actions: actions,
+	})
+}
+
+func (a *Dv) buildDirectoryInfoCard(theme t.ThemeData) t.Widget {
+	path := strings.TrimSpace(a.activePath)
+	if path == "" {
+		path = "(root)"
+	}
+	displayPath := strings.TrimSuffix(path, "/")
+	if displayPath == "" {
+		displayPath = "(root)"
+	}
+
+	touched := 0
+	additions := 0
+	deletions := 0
+	if node, ok := a.findDirectoryNode(a.activeSection, path); ok {
+		touched = node.TouchedFiles
+		additions = node.Additions
+		deletions = node.Deletions
+	}
+
+	return a.buildInfoCard(theme, infoCardModel{
+		Heading: fmt.Sprintf("Directory: %s/", displayPath),
+		Details: fmt.Sprintf("Changed files in this directory: %d.", touched),
+		Stats: []infoCardStat{
+			{Label: "Touched files", Value: fmt.Sprintf("%d", touched)},
+			{Label: "Additions", Value: fmt.Sprintf("+%d", additions), ValueColor: theme.Success, Colorized: true},
+			{Label: "Deletions", Value: fmt.Sprintf("-%d", deletions), ValueColor: theme.Error, Colorized: true},
+		},
+		Actions: []string{
+			a.actionHint("Command palette", "Open command palette"),
+			a.dualActionHint("Next file", "Prev file", "Jump between files"),
+			a.actionHint("Filter files", "Filter files"),
+			a.actionHint("Copy path", "Copy this directory path"),
+		},
+	})
+}
+
+func (a *Dv) buildInfoCard(theme t.ThemeData, model infoCardModel) t.Widget {
+	children := []t.Widget{}
+
+	if strings.TrimSpace(model.Heading) != "" {
+		children = append(children, t.Text{
+			Content: model.Heading,
+			Wrap:    t.WrapSoft,
+			Style: t.Style{
+				ForegroundColor: theme.Text,
+				Bold:            true,
+			},
+		})
+	}
+
+	if strings.TrimSpace(model.Details) != "" {
+		if len(children) > 0 {
+			children = append(children, t.Spacer{Height: t.Cells(1)})
+		}
+		children = append(children,
 			t.Text{
-				Content: heading,
+				Content: model.Details,
 				Wrap:    t.WrapSoft,
 				Style: t.Style{
-					ForegroundColor: theme.TextMuted,
+					ForegroundColor: theme.Text,
+				},
+			},
+		)
+	}
+
+	if len(model.Stats) > 0 {
+		if len(children) > 0 {
+			children = append(children, t.Spacer{Height: t.Cells(1)})
+		}
+		children = append(children,
+			t.Text{
+				Content: "Stats",
+				Style: t.Style{
+					ForegroundColor: theme.Text,
 					Bold:            true,
 				},
 			},
-			t.Spacer{Height: t.Cells(1)},
+		)
+
+		for _, stat := range model.Stats {
+			valueStyle := t.SpanStyle{Foreground: theme.Text}
+			if stat.Colorized {
+				valueStyle.Foreground = stat.ValueColor
+				valueStyle.Bold = true
+			}
+			children = append(children, t.Text{
+				Spans: []t.Span{
+					t.StyledSpan(stat.Label+": ", t.SpanStyle{Foreground: theme.Text}),
+					t.StyledSpan(stat.Value, valueStyle),
+				},
+			})
+		}
+	}
+
+	if len(model.Actions) > 0 {
+		if len(children) > 0 {
+			children = append(children, t.Spacer{Height: t.Cells(1)})
+		}
+		children = append(children,
 			t.Text{
-				Content: details,
-				Wrap:    t.WrapSoft,
+				Content: "Next actions",
 				Style: t.Style{
-					ForegroundColor: theme.TextMuted,
+					ForegroundColor: theme.Text,
+					Bold:            true,
 				},
 			},
-		},
+		)
+
+		for _, action := range model.Actions {
+			children = append(children, t.Text{
+				Content: action,
+				Wrap:    t.WrapSoft,
+				Style: t.Style{
+					ForegroundColor: theme.Text,
+				},
+			})
+		}
 	}
+
+	return t.Column{
+		Style: t.Style{
+			Width:           t.Flex(1),
+			Height:          t.Flex(1),
+			Padding:         t.EdgeInsets{Top: 1, Left: 2, Right: 2},
+			BackgroundColor: firstNonNilColorProvider(model.Background, theme.Background),
+		},
+		Children: children,
+	}
+}
+
+func (a *Dv) emptyStateActionHints() []string {
+	actions := []string{a.actionHint("Command palette", "Open command palette")}
+	if a.manualRefreshEnabled {
+		actions = append(actions, a.actionHint("Refresh", "Refresh diff"))
+	}
+	if a.canToggleDiffIgnoreWhitespace() {
+		actions = append(actions, a.actionHint("Toggle ignore whitespace", "Toggle ignore whitespace"))
+	}
+	return actions
+}
+
+func (a *Dv) actionHint(actionName string, description string) string {
+	key := a.keybindKeyByName(actionName)
+	if key == "" {
+		return description
+	}
+	return fmt.Sprintf("[%s] %s", key, description)
+}
+
+func (a *Dv) dualActionHint(firstActionName string, secondActionName string, description string) string {
+	firstKey := a.keybindKeyByName(firstActionName)
+	secondKey := a.keybindKeyByName(secondActionName)
+	switch {
+	case firstKey != "" && secondKey != "":
+		return fmt.Sprintf("[%s]/[%s] %s", firstKey, secondKey, description)
+	case firstKey != "":
+		return fmt.Sprintf("[%s] %s", firstKey, description)
+	case secondKey != "":
+		return fmt.Sprintf("[%s] %s", secondKey, description)
+	default:
+		return description
+	}
+}
+
+func (a *Dv) keybindKeyByName(name string) string {
+	for _, keybind := range a.Keybinds() {
+		if keybind.Name == name {
+			return keybind.Key
+		}
+	}
+	return ""
+}
+
+func sectionInfoCardBackground(theme t.ThemeData, section DiffSection) t.ColorProvider {
+	switch section {
+	case DiffSectionUnstaged:
+		tint := theme.Background.Blend(theme.Error, 0.08)
+		return t.NewGradient(tint, theme.Background).WithAngle(45)
+	case DiffSectionStaged:
+		tint := theme.Background.Blend(theme.Success, 0.08)
+		return t.NewGradient(tint, theme.Background).WithAngle(45)
+	default:
+		return theme.Background
+	}
+}
+
+func firstNonNilColorProvider(primary t.ColorProvider, fallback t.ColorProvider) t.ColorProvider {
+	if primary != nil {
+		return primary
+	}
+	return fallback
+}
+
+func (a *Dv) findDirectoryNode(section DiffSection, directoryPath string) (DiffTreeNodeData, bool) {
+	if directoryPath == "" {
+		return DiffTreeNodeData{}, false
+	}
+	state := a.sectionState(section)
+	if state == nil {
+		return DiffTreeNodeData{}, false
+	}
+	return findDirectoryNodeInTree(state.roots, directoryPath)
+}
+
+func findDirectoryNodeInTree(nodes []t.TreeNode[DiffTreeNodeData], directoryPath string) (DiffTreeNodeData, bool) {
+	for _, node := range nodes {
+		if node.Data.NodeKind == DiffTreeNodeDirectory && node.Data.Path == directoryPath {
+			return node.Data, true
+		}
+		if found, ok := findDirectoryNodeInTree(node.Children, directoryPath); ok {
+			return found, true
+		}
+	}
+	return DiffTreeNodeData{}, false
 }
 
 func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
@@ -978,7 +1242,10 @@ func (a *Dv) canToggleDiffIgnoreWhitespace() bool {
 }
 
 func (a *Dv) canCopyActiveFilePath() bool {
-	return a.activeKind == DiffTreeNodeFile && a.activePath != ""
+	if a.activePath == "" {
+		return false
+	}
+	return a.activeKind == DiffTreeNodeFile || a.activeKind == DiffTreeNodeDirectory
 }
 
 func (a *Dv) copyActiveFilePath() {
@@ -2020,12 +2287,18 @@ func (a *Dv) syncTreeFilterSelection() {
 	}
 	if query == "" {
 		a.treeFilterNoMatches = false
-		if a.activeKind != DiffTreeNodeFile {
-			if !a.switchToFirstSelectableFile(a.activeSection) {
-				for _, section := range a.orderedSectionsAfter(a.activeSection) {
-					if a.switchToFirstSelectableFile(section) {
-						break
-					}
+		if a.activeKind == DiffTreeNodeFile {
+			if a.treeState.CursorPath.Peek() == nil {
+				if treePath, ok := a.filePathToTreePath[a.activePath]; ok {
+					a.treeState.CursorPath.Set(clonePath(treePath))
+				}
+			}
+			return
+		}
+		if !a.switchToFirstSelectableFile(a.activeSection) {
+			for _, section := range a.orderedSectionsAfter(a.activeSection) {
+				if a.switchToFirstSelectableFile(section) {
+					break
 				}
 			}
 		}
@@ -2044,7 +2317,7 @@ func (a *Dv) syncTreeFilterSelection() {
 		break
 	}
 	if targetSection == "" || len(filtered) == 0 {
-		a.setTreeFilterNoMatches(query)
+		a.setTreeFilterNoMatches()
 		return
 	}
 
@@ -2053,24 +2326,9 @@ func (a *Dv) syncTreeFilterSelection() {
 	a.selectFilePath(filtered[0])
 }
 
-func (a *Dv) setTreeFilterNoMatches(query string) {
-	a.rememberActiveFileScrollOffset()
-
+func (a *Dv) setTreeFilterNoMatches() {
 	a.treeFilterNoMatches = true
 	a.treeState.CursorPath.Set(nil)
-	a.activePath = ""
-	a.activeIsDir = false
-	a.activeKind = DiffTreeNodeUnknown
-	a.activeFileSection = ""
-	a.diffViewState.SetRendered(messageToRendered("No matches", a.noFilterMatchesMessage(query)))
-	a.diffScrollState.SetOffset(0)
-}
-
-func (a *Dv) noFilterMatchesMessage(query string) string {
-	if query == "" {
-		return "No files match the current filter.\n\nPress escape to clear the filter."
-	}
-	return fmt.Sprintf("No files match %q.\n\nPress escape to clear the filter.", query)
 }
 
 func (a *Dv) buildTreeFilterEmptyState(theme t.ThemeData) t.Widget {
@@ -2313,8 +2571,8 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 	})
 	if a.canCopyActiveFilePath() {
 		items = append(items, t.CommandPaletteItem{
-			Label:      "Copy file path",
-			FilterText: "Copy file path clipboard",
+			Label:      "Copy path",
+			FilterText: "Copy path clipboard file directory",
 			Hint:       "[y]",
 			Action:     a.paletteAction(a.copyActiveFilePath),
 		})
