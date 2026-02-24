@@ -61,7 +61,7 @@ Some things that aren't as clear at the moment:
 * Tab and shift-tab move focus
 * Press `/` from the file tree or diff view to filter files (if the sidebar is hidden, this opens it). While the filter input is focused, `up`/`down` move through matching files, `tab` moves focus back to the tree, and `esc` clears the filter.
 * Press `y` to copy the active file or directory path to your clipboard (also available via the command palette).
-* Press `m` to toggle reviewed on the active file, or `M` to clear all reviewed marks (both are also available in the command palette).
+* Press `m` to toggle seen on the active file, or `M` to clear all seen marks (both are also available in the command palette).
 
 ## Startup options
 

@@ -348,7 +348,7 @@ func TestDv_PipeModeSectionLabelUsesAccentColor(tt *testing.T) {
 	require.Equal(tt, theme.Accent, label.Style.ForegroundColor)
 }
 
-func TestDv_PipeModeSidebarHeadingOmitsSectionSwitchHint(tt *testing.T) {
+func TestDv_PipeModeSidebarHeadingIsEmptyWithoutSeenFiles(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
 		diffs:         []string{diffForPaths("a.txt")},
@@ -359,13 +359,7 @@ func TestDv_PipeModeSidebarHeadingOmitsSectionSwitchHint(tt *testing.T) {
 	require.True(tt, ok)
 
 	spans := app.sidebarHeadingSpans(theme)
-	require.Len(tt, spans, 2)
-	require.Equal(tt, "Files: ", spans[0].Text)
-	require.Equal(tt, "1", spans[1].Text)
-	require.Equal(tt, theme.Accent, spans[1].Style.Foreground)
-
-	joined := strings.Join(spanTexts(spans), "")
-	require.NotContains(tt, joined, "[s]")
+	require.Empty(tt, spans)
 }
 
 func TestDv_PipeModeHeaderOmitsIgnoreWhitespaceIndicator(tt *testing.T) {
@@ -486,11 +480,11 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	require.True(tt, ignoreWhitespace.IsSelectable())
 	require.Equal(tt, "[x]", ignoreWhitespace.Hint)
 
-	reviewed := findPaletteItemByLabel(level.Items, "Toggle reviewed")
+	reviewed := findPaletteItemByLabel(level.Items, "Toggle seen")
 	require.True(tt, reviewed.IsSelectable())
 	require.Equal(tt, "[m]", reviewed.Hint)
 
-	clearReviewed := findPaletteItemByLabel(level.Items, "Clear all reviewed")
+	clearReviewed := findPaletteItemByLabel(level.Items, "Clear all seen")
 	require.True(tt, clearReviewed.IsSelectable())
 	require.Equal(tt, "[M]", clearReviewed.Hint)
 
@@ -607,9 +601,9 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 			signsIdx = idx
 		case item.Label == "Toggle ignore whitespace":
 			ignoreWhitespaceIdx = idx
-		case item.Label == "Toggle reviewed":
+		case item.Label == "Toggle seen":
 			reviewedIdx = idx
-		case item.Label == "Clear all reviewed":
+		case item.Label == "Clear all seen":
 			clearReviewedIdx = idx
 		case item.Label == "Toggle intraline style":
 			intralineIdx = idx
@@ -692,7 +686,7 @@ func TestDv_KeybindsIncludeReviewedToggle(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	keybind, ok := findKeybindByKey(app.Keybinds(), "m")
 	require.True(tt, ok)
-	require.Equal(tt, "Toggle reviewed", keybind.Name)
+	require.Equal(tt, "Toggle seen", keybind.Name)
 	require.True(tt, keybind.Hidden)
 }
 
@@ -700,7 +694,7 @@ func TestDv_KeybindsIncludeClearAllReviewed(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	keybind, ok := findKeybindByKey(app.Keybinds(), "M")
 	require.True(tt, ok)
-	require.Equal(tt, "Clear all reviewed", keybind.Name)
+	require.Equal(tt, "Clear all seen", keybind.Name)
 	require.True(tt, keybind.Hidden)
 }
 
@@ -1132,7 +1126,7 @@ func TestDv_FilterNoMatchesSetsExplicitState(tt *testing.T) {
 	require.False(tt, app.activeIsDir)
 	require.Equal(tt, DiffTreeNodeFile, app.activeKind)
 	require.Equal(tt, initialPath, app.viewerTitle())
-	require.Equal(tt, "Unstaged: 2 Staged: 0", app.sidebarSummaryLabel())
+	require.Equal(tt, "", app.sidebarSummaryLabel())
 	require.Nil(tt, app.treeState.CursorPath.Peek())
 
 	rendered := app.diffViewState.Rendered.Peek()
@@ -1425,7 +1419,7 @@ func TestDv_LeftPaneHeaderRightAlignsTotals(tt *testing.T) {
 
 	left, ok := header.Children[0].(t.Text)
 	require.True(tt, ok)
-	require.NotEmpty(tt, left.Spans)
+	require.Empty(tt, left.Spans)
 
 	spacer, ok := header.Children[1].(t.Spacer)
 	require.True(tt, ok)
@@ -1438,40 +1432,53 @@ func TestDv_LeftPaneHeaderRightAlignsTotals(tt *testing.T) {
 	require.Equal(tt, "-2", right.Spans[2].Text)
 }
 
-func TestDv_SidebarSummaryLabelIncludesBothSections(tt *testing.T) {
+func TestDv_SidebarSummaryLabelEmptyWhenNoSeenFiles(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
 		unstagedDiffs: []string{diffForPaths("a.txt")},
 		stagedDiffs:   []string{diffForPaths("b.txt", "c.txt")},
 	}, false)
-	require.Equal(tt, "Unstaged: 1 Staged: 2", app.sidebarSummaryLabel())
+	require.Equal(tt, "", app.sidebarSummaryLabel())
 
 	app.toggleMode()
-	require.Equal(tt, "Unstaged: 1 Staged: 2", app.sidebarSummaryLabel())
+	require.Equal(tt, "", app.sidebarSummaryLabel())
 }
 
-func TestDv_SidebarHeadingIncludesStagedHint(tt *testing.T) {
+func TestDv_SidebarHeadingShowsMutedSeenPercentageUntilComplete(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
-		unstagedDiffs: []string{diffForPaths("a.txt")},
-		stagedDiffs:   []string{diffForPaths("b.txt")},
+		unstagedDiffs: []string{diffForPathWithStats("a.txt", 3, 0)},
+		stagedDiffs:   []string{diffForPathWithStats("b.txt", 1, 0)},
 	}, false)
 	theme, ok := t.GetTheme(t.CurrentThemeName())
 	require.True(tt, ok)
 
+	app.toggleActiveFileReviewed()
+
 	spans := app.sidebarHeadingSpans(theme)
-	require.Len(tt, spans, 7)
-	require.Equal(tt, "Unstaged: ", spans[0].Text)
-	require.Equal(tt, "1", spans[1].Text)
-	require.True(tt, spans[1].Style.Bold)
-	require.Equal(tt, theme.Error, spans[1].Style.Foreground)
-	require.Equal(tt, "Staged: ", spans[3].Text)
-	require.Equal(tt, "1", spans[4].Text)
-	require.True(tt, spans[4].Style.Bold)
-	require.Equal(tt, theme.Success, spans[4].Style.Foreground)
-	require.Equal(tt, "[s]", spans[6].Text)
-	require.True(tt, spans[6].Style.Faint)
-	require.Equal(tt, theme.TextMuted, spans[6].Style.Foreground)
+	require.Len(tt, spans, 1)
+	require.Equal(tt, "75% seen", spans[0].Text)
+	require.Equal(tt, theme.TextMuted, spans[0].Style.Foreground)
+}
+
+func TestDv_SidebarHeadingShowsGreenSeenPercentageAtComplete(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPathWithStats("a.txt", 3, 0)},
+		stagedDiffs:   []string{diffForPathWithStats("b.txt", 1, 0)},
+	}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	app.toggleActiveFileReviewed()
+	app.toggleMode()
+	app.toggleActiveFileReviewed()
+
+	require.Equal(tt, "100% seen", app.sidebarSummaryLabel())
+	spans := app.sidebarHeadingSpans(theme)
+	require.Len(tt, spans, 1)
+	require.Equal(tt, "100% seen", spans[0].Text)
+	require.Equal(tt, theme.Success, spans[0].Style.Foreground)
 }
 
 func TestDv_SidebarTotalsSpansAggregatesAllFiles(tt *testing.T) {
@@ -2355,15 +2362,15 @@ func TestDv_ReviewedMarksPersistAcrossRefresh(tt *testing.T) {
 	require.True(tt, app.isReviewed(section, filePath))
 }
 
-func TestDv_CommandPaletteReviewedActionsToggleAndClear(tt *testing.T) {
+func TestDv_CommandPaletteSeenActionsToggleAndClear(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	level := app.commandPalette.CurrentLevel()
 	require.NotNil(tt, level)
 
-	toggleItem := findPaletteItemByLabel(level.Items, "Toggle reviewed")
+	toggleItem := findPaletteItemByLabel(level.Items, "Toggle seen")
 	require.True(tt, toggleItem.IsSelectable())
 	require.NotNil(tt, toggleItem.Action)
-	clearItem := findPaletteItemByLabel(level.Items, "Clear all reviewed")
+	clearItem := findPaletteItemByLabel(level.Items, "Clear all seen")
 	require.True(tt, clearItem.IsSelectable())
 	require.NotNil(tt, clearItem.Action)
 

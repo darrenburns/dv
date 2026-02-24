@@ -473,8 +473,8 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "ctrl+h", Name: "Shift split left", Action: a.shiftSideBySideSplitLeft, Hidden: true},
 		{Key: "ctrl+l", Name: "Shift split right", Action: a.shiftSideBySideSplitRight, Hidden: true},
 		{Key: "i", Name: "Toggle intraline style", Action: a.toggleDiffIntralineStyle, Hidden: true},
-		{Key: "m", Name: "Toggle reviewed", Action: a.toggleActiveFileReviewed, Hidden: true},
-		{Key: "M", Name: "Clear all reviewed", Action: a.clearAllReviewed, Hidden: true},
+		{Key: "m", Name: "Toggle seen", Action: a.toggleActiveFileReviewed, Hidden: true},
+		{Key: "M", Name: "Clear all seen", Action: a.clearAllReviewed, Hidden: true},
 		{Key: "d", Name: "Focus divider", Action: a.focusDivider, Hidden: true},
 		{Key: "ctrl+p", Name: "Command palette", Action: a.togglePalette},
 		{Key: "t", Name: "Theme menu", Action: a.openThemePalette, Hidden: true},
@@ -2726,14 +2726,14 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 	}
 	items = append(items,
 		t.CommandPaletteItem{
-			Label:      "Toggle reviewed",
-			FilterText: "Toggle reviewed mark file reviewed done checked",
+			Label:      "Toggle seen",
+			FilterText: "Toggle seen mark file seen reviewed done checked",
 			Hint:       "[m]",
 			Action:     a.paletteAction(a.toggleActiveFileReviewed),
 		},
 		t.CommandPaletteItem{
-			Label:      "Clear all reviewed",
-			FilterText: "Clear all reviewed marks reset reviewed",
+			Label:      "Clear all seen",
+			FilterText: "Clear all seen marks reset seen reviewed",
 			Hint:       "[M]",
 			Action:     a.paletteAction(a.clearAllReviewed),
 		},
@@ -2886,39 +2886,62 @@ func themeDisplayName(name string) string {
 }
 
 func (a *Dv) sidebarSummaryLabel() string {
-	parts := make([]string, 0, len(a.sectionOrder))
-	for _, section := range a.sectionOrder {
-		parts = append(parts, fmt.Sprintf("%s: %d", section.DisplayName(), a.sectionFileCount(section)))
+	percentage, hasSeen := a.sidebarSeenPercentage()
+	if !hasSeen {
+		return ""
 	}
-	return strings.Join(parts, " ")
+	return fmt.Sprintf("%d%% seen", percentage)
 }
 
 func (a *Dv) sidebarHeadingSpans(theme t.ThemeData) []t.Span {
-	spans := make([]t.Span, 0, len(a.sectionOrder)*3+2)
-	for idx, section := range a.sectionOrder {
-		if idx > 0 {
-			spans = append(spans, t.StyledSpan("  ", t.SpanStyle{}))
+	percentage, hasSeen := a.sidebarSeenPercentage()
+	if !hasSeen {
+		return nil
+	}
+
+	color := theme.TextMuted
+	if percentage >= 100 {
+		color = theme.Success
+	}
+	return []t.Span{
+		t.StyledSpan(fmt.Sprintf("%d%% seen", percentage), t.SpanStyle{
+			Foreground: color,
+		}),
+	}
+}
+
+func (a *Dv) sidebarSeenPercentage() (percentage int, hasSeen bool) {
+	seenLines, totalLines, seenFiles := a.sidebarSeenLineTotals()
+	if seenFiles == 0 {
+		return 0, false
+	}
+	if totalLines <= 0 {
+		return 0, true
+	}
+	return seenLines * 100 / totalLines, true
+}
+
+func (a *Dv) sidebarSeenLineTotals() (seenLines int, totalLines int, seenFiles int) {
+	for _, section := range a.sectionOrder {
+		state := a.sectionState(section)
+		if state == nil {
+			continue
 		}
-		spans = append(spans,
-			t.StyledSpan(section.DisplayName()+": ", t.SpanStyle{
-				Foreground: theme.TextMuted,
-			}),
-			t.StyledSpan(fmt.Sprintf("%d", a.sectionFileCount(section)), t.SpanStyle{
-				Foreground: sectionColor(theme, section),
-				Bold:       true,
-			}),
-		)
+		for _, filePath := range state.orderedFilePaths {
+			file := state.fileByPath[filePath]
+			if file == nil {
+				continue
+			}
+			lineCount := file.Additions + file.Deletions
+			totalLines += lineCount
+			if !a.isReviewed(section, filePath) {
+				continue
+			}
+			seenFiles++
+			seenLines += lineCount
+		}
 	}
-	if a.canSwitchSections() {
-		spans = append(spans,
-			t.BoldSpan(" ", theme.TextMuted),
-			t.StyledSpan("[s]", t.SpanStyle{
-				Foreground: theme.TextMuted,
-				Faint:      true,
-			}),
-		)
-	}
-	return spans
+	return seenLines, totalLines, seenFiles
 }
 
 func (a *Dv) sidebarTotals() (additions int, deletions int) {
