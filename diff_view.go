@@ -1171,7 +1171,69 @@ func applyIntralineOverlay(base t.Style, overlay t.SpanStyle) t.Style {
 	if overlay.Strikethrough {
 		base.Strikethrough = true
 	}
+	base = applyIntralineReadabilityFilter(base, overlay)
 	return base
+}
+
+const (
+	intralineForegroundReadabilityFloor      = 3.0
+	intralineForegroundReadabilityIterations = 10
+)
+
+func applyIntralineReadabilityFilter(style t.Style, overlay t.SpanStyle) t.Style {
+	if !overlay.Background.IsSet() {
+		return style
+	}
+	if style.ForegroundColor == nil || !style.ForegroundColor.IsSet() {
+		return style
+	}
+	if style.BackgroundColor == nil || !style.BackgroundColor.IsSet() {
+		return style
+	}
+
+	fg := style.ForegroundColor.ColorAt(1, 1, 0, 0)
+	bg := style.BackgroundColor.ColorAt(1, 1, 0, 0)
+	style.ForegroundColor = blendForegroundTowardReadability(fg, bg, intralineForegroundReadabilityFloor)
+	return style
+}
+
+func blendForegroundTowardReadability(fg t.Color, bg t.Color, minContrast float64) t.Color {
+	if !fg.IsSet() || !bg.IsSet() || minContrast <= 0 {
+		return fg
+	}
+
+	currentContrast := fg.ContrastRatio(bg)
+	if currentContrast >= minContrast {
+		return fg
+	}
+
+	readableTarget := bg.AutoText()
+	if !readableTarget.IsSet() {
+		return fg
+	}
+	targetContrast := readableTarget.ContrastRatio(bg)
+	if targetContrast <= currentContrast {
+		return fg
+	}
+	if targetContrast < minContrast {
+		return readableTarget
+	}
+
+	low := 0.0
+	high := 1.0
+	best := readableTarget
+	for range intralineForegroundReadabilityIterations {
+		mid := (low + high) / 2
+		candidate := fg.Blend(readableTarget, mid)
+		if candidate.ContrastRatio(bg) >= minContrast {
+			best = candidate
+			high = mid
+		} else {
+			low = mid
+		}
+	}
+
+	return best
 }
 
 func styleFromSpanStyle(span t.SpanStyle) t.Style {

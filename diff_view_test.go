@@ -480,11 +480,14 @@ func TestStyleForSegment_AppliesBackgroundIntralineOverlay(tt *testing.T) {
 
 	require.NotNil(tt, base.ForegroundColor)
 	require.NotNil(tt, style.ForegroundColor)
-	require.Equal(
-		tt,
-		base.ForegroundColor.ColorAt(1, 1, 0, 0),
-		style.ForegroundColor.ColorAt(1, 1, 0, 0),
-	)
+
+	baseFg := base.ForegroundColor.ColorAt(1, 1, 0, 0)
+	styleFg := style.ForegroundColor.ColorAt(1, 1, 0, 0)
+	bg := overlay.Background
+	require.GreaterOrEqual(tt, styleFg.ContrastRatio(bg), baseFg.ContrastRatio(bg))
+	if baseFg.ContrastRatio(bg) < intralineForegroundReadabilityFloor {
+		require.GreaterOrEqual(tt, styleFg.ContrastRatio(bg), intralineForegroundReadabilityFloor)
+	}
 }
 
 func TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground(tt *testing.T) {
@@ -540,4 +543,29 @@ func TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark(tt *testing.T) {
 	style := view.styleForSegment(segment)
 
 	require.Equal(tt, base, style)
+}
+
+func TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground(tt *testing.T) {
+	base := t.Style{ForegroundColor: t.RGB(120, 130, 140)}
+	overlay := t.SpanStyle{Background: t.RGB(122, 132, 138)}
+
+	style := applyIntralineOverlay(base, overlay)
+
+	require.NotNil(tt, style.ForegroundColor)
+	require.NotNil(tt, style.BackgroundColor)
+	before := base.ForegroundColor.ColorAt(1, 1, 0, 0)
+	after := style.ForegroundColor.ColorAt(1, 1, 0, 0)
+	bg := style.BackgroundColor.ColorAt(1, 1, 0, 0)
+	require.NotEqual(tt, before, after)
+	require.GreaterOrEqual(tt, after.ContrastRatio(bg), intralineForegroundReadabilityFloor)
+}
+
+func TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground(tt *testing.T) {
+	base := t.Style{ForegroundColor: t.RGB(8, 8, 8)}
+	overlay := t.SpanStyle{Background: t.RGB(230, 230, 230)}
+
+	style := applyIntralineOverlay(base, overlay)
+
+	require.NotNil(tt, style.ForegroundColor)
+	require.Equal(tt, base.ForegroundColor.ColorAt(1, 1, 0, 0), style.ForegroundColor.ColorAt(1, 1, 0, 0))
 }
