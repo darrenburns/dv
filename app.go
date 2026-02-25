@@ -162,6 +162,7 @@ type Dv struct {
 	sidebarVisible       bool
 
 	dividerFocused        bool
+	dividerHovered        bool
 	dividerFocusRequested bool
 	lastNonDividerFocus   string
 	focusReturnID         string
@@ -498,6 +499,10 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 	theme := ctx.Theme()
 	body := a.buildRightPane(theme)
 	if a.sidebarVisible {
+		dividerFg := dividerForeground(theme)
+		if a.dividerHovered {
+			dividerFg = dividerHoverForeground(theme)
+		}
 		body = FocusAwareSplitPane{
 			SplitPane: t.SplitPane{
 				ID:                     diffSplitPaneID,
@@ -506,8 +511,11 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 				DividerSize:            1,
 				MinPaneSize:            20,
 				DividerBackground:      theme.Background,
-				DividerForeground:      dividerForeground(theme),
+				DividerForeground:      dividerFg,
 				DividerFocusForeground: dividerFocusForeground(theme),
+				Hover: func(event t.HoverEvent) {
+					a.dividerHovered = event.Type == t.HoverEnter
+				},
 				OnExitFocus:            a.exitDividerFocus,
 				Style: t.Style{
 					Width:           t.Flex(1),
@@ -2341,6 +2349,7 @@ func (a *Dv) toggleSidebar() {
 		return
 	}
 
+	a.dividerHovered = false
 	a.dividerFocusRequested = false
 	a.dividerFocused = false
 
@@ -2604,6 +2613,14 @@ func isInvalidDividerReturnTarget(target string) bool {
 
 func dividerFocusForeground(theme t.ThemeData) t.ColorProvider {
 	return dividerGradient(theme, theme.Accent)
+}
+
+func dividerHoverForeground(theme t.ThemeData) t.ColorProvider {
+	return dividerGradient(theme, dividerHoverColor(theme))
+}
+
+func dividerHoverColor(theme t.ThemeData) t.Color {
+	return theme.Accent.WithAlpha(theme.Accent.Alpha() * 0.5)
 }
 
 func dividerForeground(theme t.ThemeData) t.ColorProvider {

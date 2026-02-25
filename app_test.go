@@ -1922,12 +1922,28 @@ func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	require.True(tt, app.sidebarVisible)
+	app.dividerHovered = true
 
 	app.toggleSidebar()
 	require.False(tt, app.sidebarVisible)
+	require.False(tt, app.dividerHovered)
 
 	app.toggleSidebar()
 	require.True(tt, app.sidebarVisible)
+}
+
+func TestDividerHoverColorUsesHalfActiveAlpha(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	hover := dividerHoverColor(theme)
+	require.InDelta(tt, theme.Accent.Alpha()*0.5, hover.Alpha(), 1e-9)
+
+	wantR, wantG, wantB := theme.Accent.RGB()
+	gotR, gotG, gotB := hover.RGB()
+	require.Equal(tt, wantR, gotR)
+	require.Equal(tt, wantG, gotG)
+	require.Equal(tt, wantB, gotB)
 }
 
 func TestDv_ToggleDiffWrap(tt *testing.T) {
