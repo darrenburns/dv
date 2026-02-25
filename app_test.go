@@ -1812,7 +1812,7 @@ func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	widget := app.buildRightPane(theme)
 	column, ok := widget.(t.Column)
 	require.True(tt, ok)
-	require.Len(tt, column.Children, 2)
+	require.Len(tt, column.Children, 3)
 
 	scrollable, ok := column.Children[1].(t.Scrollable)
 	require.True(tt, ok)
@@ -1836,6 +1836,13 @@ func TestDv_RightPaneUsesPaddedEmptyStateWhenNoDiffs(tt *testing.T) {
 	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[ctrl+p] Open command palette"), 0)
 	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[r] Refresh diff"), 0)
 	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[x] Toggle ignore whitespace"), 0)
+
+	emptyFill, ok := column.Children[2].(t.Column)
+	require.True(tt, ok, "expected a gradient filler widget below short right-pane content")
+	require.NotNil(tt, emptyFill.Style.BackgroundColor)
+	top := emptyFill.Style.BackgroundColor.ColorAt(20, 20, 0, 0)
+	diag := emptyFill.Style.BackgroundColor.ColorAt(20, 20, 19, 19)
+	require.NotEqual(tt, top, diag)
 
 	app.toggleMode()
 	widget = app.buildRightPane(theme)

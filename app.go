@@ -836,12 +836,53 @@ func (a *Dv) buildRightPane(theme t.ThemeData) t.Widget {
 				Focusable: true,
 				Style: t.Style{
 					Width:           t.Flex(1),
-					Height:          t.Flex(1),
 					BackgroundColor: theme.Background,
 				},
 				Child: viewerContent,
 			},
+			viewerEmptySpaceHatch{
+				Style: t.Style{
+					Width:           t.Flex(1),
+					Height:          t.Flex(1),
+					BackgroundColor: theme.Background,
+				},
+				Foreground: viewerEmptySpaceBackground(theme),
+			},
 		},
+	}
+}
+
+type viewerEmptySpaceHatch struct {
+	Style      t.Style
+	Foreground t.ColorProvider
+}
+
+func (v viewerEmptySpaceHatch) Build(ctx t.BuildContext) t.Widget {
+	return v
+}
+
+func (v viewerEmptySpaceHatch) GetStyle() t.Style {
+	return v.Style
+}
+
+func (v viewerEmptySpaceHatch) Render(ctx *t.RenderContext) {
+	if ctx.Width <= 0 || ctx.Height <= 0 {
+		return
+	}
+
+	if v.Style.BackgroundColor != nil && v.Style.BackgroundColor.IsSet() {
+		bg := v.Style.BackgroundColor.ColorAt(ctx.Width, ctx.Height, 0, 0)
+		ctx.FillRect(0, 0, ctx.Width, ctx.Height, bg)
+	}
+
+	for row := 0; row < ctx.Height; row++ {
+		for col := 0; col < ctx.Width; col++ {
+			style := t.Style{}
+			if v.Foreground != nil && v.Foreground.IsSet() {
+				style.ForegroundColor = v.Foreground.ColorAt(ctx.Width, ctx.Height, col, row)
+			}
+			ctx.DrawStyledText(col, row, sideEmptyHatchRune, style)
+		}
 	}
 }
 
@@ -2604,6 +2645,13 @@ func reviewedViewerTitleBackground(theme t.ThemeData) t.ColorProvider {
 		theme.SuccessBg,
 		theme.Background,
 	).WithAngle(90)
+}
+
+func viewerEmptySpaceBackground(theme t.ThemeData) t.ColorProvider {
+	return t.NewGradient(
+		theme.Background,
+		theme.PrimaryBg,
+	).WithAngle(0)
 }
 
 func focusedWidgetID(ctx t.BuildContext) string {
