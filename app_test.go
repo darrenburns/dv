@@ -18,6 +18,37 @@ func newTestDv(provider DiffProvider, staged bool, initialStates ...DvInitialSta
 	return NewDv(provider, staged, initialState)
 }
 
+func TestDv_RefreshDiff_StripsANSIFromDecoratedDiffInput(t *testing.T) {
+	esc := "\x1b"
+	color := esc + "[38;2;117;113;94m"
+	reset := esc + "[0m"
+
+	ansiDecoratedDiff := strings.Join([]string{
+		color + "diff --git a/tests/syntax-tests/highlighted/Just/justfile b/tests/syntax-tests/highlighted/Just/justfile" + reset,
+		"new file mode 100644",
+		"index 0000000000..2570325b6a",
+		"--- /dev/null",
+		"+++ b/tests/syntax-tests/highlighted/Just/justfile",
+		color + "@@ -0,0 +1,1 @@" + reset,
+		"+" + color + "# Test justfile for bat syntax highlighting" + reset,
+	}, "\n") + "\n"
+
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{ansiDecoratedDiff},
+	}, false)
+
+	require.Equal(t, "", app.loadErr)
+	require.Contains(t, app.fileByPath, "tests/syntax-tests/highlighted/Just/justfile")
+	require.Equal(t, "tests/syntax-tests/highlighted/Just/justfile", app.activePath)
+	require.NotNil(t, app.diffViewState.Rendered.Peek())
+
+	rendered := app.diffViewState.Rendered.Peek()
+	for _, line := range rendered.Lines {
+		require.NotContains(t, lineText(line), esc)
+	}
+}
+
 func TestDv_RefreshPreservesActiveFileWhenStillPresent(t *testing.T) {
 	provider := &scriptedDiffProvider{
 		repoRoot: "/tmp/repo",

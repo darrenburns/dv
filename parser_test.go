@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -82,4 +83,63 @@ Binary files a/old.png and b/new.png differ
 	require.Equal(t, "new.png", file.NewPath)
 	require.Equal(t, "new.png", file.DisplayPath)
 	require.Empty(t, file.Hunks)
+}
+
+func TestParseUnifiedDiff_StripsANSIAroundStructuralLines(t *testing.T) {
+	esc := "\x1b"
+	color := esc + "[38;2;117;113;94m"
+	reset := esc + "[0m"
+
+	raw := strings.Join([]string{
+		color + "diff --git a/justfile b/justfile" + reset,
+		color + "new file mode 100644" + reset,
+		color + "index 0000000000..2570325b6a" + reset,
+		color + "--- /dev/null" + reset,
+		color + "+++ b/justfile" + reset,
+		color + "@@ -0,0 +1,1 @@" + reset,
+		color + "+set shell := [\"bash\", \"-eu\", \"-o\", \"pipefail\", \"-c\"]" + reset,
+	}, "\n") + "\n"
+
+	doc, err := parseUnifiedDiff(raw)
+	require.NoError(t, err)
+	require.Len(t, doc.Files, 1)
+
+	file := doc.Files[0]
+	require.Equal(t, "justfile", file.DisplayPath)
+	require.Equal(t, 1, file.Additions)
+	require.Equal(t, 0, file.Deletions)
+	require.Len(t, file.Hunks, 1)
+	require.Len(t, file.Hunks[0].Lines, 1)
+	require.Equal(t, DiffLineAdd, file.Hunks[0].Lines[0].Kind)
+	require.Equal(t, `set shell := ["bash", "-eu", "-o", "pipefail", "-c"]`, file.Hunks[0].Lines[0].Content)
+}
+
+func TestParseUnifiedDiff_StripsANSIFromInlineHunkContent(t *testing.T) {
+	esc := "\x1b"
+
+	raw := strings.Join([]string{
+		"diff --git a/main.go b/main.go",
+		"index 1234567..89abcde 100644",
+		"--- a/main.go",
+		"+++ b/main.go",
+		"@@ -1 +1 @@",
+		"-" + esc + "[31mfmt.Println(\"old\")" + esc + "[0m",
+		"+" + esc + "[32mfmt.Println(\"new\")" + esc + "[0m",
+	}, "\n") + "\n"
+
+	doc, err := parseUnifiedDiff(raw)
+	require.NoError(t, err)
+	require.Len(t, doc.Files, 1)
+	require.Len(t, doc.Files[0].Hunks, 1)
+	require.Len(t, doc.Files[0].Hunks[0].Lines, 2)
+
+	remove := doc.Files[0].Hunks[0].Lines[0]
+	require.Equal(t, DiffLineRemove, remove.Kind)
+	require.Equal(t, `fmt.Println("old")`, remove.Content)
+	require.NotContains(t, remove.Content, esc)
+
+	add := doc.Files[0].Hunks[0].Lines[1]
+	require.Equal(t, DiffLineAdd, add.Kind)
+	require.Equal(t, `fmt.Println("new")`, add.Content)
+	require.NotContains(t, add.Content, esc)
 }

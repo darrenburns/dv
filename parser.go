@@ -5,12 +5,14 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/charmbracelet/x/ansi"
 )
 
 var hunkHeaderPattern = regexp.MustCompile(`^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@`)
 
 func parseUnifiedDiff(raw string) (*DiffDocument, error) {
-	normalized := strings.ReplaceAll(raw, "\r\n", "\n")
+	normalized := normalizeDiffInput(raw)
 	if strings.TrimSpace(normalized) == "" {
 		return &DiffDocument{}, nil
 	}
@@ -90,6 +92,14 @@ func parseUnifiedDiff(raw string) (*DiffDocument, error) {
 
 	flushFile()
 	return doc, nil
+}
+
+func normalizeDiffInput(raw string) string {
+	normalized := strings.ReplaceAll(raw, "\r\n", "\n")
+	if strings.IndexByte(normalized, 0x1b) == -1 {
+		return normalized
+	}
+	return ansi.Strip(normalized)
 }
 
 func parseDiffGitPaths(line string) (oldPath string, newPath string) {
