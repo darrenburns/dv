@@ -215,6 +215,50 @@ func TestBuildRenderedFile_IntralineMarksChangedWordChunks(t *testing.T) {
 	require.Equal(t, indexRange(7, 12), markedIndicesForLine(add, IntralineMarkAdd))
 }
 
+func TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments(t *testing.T) {
+	file := &DiffFile{
+		DisplayPath: "main.go",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,1 +1,1 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineRemove, Content: "prefix value suffix", OldLine: 1},
+					{Kind: DiffLineAdd, Content: "prefix valve suffix", NewLine: 1},
+				},
+			},
+		},
+	}
+
+	rendered := buildRenderedFileWithIntraline(file, false)
+	require.NotNil(t, rendered)
+	require.Len(t, rendered.Lines, 3)
+	require.Empty(t, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+}
+
+func TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells(t *testing.T) {
+	file := &DiffFile{
+		DisplayPath: "main.go",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,1 +1,1 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineRemove, Content: "prefix value suffix", OldLine: 1},
+					{Kind: DiffLineAdd, Content: "prefix valve suffix", NewLine: 1},
+				},
+			},
+		},
+	}
+
+	side := buildSideBySideRenderedFileWithIntraline(file, false)
+	require.NotNil(t, side)
+	require.Len(t, side.Rows, 2)
+	require.NotNil(t, side.Rows[1].Left)
+	require.NotNil(t, side.Rows[1].Right)
+	require.Empty(t, markedIndicesForSideCell(side.Rows[1].Left, IntralineMarkRemove))
+	require.Empty(t, markedIndicesForSideCell(side.Rows[1].Right, IntralineMarkAdd))
+}
+
 func TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges(t *testing.T) {
 	file := &DiffFile{
 		DisplayPath: "main.go",

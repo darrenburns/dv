@@ -2320,6 +2320,9 @@ func TestDv_ToggleDiffIntralineStyle(tt *testing.T) {
 	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
 
 	app.toggleDiffIntralineStyle()
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+
+	app.toggleDiffIntralineStyle()
 	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
 }
 
@@ -2432,6 +2435,66 @@ func TestDv_CommandPaletteIntralineStyleActionTogglesMode(tt *testing.T) {
 
 	item.Action()
 	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
+
+	item.Action()
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+}
+
+func TestDv_NewDvAcceptsIntralineStyleOff(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		diffs:    []string{diffForPaths("a.txt")},
+	}, false, DvInitialState{
+		IntralineStyle: IntralineStyleModeOff,
+	})
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+}
+
+func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T) {
+	diff := strings.Join([]string{
+		"diff --git a/main.go b/main.go",
+		"index 1111111..2222222 100644",
+		"--- a/main.go",
+		"+++ b/main.go",
+		"@@ -1 +1 @@",
+		"-prefix value suffix",
+		"+prefix valve suffix",
+		"",
+	}, "\n")
+
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diff}}, false)
+	rendered := app.diffViewState.Rendered.Peek()
+	require.NotNil(tt, rendered)
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+	initialRendered := app.renderedByPath[app.activePath]
+	initialSide := app.sideRenderedByPath[app.activePath]
+	require.NotNil(tt, initialRendered)
+	require.NotNil(tt, initialSide)
+
+	app.toggleDiffIntralineStyle()
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
+	rendered = app.diffViewState.Rendered.Peek()
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+	require.Same(tt, initialRendered, app.renderedByPath[app.activePath])
+	require.Same(tt, initialSide, app.sideRenderedByPath[app.activePath])
+
+	app.toggleDiffIntralineStyle()
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+	rendered = app.diffViewState.Rendered.Peek()
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+	require.Same(tt, initialRendered, app.renderedByPath[app.activePath])
+	require.Same(tt, initialSide, app.sideRenderedByPath[app.activePath])
+
+	app.toggleDiffIntralineStyle()
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+	rendered = app.diffViewState.Rendered.Peek()
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+	require.Same(tt, initialRendered, app.renderedByPath[app.activePath])
+	require.Same(tt, initialSide, app.sideRenderedByPath[app.activePath])
 }
 
 func TestDv_FocusDividerNoopWhenSidebarHidden(tt *testing.T) {

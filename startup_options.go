@@ -52,8 +52,10 @@ func parseIntralineStyleMode(value string) (IntralineStyleMode, error) {
 		return IntralineStyleModeBackground, nil
 	case "underline":
 		return IntralineStyleModeUnderline, nil
+	case "off":
+		return IntralineStyleModeOff, nil
 	default:
-		return IntralineStyleModeBackground, fmt.Errorf("invalid --intraline-style value %q (expected \"background\" or \"underline\")", value)
+		return IntralineStyleModeBackground, fmt.Errorf("invalid --intraline-style value %q (expected \"background\", \"underline\", or \"off\")", value)
 	}
 }
 

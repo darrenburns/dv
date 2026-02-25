@@ -112,12 +112,16 @@ type SideBySideRenderedFile struct {
 }
 
 func buildRenderedFile(file *DiffFile) *RenderedFile {
+	return buildRenderedFileWithIntraline(file, true)
+}
+
+func buildRenderedFileWithIntraline(file *DiffFile, intralineEnabled bool) *RenderedFile {
 	if file == nil {
 		return nil
 	}
 
 	lexer := chooseLexer(file)
-	lines := buildRenderLines(file, lexer)
+	lines := buildRenderLines(file, lexer, intralineEnabled)
 	if len(lines) == 0 {
 		lines = []RenderedDiffLine{
 			newRenderedLine(RenderedLineMeta, 0, 0, " ", []RenderedSegment{{Text: "No changes to render", Role: TokenRoleDiffMeta}}),
@@ -167,12 +171,16 @@ func buildMetaRenderedFile(title string, body []string) *RenderedFile {
 }
 
 func buildSideBySideRenderedFile(file *DiffFile) *SideBySideRenderedFile {
+	return buildSideBySideRenderedFileWithIntraline(file, true)
+}
+
+func buildSideBySideRenderedFileWithIntraline(file *DiffFile, intralineEnabled bool) *SideBySideRenderedFile {
 	if file == nil {
 		return nil
 	}
 
 	lexer := chooseLexer(file)
-	rows := buildSideBySideRows(file, lexer)
+	rows := buildSideBySideRows(file, lexer, intralineEnabled)
 	if len(rows) == 0 {
 		message := "No displayable content"
 		if file.IsBinary {
@@ -237,7 +245,7 @@ func buildSideBySideFromRendered(rendered *RenderedFile) *SideBySideRenderedFile
 	}
 }
 
-func buildRenderLines(file *DiffFile, lexer chroma.Lexer) []RenderedDiffLine {
+func buildRenderLines(file *DiffFile, lexer chroma.Lexer, intralineEnabled bool) []RenderedDiffLine {
 	lines := make([]RenderedDiffLine, 0, len(file.Headers)+len(file.Hunks)*8)
 	for _, hunk := range file.Hunks {
 		lines = append(lines, newRenderedLine(
@@ -247,7 +255,7 @@ func buildRenderLines(file *DiffFile, lexer chroma.Lexer) []RenderedDiffLine {
 			" ",
 			[]RenderedSegment{{Text: hunk.Header, Role: TokenRoleDiffHunkHeader}},
 		))
-		blocks := buildHunkRenderBlocks(hunk, lexer)
+		blocks := buildHunkRenderBlocks(hunk, lexer, intralineEnabled)
 		for _, block := range blocks {
 			if block.Shared != nil {
 				lines = append(lines, *block.Shared)
@@ -274,7 +282,7 @@ func buildRenderLines(file *DiffFile, lexer chroma.Lexer) []RenderedDiffLine {
 	return lines
 }
 
-func buildSideBySideRows(file *DiffFile, lexer chroma.Lexer) []SideBySideRenderedRow {
+func buildSideBySideRows(file *DiffFile, lexer chroma.Lexer, intralineEnabled bool) []SideBySideRenderedRow {
 	rows := make([]SideBySideRenderedRow, 0, len(file.Headers)+len(file.Hunks)*8)
 	for _, hunk := range file.Hunks {
 		header := newRenderedLine(
@@ -285,7 +293,7 @@ func buildSideBySideRows(file *DiffFile, lexer chroma.Lexer) []SideBySideRendere
 			[]RenderedSegment{{Text: hunk.Header, Role: TokenRoleDiffHunkHeader}},
 		)
 		rows = append(rows, SideBySideRenderedRow{Shared: &header})
-		blocks := buildHunkRenderBlocks(hunk, lexer)
+		blocks := buildHunkRenderBlocks(hunk, lexer, intralineEnabled)
 		for _, block := range blocks {
 			if block.Shared != nil {
 				if block.Shared.Kind == RenderedLineContext {
@@ -329,7 +337,7 @@ type hunkRenderedBlock struct {
 	Adds    []RenderedDiffLine
 }
 
-func buildHunkRenderBlocks(hunk DiffHunk, lexer chroma.Lexer) []hunkRenderedBlock {
+func buildHunkRenderBlocks(hunk DiffHunk, lexer chroma.Lexer, intralineEnabled bool) []hunkRenderedBlock {
 	blocks := make([]hunkRenderedBlock, 0, len(hunk.Lines))
 	for idx := 0; idx < len(hunk.Lines); {
 		line := hunk.Lines[idx]
@@ -351,7 +359,9 @@ func buildHunkRenderBlocks(hunk DiffHunk, lexer chroma.Lexer) []hunkRenderedBloc
 				idx++
 			}
 
-			markIntralinePairedLines(removes, adds)
+			if intralineEnabled {
+				markIntralinePairedLines(removes, adds)
+			}
 			blocks = append(blocks, hunkRenderedBlock{
 				Removes: removes,
 				Adds:    adds,

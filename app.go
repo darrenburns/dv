@@ -60,7 +60,7 @@ func normalizeDvInitialState(initial DvInitialState) DvInitialState {
 	}
 
 	switch initial.IntralineStyle {
-	case IntralineStyleModeBackground, IntralineStyleModeUnderline:
+	case IntralineStyleModeBackground, IntralineStyleModeUnderline, IntralineStyleModeOff:
 	default:
 		initial.IntralineStyle = defaults.IntralineStyle
 	}
@@ -1327,7 +1327,6 @@ func (a *Dv) refreshDiff() {
 	if previousActiveSection == "" || !a.hasSection(previousActiveSection) {
 		previousActiveSection = a.initialSection
 	}
-
 	sectionRoots := map[DiffSection][]t.TreeNode[DiffTreeNodeData]{}
 	for _, section := range a.sectionOrder {
 		sectionRoots[section] = []t.TreeNode[DiffTreeNodeData]{}
@@ -2236,11 +2235,14 @@ func (a *Dv) toggleDiffIgnoreWhitespace() {
 }
 
 func (a *Dv) toggleDiffIntralineStyle() {
-	if a.diffIntralineStyle == IntralineStyleModeBackground {
+	switch a.diffIntralineStyle {
+	case IntralineStyleModeBackground:
 		a.diffIntralineStyle = IntralineStyleModeUnderline
-		return
+	case IntralineStyleModeUnderline:
+		a.diffIntralineStyle = IntralineStyleModeOff
+	default:
+		a.diffIntralineStyle = IntralineStyleModeBackground
 	}
-	a.diffIntralineStyle = IntralineStyleModeBackground
 }
 
 func (a *Dv) toggleActiveFileReviewed() {
@@ -2741,7 +2743,7 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		},
 		t.CommandPaletteItem{
 			Label:      "Toggle intraline style",
-			FilterText: "Toggle intraline style highlight background underline changed characters",
+			FilterText: "Toggle intraline style highlight background underline off disable changed characters",
 			Hint:       "[i]",
 			Action:     a.paletteAction(a.toggleDiffIntralineStyle),
 		},

@@ -7,6 +7,7 @@ type IntralineStyleMode int
 const (
 	IntralineStyleModeBackground IntralineStyleMode = iota
 	IntralineStyleModeUnderline
+	IntralineStyleModeOff
 )
 
 // ThemePalette stores all styles needed by the diff renderer for one theme.

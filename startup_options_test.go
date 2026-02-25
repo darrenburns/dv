@@ -55,6 +55,7 @@ func TestParseIntralineStyleMode(t *testing.T) {
 		{name: "background", value: "background", want: IntralineStyleModeBackground},
 		{name: "bgAlias", value: "bg", want: IntralineStyleModeBackground},
 		{name: "underline", value: "underline", want: IntralineStyleModeUnderline},
+		{name: "off", value: "off", want: IntralineStyleModeOff},
 		{name: "invalid", value: "outline", wantErr: true},
 	}
 

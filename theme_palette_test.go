@@ -92,6 +92,18 @@ func TestThemePalette_IntralineUnderlineStylesUseSemanticColors(tt *testing.T) {
 	require.Equal(tt, theme.Error, removeUnderline.UnderlineColor)
 }
 
+func TestThemePalette_IntralineOffHasNoOverlay(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	palette := NewThemePalette(theme)
+
+	_, ok = palette.IntralineOverlayStyle(IntralineMarkAdd, IntralineStyleModeOff)
+	require.False(tt, ok)
+	_, ok = palette.IntralineOverlayStyle(IntralineMarkRemove, IntralineStyleModeOff)
+	require.False(tt, ok)
+}
+
 func colorDistance(a t.Color, b t.Color) float64 {
 	ar, ag, ab := a.RGB()
 	br, bg, bb := b.RGB()

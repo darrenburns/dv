@@ -39,7 +39,7 @@ func main() {
 	flag.StringVar(&viewMode, "view", "unified", "default view mode: unified or split")
 	flag.BoolVar(&sidebarVisible, "sidebar", true, "show sidebar on startup")
 	flag.StringVar(&themeName, "theme", t.ThemeNameObsidianTide, "default theme")
-	flag.StringVar(&intralineStyle, "intraline-style", "background", "default intraline style: background or underline")
+	flag.StringVar(&intralineStyle, "intraline-style", "background", "default intraline style: background, underline, or off")
 	flag.BoolVar(&showSymbols, "show-symbols", false, "show +/- symbols by default")
 	flag.BoolVar(&ignoreWhitespace, "ignore-whitespace", false, "ignore whitespace-only changes by default")
 	flag.StringVar(&configPath, "config", "", "path to YAML config file")

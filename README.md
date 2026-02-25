@@ -73,7 +73,7 @@ There are a few CLI options available for customising `dv`.
 | `--view` | `unified`, `split` | `unified` |
 | `--sidebar` | `true`, `false` | `true` |
 | `--theme` | any built-in theme name (for example `catppuccin`, `dracula`, `nord`) | `obsidian-tide` |
-| `--intraline-style` | `background`, `underline` | `background` |
+| `--intraline-style` | `background`, `underline`, `off` | `background` |
 | `--show-symbols` | `true`, `false` | `false` |
 | `--ignore-whitespace` | `true`, `false` | `false` |
 | `--config` | path to a YAML config file | auto-discover via XDG |

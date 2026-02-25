@@ -86,6 +86,19 @@ ignore-whitespace: true
 	require.True(t, *cfg.IgnoreWhitespace)
 }
 
+func TestLoadStartupConfig_ParsesIntralineStyleOff(t *testing.T) {
+	configHome := t.TempDir()
+	configPath := filepath.Join(configHome, "custom.yaml")
+	writeTestConfig(t, configPath, `
+intraline-style: off
+`)
+
+	cfg, err := loadStartupConfig(configHome, configPath, false)
+	require.NoError(t, err)
+	require.NotNil(t, cfg.IntralineStyle)
+	require.Equal(t, "off", *cfg.IntralineStyle)
+}
+
 func TestLoadStartupConfig_UnknownKeyErrors(t *testing.T) {
 	configHome := t.TempDir()
 	configPath := filepath.Join(configHome, "custom.yaml")

@@ -511,6 +511,21 @@ func TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForegrou
 	)
 }
 
+func TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	view := DiffView{
+		Palette:        NewThemePalette(theme),
+		IntralineStyle: IntralineStyleModeOff,
+	}
+	segment := RenderedSegment{Text: "x", Role: TokenRoleSyntaxKeyword, Intraline: IntralineMarkRemove}
+
+	base := view.styleForRole(segment.Role)
+	style := view.styleForSegment(segment)
+	require.Equal(tt, base, style)
+}
+
 func TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark(tt *testing.T) {
 	theme, ok := t.GetTheme(t.CurrentThemeName())
 	require.True(tt, ok)
