@@ -92,6 +92,228 @@ func TestThemePalette_IntralineUnderlineStylesUseSemanticColors(tt *testing.T) {
 	require.Equal(tt, theme.Error, removeUnderline.UnderlineColor)
 }
 
+func TestThemePalette_SyntaxOverrides_KanagawaPartialOverride(tt *testing.T) {
+	theme, ok := t.GetTheme(t.ThemeNameKanagawa)
+	require.True(tt, ok)
+
+	palette := NewThemePalette(theme)
+
+	expected := map[TokenRole]t.Color{
+		TokenRoleSyntaxKeyword:      theme.Secondary,
+		TokenRoleSyntaxType:         theme.Accent,
+		TokenRoleSyntaxFunction:     theme.Primary,
+		TokenRoleSyntaxIdentifier:   theme.Text,
+		TokenRoleSyntaxConstant:     t.Hex("#FFA066"),
+		TokenRoleSyntaxBuiltin:      theme.Info,
+		TokenRoleSyntaxPreprocessor: t.Hex("#E46876"),
+		TokenRoleSyntaxAttribute:    t.Hex("#FFA066"),
+		TokenRoleSyntaxParameter:    t.Hex("#B8B4D0"),
+		TokenRoleSyntaxString:       theme.Success,
+		TokenRoleSyntaxNumber:       t.Hex("#D27E99"),
+		TokenRoleSyntaxRegex:        t.Hex("#C0A36E"),
+		TokenRoleSyntaxStringEscape: t.Hex("#C0A36E"),
+		TokenRoleSyntaxTag:          t.Hex("#E6C384"),
+		TokenRoleSyntaxComment:      theme.TextDisabled,
+		TokenRoleSyntaxOperator:     t.Hex("#C0A36E"),
+		TokenRoleSyntaxPunctuation:  t.Hex("#9CABCA"),
+	}
+
+	for role, want := range expected {
+		style := mustRoleStyle(tt, palette, role)
+		require.Equal(tt, want, style.Foreground)
+	}
+
+	plainStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxPlain)
+	require.Equal(tt, theme.Text, plainStyle.Foreground, "plain should fall back to the default syntax color")
+
+	keywordStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxKeyword)
+	require.True(tt, keywordStyle.Bold)
+
+	commentStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxComment)
+	require.True(tt, commentStyle.Italic)
+}
+
+func TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile(tt *testing.T) {
+	for _, themeName := range lightOverrideThemeNames() {
+		themeName := themeName
+		tt.Run(themeName, func(tt *testing.T) {
+			theme, ok := t.GetTheme(themeName)
+			require.True(tt, ok)
+
+			palette := NewThemePalette(theme)
+			expected := expectedLightReadableSyntaxForegrounds(theme)
+
+			for _, role := range syntaxOverrideRoles() {
+				style := mustRoleStyle(tt, palette, role)
+				require.Equal(tt, expected[role], style.Foreground)
+			}
+
+			keywordStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxKeyword)
+			require.True(tt, keywordStyle.Bold)
+
+			commentStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxComment)
+			require.True(tt, commentStyle.Italic)
+		})
+	}
+}
+
+func TestThemePalette_SyntaxOverrides_NonOverriddenThemeUsesLegacyDefaults(tt *testing.T) {
+	theme, ok := t.GetTheme(t.ThemeNameObsidianTide)
+	require.True(tt, ok)
+
+	palette := NewThemePalette(theme)
+	expected := expectedDefaultSyntaxForegrounds(theme)
+	for _, role := range syntaxOverrideRoles() {
+		style := mustRoleStyle(tt, palette, role)
+		require.Equal(tt, expected[role], style.Foreground)
+	}
+}
+
+func TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles(tt *testing.T) {
+	theme, ok := t.GetTheme(t.ThemeNameKanagawa)
+	require.True(tt, ok)
+
+	palette := NewThemePalette(theme)
+	expected := expectedDefaultNonSyntaxForegrounds(theme)
+	for role, want := range expected {
+		style := mustRoleStyle(tt, palette, role)
+		require.Equal(tt, want, style.Foreground)
+	}
+
+	fileHeaderStyle := mustRoleStyle(tt, palette, TokenRoleDiffFileHeader)
+	require.True(tt, fileHeaderStyle.Bold)
+
+	diffMetaStyle := mustRoleStyle(tt, palette, TokenRoleDiffMeta)
+	require.True(tt, diffMetaStyle.Italic)
+}
+
+func TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor(tt *testing.T) {
+	for _, themeName := range lightOverrideThemeNames() {
+		themeName := themeName
+		tt.Run(themeName, func(tt *testing.T) {
+			theme, ok := t.GetTheme(themeName)
+			require.True(tt, ok)
+
+			palette := NewThemePalette(theme)
+			for _, role := range syntaxOverrideRoles() {
+				style := mustRoleStyle(tt, palette, role)
+				ratio := style.Foreground.ContrastRatio(theme.Background)
+				require.GreaterOrEqualf(tt, ratio, 3.0, "theme=%s role=%d", themeName, role)
+			}
+		})
+	}
+}
+
+func mustRoleStyle(tt *testing.T, palette ThemePalette, role TokenRole) t.SpanStyle {
+	tt.Helper()
+
+	style, ok := palette.StyleForRole(role)
+	require.True(tt, ok)
+	require.True(tt, style.Foreground.IsSet())
+	return style
+}
+
+func syntaxOverrideRoles() []TokenRole {
+	return []TokenRole{
+		TokenRoleSyntaxPlain,
+		TokenRoleSyntaxKeyword,
+		TokenRoleSyntaxType,
+		TokenRoleSyntaxFunction,
+		TokenRoleSyntaxIdentifier,
+		TokenRoleSyntaxConstant,
+		TokenRoleSyntaxBuiltin,
+		TokenRoleSyntaxPreprocessor,
+		TokenRoleSyntaxAttribute,
+		TokenRoleSyntaxParameter,
+		TokenRoleSyntaxString,
+		TokenRoleSyntaxNumber,
+		TokenRoleSyntaxRegex,
+		TokenRoleSyntaxStringEscape,
+		TokenRoleSyntaxTag,
+		TokenRoleSyntaxComment,
+		TokenRoleSyntaxOperator,
+		TokenRoleSyntaxPunctuation,
+	}
+}
+
+func lightOverrideThemeNames() []string {
+	return []string{
+		t.ThemeNameCatppuccinLatte,
+		t.ThemeNameDraculaLight,
+		t.ThemeNameGruvboxLight,
+		t.ThemeNameMonokaiLight,
+		t.ThemeNameNordLight,
+		t.ThemeNameRosePineDawn,
+		t.ThemeNameSolarizedLight,
+		t.ThemeNameTokyoNightDay,
+	}
+}
+
+func expectedLightReadableSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.Color {
+	return map[TokenRole]t.Color{
+		TokenRoleSyntaxPlain:        theme.Text,
+		TokenRoleSyntaxKeyword:      theme.AccentText,
+		TokenRoleSyntaxType:         theme.PrimaryText,
+		TokenRoleSyntaxFunction:     theme.SecondaryText,
+		TokenRoleSyntaxIdentifier:   theme.Text,
+		TokenRoleSyntaxConstant:     theme.WarningText,
+		TokenRoleSyntaxBuiltin:      theme.InfoText,
+		TokenRoleSyntaxPreprocessor: theme.ErrorText,
+		TokenRoleSyntaxAttribute:    theme.PrimaryText,
+		TokenRoleSyntaxParameter:    theme.SecondaryText,
+		TokenRoleSyntaxString:       theme.SuccessText,
+		TokenRoleSyntaxNumber:       theme.WarningText,
+		TokenRoleSyntaxRegex:        theme.WarningText,
+		TokenRoleSyntaxStringEscape: theme.WarningText,
+		TokenRoleSyntaxTag:          theme.AccentText,
+		TokenRoleSyntaxComment:      theme.TextMuted.Blend(theme.Text, 0.4),
+		TokenRoleSyntaxOperator:     theme.Text,
+		TokenRoleSyntaxPunctuation:  theme.Text,
+	}
+}
+
+func expectedDefaultSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.Color {
+	return map[TokenRole]t.Color{
+		TokenRoleSyntaxPlain:        theme.Text,
+		TokenRoleSyntaxKeyword:      theme.Accent,
+		TokenRoleSyntaxType:         theme.Primary,
+		TokenRoleSyntaxFunction:     theme.Secondary,
+		TokenRoleSyntaxIdentifier:   theme.Text,
+		TokenRoleSyntaxConstant:     theme.Warning,
+		TokenRoleSyntaxBuiltin:      theme.Primary,
+		TokenRoleSyntaxPreprocessor: theme.Error,
+		TokenRoleSyntaxAttribute:    theme.Info,
+		TokenRoleSyntaxParameter:    theme.Secondary,
+		TokenRoleSyntaxString:       theme.Success,
+		TokenRoleSyntaxNumber:       theme.Accent,
+		TokenRoleSyntaxRegex:        theme.Warning,
+		TokenRoleSyntaxStringEscape: theme.Warning,
+		TokenRoleSyntaxTag:          theme.Accent,
+		TokenRoleSyntaxComment:      theme.TextMuted,
+		TokenRoleSyntaxOperator:     theme.Text,
+		TokenRoleSyntaxPunctuation:  theme.Text,
+	}
+}
+
+func expectedDefaultNonSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.Color {
+	lineNumberFg := theme.TextMuted.Blend(theme.TextDisabled, 0.35)
+	hunkFg := theme.TextMuted.Blend(theme.InfoText, 0.35)
+	hatchFg := theme.Background.Blend(theme.TextDisabled, 0.26)
+	return map[TokenRole]t.Color{
+		TokenRoleOldLineNumber:     lineNumberFg,
+		TokenRoleNewLineNumber:     lineNumberFg,
+		TokenRoleLineNumberAdd:     theme.Success,
+		TokenRoleLineNumberRemove:  theme.Error,
+		TokenRoleDiffPrefixAdd:     theme.Success,
+		TokenRoleDiffPrefixRemove:  theme.Error,
+		TokenRoleDiffPrefixContext: theme.TextMuted,
+		TokenRoleDiffFileHeader:    theme.PrimaryText,
+		TokenRoleDiffHunkHeader:    hunkFg,
+		TokenRoleDiffMeta:          theme.WarningText,
+		TokenRoleDiffHatch:         hatchFg,
+	}
+}
+
 func TestThemePalette_IntralineOffHasNoOverlay(tt *testing.T) {
 	theme, ok := t.GetTheme(t.CurrentThemeName())
 	require.True(tt, ok)

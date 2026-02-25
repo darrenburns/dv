@@ -41,9 +41,19 @@ const (
 	TokenRoleSyntaxKeyword
 	TokenRoleSyntaxType
 	TokenRoleSyntaxFunction
+	TokenRoleSyntaxIdentifier
+	TokenRoleSyntaxConstant
+	TokenRoleSyntaxBuiltin
+	TokenRoleSyntaxPreprocessor
+	TokenRoleSyntaxAttribute
+	TokenRoleSyntaxParameter
 	TokenRoleSyntaxString
 	TokenRoleSyntaxNumber
+	TokenRoleSyntaxRegex
+	TokenRoleSyntaxStringEscape
+	TokenRoleSyntaxTag
 	TokenRoleSyntaxComment
+	TokenRoleSyntaxOperator
 	TokenRoleSyntaxPunctuation
 )
 
@@ -756,20 +766,48 @@ func renderedLineText(line RenderedDiffLine) string {
 
 func tokenRoleFromChroma(token chroma.TokenType) TokenRole {
 	switch {
+	case token == chroma.CommentPreproc || token == chroma.CommentPreprocFile:
+		return TokenRoleSyntaxPreprocessor
 	case token.InCategory(chroma.Comment):
 		return TokenRoleSyntaxComment
-	case token.InCategory(chroma.Keyword):
-		return TokenRoleSyntaxKeyword
 	case token.InCategory(chroma.LiteralString):
-		return TokenRoleSyntaxString
+		switch token {
+		case chroma.LiteralStringRegex:
+			return TokenRoleSyntaxRegex
+		case chroma.LiteralStringEscape:
+			return TokenRoleSyntaxStringEscape
+		default:
+			return TokenRoleSyntaxString
+		}
 	case token.InCategory(chroma.LiteralNumber):
 		return TokenRoleSyntaxNumber
+	case token == chroma.NameConstant || token == chroma.KeywordConstant:
+		return TokenRoleSyntaxConstant
+	case token == chroma.NameBuiltin || token == chroma.NameBuiltinPseudo:
+		return TokenRoleSyntaxBuiltin
+	case token == chroma.NameAttribute || token == chroma.NameDecorator:
+		return TokenRoleSyntaxAttribute
+	case token == chroma.NameVariable ||
+		token == chroma.NameVariableAnonymous ||
+		token == chroma.NameVariableClass ||
+		token == chroma.NameVariableGlobal ||
+		token == chroma.NameVariableInstance ||
+		token == chroma.NameVariableMagic:
+		return TokenRoleSyntaxParameter
 	case token.InSubCategory(chroma.NameFunction):
 		return TokenRoleSyntaxFunction
-	case token == chroma.NameClass || token.InSubCategory(chroma.NameBuiltin) || token == chroma.KeywordType:
+	case token == chroma.NameClass || token == chroma.KeywordType:
 		return TokenRoleSyntaxType
-	case token == chroma.Punctuation || token.InCategory(chroma.Operator) || token == chroma.TextPunctuation:
+	case token == chroma.NameTag || token == chroma.NameEntity || token == chroma.TextSymbol:
+		return TokenRoleSyntaxTag
+	case token.InCategory(chroma.Operator):
+		return TokenRoleSyntaxOperator
+	case token == chroma.Punctuation || token == chroma.TextPunctuation:
 		return TokenRoleSyntaxPunctuation
+	case token.InCategory(chroma.Keyword):
+		return TokenRoleSyntaxKeyword
+	case token.InCategory(chroma.Name):
+		return TokenRoleSyntaxIdentifier
 	default:
 		return TokenRoleSyntaxPlain
 	}

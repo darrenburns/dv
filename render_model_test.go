@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/alecthomas/chroma/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/stretchr/testify/require"
 )
@@ -468,6 +469,35 @@ func TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair(t *testing.T) {
 	require.NotNil(t, side.Rows[2].Right)
 	require.Empty(t, markedIndicesForSideCell(side.Rows[2].Left, IntralineMarkRemove))
 	require.Empty(t, markedIndicesForSideCell(side.Rows[2].Right, IntralineMarkAdd))
+}
+
+func TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation(t *testing.T) {
+	require.Equal(t, TokenRoleSyntaxPreprocessor, tokenRoleFromChroma(chroma.CommentPreproc))
+	require.Equal(t, TokenRoleSyntaxPreprocessor, tokenRoleFromChroma(chroma.CommentPreprocFile))
+
+	require.Equal(t, TokenRoleSyntaxConstant, tokenRoleFromChroma(chroma.NameConstant))
+	require.Equal(t, TokenRoleSyntaxConstant, tokenRoleFromChroma(chroma.KeywordConstant))
+	require.Equal(t, TokenRoleSyntaxBuiltin, tokenRoleFromChroma(chroma.NameBuiltin))
+	require.Equal(t, TokenRoleSyntaxBuiltin, tokenRoleFromChroma(chroma.NameBuiltinPseudo))
+	require.Equal(t, TokenRoleSyntaxAttribute, tokenRoleFromChroma(chroma.NameAttribute))
+	require.Equal(t, TokenRoleSyntaxAttribute, tokenRoleFromChroma(chroma.NameDecorator))
+	require.Equal(t, TokenRoleSyntaxParameter, tokenRoleFromChroma(chroma.NameVariable))
+	require.Equal(t, TokenRoleSyntaxParameter, tokenRoleFromChroma(chroma.NameVariableMagic))
+
+	require.Equal(t, TokenRoleSyntaxRegex, tokenRoleFromChroma(chroma.LiteralStringRegex))
+	require.Equal(t, TokenRoleSyntaxStringEscape, tokenRoleFromChroma(chroma.LiteralStringEscape))
+	require.Equal(t, TokenRoleSyntaxTag, tokenRoleFromChroma(chroma.NameTag))
+	require.Equal(t, TokenRoleSyntaxTag, tokenRoleFromChroma(chroma.NameEntity))
+	require.Equal(t, TokenRoleSyntaxTag, tokenRoleFromChroma(chroma.TextSymbol))
+	require.Equal(t, TokenRoleSyntaxIdentifier, tokenRoleFromChroma(chroma.Name))
+	require.Equal(t, TokenRoleSyntaxIdentifier, tokenRoleFromChroma(chroma.NameOther))
+
+	require.Equal(t, TokenRoleSyntaxType, tokenRoleFromChroma(chroma.KeywordType))
+	require.Equal(t, TokenRoleSyntaxKeyword, tokenRoleFromChroma(chroma.Keyword))
+	require.Equal(t, TokenRoleSyntaxOperator, tokenRoleFromChroma(chroma.Operator))
+	require.Equal(t, TokenRoleSyntaxOperator, tokenRoleFromChroma(chroma.OperatorWord))
+	require.Equal(t, TokenRoleSyntaxPunctuation, tokenRoleFromChroma(chroma.Punctuation))
+	require.Equal(t, TokenRoleSyntaxPunctuation, tokenRoleFromChroma(chroma.TextPunctuation))
 }
 
 func sideCellText(cell *RenderedSideCell) string {
