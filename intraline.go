@@ -41,18 +41,22 @@ func intralineChangeMasks(oldText string, newText string) (oldMask []bool, newMa
 	coreNew := newChunks[prefix : len(newChunks)-suffix]
 
 	if len(coreOld) == 0 && len(coreNew) == 0 {
+		bridgeMaskInnerSpaces(oldGraphemes, oldMask)
+		bridgeMaskInnerSpaces(newGraphemes, newMask)
 		return oldMask, newMask, true
 	}
 	if len(coreOld) == 0 {
 		for _, chunk := range coreNew {
 			markRange(newMask, chunk.start, chunk.end)
 		}
+		bridgeMaskInnerSpaces(newGraphemes, newMask)
 		return oldMask, newMask, true
 	}
 	if len(coreNew) == 0 {
 		for _, chunk := range coreOld {
 			markRange(oldMask, chunk.start, chunk.end)
 		}
+		bridgeMaskInnerSpaces(oldGraphemes, oldMask)
 		return oldMask, newMask, true
 	}
 
@@ -102,6 +106,9 @@ func intralineChangeMasks(oldText string, newText string) (oldMask []bool, newMa
 			markRange(newMask, coreNew[idx].start, coreNew[idx].end)
 		}
 	}
+
+	bridgeMaskInnerSpaces(oldGraphemes, oldMask)
+	bridgeMaskInnerSpaces(newGraphemes, newMask)
 
 	return oldMask, newMask, true
 }
@@ -194,6 +201,37 @@ func markRange(mask []bool, start int, end int) {
 	for idx := start; idx < end; idx++ {
 		mask[idx] = true
 	}
+}
+
+func bridgeMaskInnerSpaces(graphemes []string, mask []bool) {
+	if len(graphemes) == 0 || len(mask) == 0 {
+		return
+	}
+
+	for idx := 0; idx < len(graphemes); {
+		if !isSpaceGrapheme(graphemes[idx]) {
+			idx++
+			continue
+		}
+
+		start := idx
+		for idx < len(graphemes) && isSpaceGrapheme(graphemes[idx]) {
+			idx++
+		}
+		end := idx
+
+		if start == 0 || end >= len(mask) {
+			continue
+		}
+		if mask[start-1] && mask[end] {
+			markRange(mask, start, end)
+		}
+	}
+}
+
+func isSpaceGrapheme(grapheme string) bool {
+	r, _ := utf8.DecodeRuneInString(grapheme)
+	return unicode.IsSpace(r)
 }
 
 func splitGraphemes(text string) []string {
