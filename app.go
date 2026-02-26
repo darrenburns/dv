@@ -12,15 +12,16 @@ import (
 )
 
 const (
-	diffFilesTreeID      = "terma-diff-files-tree"
-	diffFilesScrollID    = "terma-diff-files-scroll"
-	diffFilesFilterID    = "terma-diff-files-filter"
-	diffViewerID         = "terma-diff-viewer"
-	diffViewerScrollID   = "terma-diff-viewer-scroll"
-	diffSplitPaneID      = "terma-diff-split"
-	diffCommandPaletteID = "terma-diff-command-palette"
-	diffThemesPalette    = "Themes"
-	diffJumpScrollLines  = 10
+	diffFilesTreeID       = "terma-diff-files-tree"
+	diffFilesScrollID     = "terma-diff-files-scroll"
+	diffFilesFilterID     = "terma-diff-files-filter"
+	diffViewerID          = "terma-diff-viewer"
+	diffViewerScrollID    = "terma-diff-viewer-scroll"
+	diffSplitPaneID       = "terma-diff-split"
+	diffCommandPaletteID  = "terma-diff-command-palette"
+	diffThemesPalette     = "Themes"
+	diffJumpScrollLines   = 10
+	treeSummaryCountAlpha = 0.65
 )
 
 type DiffLayoutMode int
@@ -516,7 +517,7 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 				Hover: func(event t.HoverEvent) {
 					a.dividerHovered = event.Type == t.HoverEnter
 				},
-				OnExitFocus:            a.exitDividerFocus,
+				OnExitFocus: a.exitDividerFocus,
 				Style: t.Style{
 					Width:           t.Flex(1),
 					Height:          t.Flex(1),
@@ -731,17 +732,20 @@ func (a *Dv) renderTreeNode(theme t.ThemeData, widgetFocused bool) func(node Dif
 			Width:   t.Flex(1),
 			Padding: t.EdgeInsets{Right: 1},
 		}
-		labelStyle := t.Style{ForegroundColor: theme.Text}
-		addStyle := t.Style{ForegroundColor: theme.Success}
-		delStyle := t.Style{ForegroundColor: theme.Error}
+		labelColor := theme.Text
+		labelStyle := t.Style{}
+		addColor := theme.Success
+		delColor := theme.Error
+		addStyle := t.Style{ForegroundColor: addColor}
+		delStyle := t.Style{ForegroundColor: delColor}
 
 		if node.NodeKind == DiffTreeNodeSection {
 			labelStyle.Bold = true
-			labelStyle.ForegroundColor = sectionColor(theme, node.Section)
+			labelColor = sectionColor(theme, node.Section)
 		}
 
 		if nodeCtx.FilteredAncestor && node.NodeKind != DiffTreeNodeSection {
-			labelStyle.ForegroundColor = theme.TextMuted
+			labelColor = theme.TextMuted
 		}
 		isReviewed := node.NodeKind == DiffTreeNodeFile && a.isReviewed(node.Section, node.Path)
 		if isReviewed {
@@ -751,13 +755,23 @@ func (a *Dv) renderTreeNode(theme t.ThemeData, widgetFocused bool) func(node Dif
 		if nodeCtx.Active {
 			if widgetFocused {
 				rowStyle.BackgroundColor = theme.ActiveCursor
-				labelStyle.ForegroundColor = theme.SelectionText
-				addStyle.ForegroundColor = theme.SelectionText
-				delStyle.ForegroundColor = theme.SelectionText
+				labelColor = theme.SelectionText
+				addColor = theme.SelectionText
+				delColor = theme.SelectionText
 			} else {
 				rowStyle.BackgroundColor = unfocusedTreeCursorColor(theme)
 			}
 		}
+		if node.NodeKind == DiffTreeNodeDirectory {
+			labelColor = labelColor.WithAlpha(labelColor.Alpha() * treeSummaryCountAlpha)
+		}
+		if node.NodeKind == DiffTreeNodeSection || node.NodeKind == DiffTreeNodeDirectory {
+			addColor = addColor.WithAlpha(addColor.Alpha() * treeSummaryCountAlpha)
+			delColor = delColor.WithAlpha(delColor.Alpha() * treeSummaryCountAlpha)
+		}
+		labelStyle.ForegroundColor = labelColor
+		addStyle.ForegroundColor = addColor
+		delStyle.ForegroundColor = delColor
 
 		label := node.Name
 		labelSuffix := ""

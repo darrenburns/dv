@@ -1312,6 +1312,117 @@ func TestDv_RenderTreeNodeOmitsZeroStats(tt *testing.T) {
 	require.NotContains(tt, delOnlyText, "+0")
 }
 
+func TestDv_RenderTreeNodeDiffTotalsDimForSummaryNodes(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("server.go")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	render := app.renderTreeNode(theme, false)
+	tests := []struct {
+		name    string
+		node    DiffTreeNodeData
+		wantDim float64
+	}{
+		{
+			name: "sectionNode",
+			node: DiffTreeNodeData{
+				Name:      "Unstaged",
+				Path:      "unstaged",
+				Section:   DiffSectionUnstaged,
+				NodeKind:  DiffTreeNodeSection,
+				Additions: 4,
+				Deletions: 2,
+			},
+			wantDim: treeSummaryCountAlpha,
+		},
+		{
+			name: "directoryNode",
+			node: DiffTreeNodeData{
+				Name:      "pkg",
+				Path:      "pkg",
+				IsDir:     true,
+				Section:   DiffSectionUnstaged,
+				NodeKind:  DiffTreeNodeDirectory,
+				Additions: 4,
+				Deletions: 2,
+			},
+			wantDim: treeSummaryCountAlpha,
+		},
+		{
+			name: "fileNode",
+			node: DiffTreeNodeData{
+				Name:      "main.go",
+				Path:      "main.go",
+				Section:   DiffSectionUnstaged,
+				NodeKind:  DiffTreeNodeFile,
+				Additions: 4,
+				Deletions: 2,
+			},
+			wantDim: 1,
+		},
+	}
+
+	for _, tc := range tests {
+		tt.Run(tc.name, func(tt *testing.T) {
+			rowWidget := render(tc.node, t.TreeNodeContext{}, t.MatchResult{})
+			row, ok := rowWidget.(t.Row)
+			require.True(tt, ok)
+			require.Len(tt, row.Children, 5)
+
+			addText, ok := row.Children[2].(t.Text)
+			require.True(tt, ok)
+			delText, ok := row.Children[4].(t.Text)
+			require.True(tt, ok)
+
+			require.Equal(tt, theme.Success.WithAlpha(theme.Success.Alpha()*tc.wantDim), addText.Style.ForegroundColor)
+			require.Equal(tt, theme.Error.WithAlpha(theme.Error.Alpha()*tc.wantDim), delText.Style.ForegroundColor)
+		})
+	}
+}
+
+func TestDv_RenderTreeNodeDirectoryLabelsAreDimmed(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("server.go")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	render := app.renderTreeNode(theme, false)
+
+	dirWidget := render(
+		DiffTreeNodeData{
+			Name:     "pkg",
+			Path:     "pkg",
+			IsDir:    true,
+			Section:  DiffSectionUnstaged,
+			NodeKind: DiffTreeNodeDirectory,
+		},
+		t.TreeNodeContext{},
+		t.MatchResult{},
+	)
+	dirRow, ok := dirWidget.(t.Row)
+	require.True(tt, ok)
+	dirLabel, ok := dirRow.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "pkg/", dirLabel.Content)
+	require.Equal(tt, theme.Text.WithAlpha(theme.Text.Alpha()*treeSummaryCountAlpha), dirLabel.Style.ForegroundColor)
+
+	fileWidget := render(
+		DiffTreeNodeData{
+			Name:     "main.go",
+			Path:     "main.go",
+			Section:  DiffSectionUnstaged,
+			NodeKind: DiffTreeNodeFile,
+		},
+		t.TreeNodeContext{},
+		t.MatchResult{},
+	)
+	fileRow, ok := fileWidget.(t.Row)
+	require.True(tt, ok)
+	fileLabel, ok := fileRow.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "main.go", fileLabel.Content)
+	require.Equal(tt, theme.Text, fileLabel.Style.ForegroundColor)
+}
+
 func TestDv_RenderTreeNodeSectionIgnoresFilterHighlightAndDimming(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	theme, ok := t.GetTheme(t.CurrentThemeName())
