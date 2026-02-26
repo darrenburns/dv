@@ -2,7 +2,7 @@
 
 A beautiful, snappy, and highly interactive tool for exploring diffs without leaving your terminal.
 
-<img width="1678" height="1014" alt="image" src="https://github.com/user-attachments/assets/49404305-f003-418f-8c42-c6bebe271d69" />
+<img width="1920" alt="image" src="https://github.com/user-attachments/assets/cb74b08b-3a78-433d-8aac-c1e85534ce70" />
 
 Run `dv` with no arguments to see changes currently tracked by git.
 
