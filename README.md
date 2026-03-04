@@ -4,7 +4,14 @@ A beautiful, snappy, and highly interactive tool for exploring diffs without lea
 
 <img width="1746" height="992" alt="image" src="https://github.com/user-attachments/assets/32629381-3c30-4353-a9fe-f368d4330761" />
 
-Run `dv` with no arguments to see changes currently tracked by git.
+Run `dv` with no arguments to see changes currently tracked by git, or pipe a diff directly into it.
+
+> [!NOTE] 
+> `dv` is currently in beta, but I'd love your early feedback! Feel free to open a Discussion to chat about ideas or an Issue to raise a bug.
+
+## Quick demo
+
+https://github.com/user-attachments/assets/e9beadc9-0e77-47e2-86aa-bb869c657863
 
 ## Highlights
 
