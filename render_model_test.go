@@ -482,6 +482,27 @@ func TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations(t
 	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
 }
 
+func TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine(t *testing.T) {
+	file := &DiffFile{
+		DisplayPath: "main.rs",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,1 +1,1 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineRemove, Content: "         match import_path {", OldLine: 1},
+					{Kind: DiffLineAdd, Content: "        // Create the shader import path - always starting with \"/\"", NewLine: 1},
+				},
+			},
+		},
+	}
+
+	rendered := buildRenderedFile(file)
+	require.NotNil(t, rendered)
+	require.Len(t, rendered.Lines, 3)
+	require.Empty(t, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+}
+
 func TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair(t *testing.T) {
 	file := &DiffFile{
 		DisplayPath: "main.go",

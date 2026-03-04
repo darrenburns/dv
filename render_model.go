@@ -411,6 +411,7 @@ func markIntralinePairedLines(removes []RenderedDiffLine, adds []RenderedDiffLin
 const (
 	intralineSuppressChangedRatio    = 0.70
 	intralineMinSharedWordSimilarity = 0.30
+	intralineMinPerSideWordCoverage  = 0.35
 )
 
 func intralinePairMasks(removeLine RenderedDiffLine, addLine RenderedDiffLine) (removeMask []bool, addMask []bool, ok bool) {
@@ -451,6 +452,11 @@ func shouldSuppressForWeakSharedWordSimilarity(oldGraphemes []string, newGraphem
 	newSharedWords, newTotalWords := unchangedWordGraphemeStats(newGraphemes, newMask)
 	if oldTotalWords == 0 || newTotalWords == 0 {
 		return false
+	}
+	oldCoverage := float64(oldSharedWords) / float64(oldTotalWords)
+	newCoverage := float64(newSharedWords) / float64(newTotalWords)
+	if oldCoverage < intralineMinPerSideWordCoverage || newCoverage < intralineMinPerSideWordCoverage {
+		return true
 	}
 	sharedWords := min(oldSharedWords, newSharedWords)
 	similarity := (2 * float64(sharedWords)) / float64(oldTotalWords+newTotalWords)
