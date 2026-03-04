@@ -432,6 +432,81 @@ func TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked(t
 	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
 }
 
+func TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch(t *testing.T) {
+	file := &DiffFile{
+		DisplayPath: "main.go",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,1 +1,1 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineRemove, Content: "if (alpha && beta && gamma && delta) {", OldLine: 1},
+					{Kind: DiffLineAdd, Content: "if (ready && done && valid && fresh) {", NewLine: 1},
+				},
+			},
+		},
+	}
+
+	rendered := buildRenderedFile(file)
+	require.NotNil(t, rendered)
+	require.Len(t, rendered.Lines, 3)
+	require.Empty(t, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+
+	side := buildSideBySideRenderedFile(file)
+	require.NotNil(t, side)
+	require.Len(t, side.Rows, 2)
+	require.NotNil(t, side.Rows[1].Left)
+	require.NotNil(t, side.Rows[1].Right)
+	require.Empty(t, markedIndicesForSideCell(side.Rows[1].Left, IntralineMarkRemove))
+	require.Empty(t, markedIndicesForSideCell(side.Rows[1].Right, IntralineMarkAdd))
+}
+
+func TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations(t *testing.T) {
+	file := &DiffFile{
+		DisplayPath: "main.tsx",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,1 +1,1 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineRemove, Content: "export function formatError(error: unknown): string {", OldLine: 1},
+					{Kind: DiffLineAdd, Content: "function DependenciesPanel({", NewLine: 1},
+				},
+			},
+		},
+	}
+
+	rendered := buildRenderedFile(file)
+	require.NotNil(t, rendered)
+	require.Len(t, rendered.Lines, 3)
+	require.Empty(t, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
+}
+
+func TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair(t *testing.T) {
+	file := &DiffFile{
+		DisplayPath: "main.go",
+		Hunks: []DiffHunk{
+			{
+				Header: "@@ -1,2 +1,2 @@",
+				Lines: []DiffLine{
+					{Kind: DiffLineRemove, Content: "if (alpha && beta && gamma && delta) {", OldLine: 1},
+					{Kind: DiffLineRemove, Content: "return valueA", OldLine: 2},
+					{Kind: DiffLineAdd, Content: "if (ready && done && valid && fresh) {", NewLine: 1},
+					{Kind: DiffLineAdd, Content: "return valueB", NewLine: 2},
+				},
+			},
+		},
+	}
+
+	rendered := buildRenderedFile(file)
+	require.NotNil(t, rendered)
+	require.Len(t, rendered.Lines, 5)
+	require.Empty(t, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[2], IntralineMarkRemove))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[3], IntralineMarkAdd))
+	require.Empty(t, markedIndicesForLine(rendered.Lines[4], IntralineMarkAdd))
+}
+
 func TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair(t *testing.T) {
 	file := &DiffFile{
 		DisplayPath: "main.go",

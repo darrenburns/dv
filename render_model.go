@@ -408,13 +408,18 @@ func markIntralinePairedLines(removes []RenderedDiffLine, adds []RenderedDiffLin
 	}
 }
 
-const intralineSuppressChangedRatio = 0.70
+const (
+	intralineSuppressChangedRatio    = 0.70
+	intralineMinSharedWordSimilarity = 0.30
+)
 
 func intralinePairMasks(removeLine RenderedDiffLine, addLine RenderedDiffLine) (removeMask []bool, addMask []bool, ok bool) {
 	removeText := renderedLineText(removeLine)
 	addText := renderedLineText(addLine)
-	removeGraphemeCount := len(splitGraphemes(removeText))
-	addGraphemeCount := len(splitGraphemes(addText))
+	removeGraphemes := splitGraphemes(removeText)
+	addGraphemes := splitGraphemes(addText)
+	removeGraphemeCount := len(removeGraphemes)
+	addGraphemeCount := len(addGraphemes)
 	// Empty vs non-empty is a hard divergence signal for run-wise pairing.
 	if (removeGraphemeCount == 0) != (addGraphemeCount == 0) {
 		return nil, nil, false
@@ -423,7 +428,8 @@ func intralinePairMasks(removeLine RenderedDiffLine, addLine RenderedDiffLine) (
 	if !ok {
 		return nil, nil, false
 	}
-	if shouldSuppressIntralineMasks(removeMask, addMask) {
+	if shouldSuppressIntralineMasks(removeMask, addMask) ||
+		shouldSuppressForWeakSharedWordSimilarity(removeGraphemes, addGraphemes, removeMask, addMask) {
 		return nil, nil, false
 	}
 	return removeMask, addMask, true
@@ -438,6 +444,30 @@ func shouldSuppressIntralineMasks(oldMask []bool, newMask []bool) bool {
 	oldRatio := float64(oldChanged) / float64(oldTotal)
 	newRatio := float64(newChanged) / float64(newTotal)
 	return oldRatio >= intralineSuppressChangedRatio && newRatio >= intralineSuppressChangedRatio
+}
+
+func shouldSuppressForWeakSharedWordSimilarity(oldGraphemes []string, newGraphemes []string, oldMask []bool, newMask []bool) bool {
+	oldSharedWords, oldTotalWords := unchangedWordGraphemeStats(oldGraphemes, oldMask)
+	newSharedWords, newTotalWords := unchangedWordGraphemeStats(newGraphemes, newMask)
+	if oldTotalWords == 0 || newTotalWords == 0 {
+		return false
+	}
+	sharedWords := min(oldSharedWords, newSharedWords)
+	similarity := (2 * float64(sharedWords)) / float64(oldTotalWords+newTotalWords)
+	return similarity < intralineMinSharedWordSimilarity
+}
+
+func unchangedWordGraphemeStats(graphemes []string, mask []bool) (unchanged int, total int) {
+	for idx, grapheme := range graphemes {
+		if classifyIntralineChunkKind(grapheme) != intralineChunkWord {
+			continue
+		}
+		total++
+		if idx < len(mask) && !mask[idx] {
+			unchanged++
+		}
+	}
+	return unchanged, total
 }
 
 func maskStats(mask []bool) (changed int, total int) {
