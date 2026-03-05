@@ -62,6 +62,7 @@ Most keybinds are documented either in the footer, command palette (`ctrl+p`), o
 
 Some things that aren't as clear at the moment:
 
+* Press `r` to refresh files tracked by git
 * You can click and drag the sidebar divider to resize it.
 * You can click and drag the central divider when in side-by-side/split view to adjust the ratio.
   * As a shortcut you can use `ctrl+h`/`ctrl+l` to shift it left/right.
