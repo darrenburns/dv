@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
 	t "github.com/darrenburns/terma"
 
@@ -426,6 +427,15 @@ func TestDv_PipeModeCommandPaletteOmitsSwitchSection(tt *testing.T) {
 	switchSection := findPaletteItemByLabel(level.Items, "Switch section")
 	require.Empty(tt, switchSection.Label)
 
+	stageFile := findPaletteItemByLabel(level.Items, "Stage current file")
+	require.Empty(tt, stageFile.Label)
+
+	stageAll := findPaletteItemByLabel(level.Items, "Stage all files")
+	require.Empty(tt, stageAll.Label)
+
+	unstageAll := findPaletteItemByLabel(level.Items, "Unstage all files")
+	require.Empty(tt, unstageAll.Label)
+
 	refresh := findPaletteItemByLabel(level.Items, "Refresh")
 	require.True(tt, refresh.IsSelectable())
 
@@ -471,6 +481,136 @@ func TestDv_PipeModeManualRefreshIsNoop(tt *testing.T) {
 	require.Equal(tt, 1, provider.index)
 }
 
+func TestDv_ToggleStageKeybindStagesActiveFileAndRefreshes(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPaths("a.txt"), ""},
+		stagedDiffs:   []string{"", diffForPaths("a.txt")},
+	}
+	app := newTestDv(provider, false)
+
+	stageFile, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.NotNil(tt, stageFile.Action)
+
+	stageFile.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"a.txt"}, provider.stagedPaths)
+	require.Len(tt, provider.loadStaged, 4)
+	require.Equal(tt, DiffSectionStaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
+}
+
+func TestDv_StageAllPaletteActionStagesAllFilesAndRefreshes(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPaths("a.txt", "b.txt"), ""},
+		stagedDiffs:   []string{"", diffForPaths("a.txt", "b.txt")},
+	}
+	app := newTestDv(provider, false)
+	app.togglePalette()
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	stageAll := findPaletteItemByLabel(level.Items, "Stage all files")
+	require.True(tt, stageAll.IsSelectable())
+	require.NotNil(tt, stageAll.Action)
+
+	stageAll.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, 1, provider.stageAllCalls)
+	require.Equal(tt, DiffSectionStaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
+}
+
+func TestDv_ToggleStageKeybindUnstagesActiveFileAndRefreshes(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{"", diffForPaths("a.txt")},
+		stagedDiffs:   []string{diffForPaths("a.txt"), ""},
+	}
+	app := newTestDv(provider, true)
+
+	toggleStage, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.Equal(tt, "Unstage file", toggleStage.Name)
+	require.NotNil(tt, toggleStage.Action)
+
+	toggleStage.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"a.txt"}, provider.unstagedPaths)
+	require.Len(tt, provider.loadStaged, 4)
+	require.Equal(tt, DiffSectionUnstaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
+}
+
+func TestDv_UnstageAllPaletteActionUnstagesAllFilesAndRefreshes(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{"", diffForPaths("a.txt", "b.txt")},
+		stagedDiffs:   []string{diffForPaths("a.txt", "b.txt"), ""},
+	}
+	app := newTestDv(provider, true)
+	app.togglePalette()
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	unstageAll := findPaletteItemByLabel(level.Items, "Unstage all files")
+	require.True(tt, unstageAll.IsSelectable())
+	require.NotNil(tt, unstageAll.Action)
+
+	unstageAll.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, 1, provider.unstageAllCalls)
+	require.Equal(tt, DiffSectionUnstaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
+}
+
+func TestDv_IndexMutationsQueueCommandsInOrder(tt *testing.T) {
+	block := make(chan struct{})
+	started := make(chan struct{}, 1)
+	provider := &scriptedDiffProvider{
+		repoRoot:       "/tmp/repo",
+		unstagedDiffs:  []string{diffForPaths("a.txt"), ""},
+		stagedDiffs:    []string{"", diffForPaths("a.txt")},
+		stagePathBlock: block,
+		stagePathStart: started,
+	}
+	app := newTestDv(provider, false)
+
+	stageFile, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.NotNil(tt, stageFile.Action)
+
+	stageAll, ok := findKeybindByKey(app.Keybinds(), "S")
+	require.True(tt, ok)
+	require.NotNil(tt, stageAll.Action)
+
+	stageFile.Action()
+	<-started
+	stageAll.Action()
+
+	require.Equal(tt, []string{"a.txt"}, provider.stagedPaths)
+	require.Zero(tt, provider.stageAllCalls)
+	require.Equal(tt, []string{"stage:a.txt"}, provider.operationOrder)
+	require.Equal(tt, DiffSectionUnstaged, app.activeSection)
+
+	close(block)
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"a.txt"}, provider.stagedPaths)
+	require.Equal(tt, 1, provider.stageAllCalls)
+	require.Equal(tt, []string{"stage:a.txt", "stage-all"}, provider.operationOrder)
+	require.Equal(tt, DiffSectionStaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
+}
+
 func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
@@ -482,7 +622,19 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 
 	toggle := findPaletteItemByLabel(level.Items, "Switch section")
 	require.True(tt, toggle.IsSelectable())
-	require.Equal(tt, "[s]", toggle.Hint)
+	require.Empty(tt, toggle.Hint)
+
+	stageFile := findPaletteItemByLabel(level.Items, "Stage current file")
+	require.True(tt, stageFile.IsSelectable())
+	require.Equal(tt, "[s]", stageFile.Hint)
+
+	stageAll := findPaletteItemByLabel(level.Items, "Stage all files")
+	require.True(tt, stageAll.IsSelectable())
+	require.Equal(tt, "[S]", stageAll.Hint)
+
+	unstageAll := findPaletteItemByLabel(level.Items, "Unstage all files")
+	require.True(tt, unstageAll.IsSelectable())
+	require.Equal(tt, "[U]", unstageAll.Hint)
 
 	refresh := findPaletteItemByLabel(level.Items, "Refresh")
 	require.True(tt, refresh.IsSelectable())
@@ -526,6 +678,24 @@ func TestDv_CommandPaletteIncludesCommonActions(tt *testing.T) {
 	divider := findPaletteItemByLabel(level.Items, "Focus divider")
 	require.True(tt, divider.IsSelectable())
 	require.Equal(tt, "[d]", divider.Hint)
+}
+
+func TestDv_CommandPaletteUsesSameSingleFileToggleForUnstage(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:    "/tmp/repo",
+		stagedDiffs: []string{diffForPaths("a.txt")},
+	}, true)
+	app.togglePalette()
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	unstageFile := findPaletteItemByLabel(level.Items, "Unstage current file")
+	require.True(tt, unstageFile.IsSelectable())
+	require.Equal(tt, "[s]", unstageFile.Hint)
+
+	stageFile := findPaletteItemByLabel(level.Items, "Stage current file")
+	require.Empty(tt, stageFile.Label)
 }
 
 func TestDv_CommandPaletteUsesFuzzyFilterAtRoot(tt *testing.T) {
@@ -664,7 +834,9 @@ func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
 
 	require.True(tt, keybindIsHidden(keybinds, "J"))
 	require.True(tt, keybindIsHidden(keybinds, "K"))
-	require.True(tt, keybindIsHidden(keybinds, "s"))
+	require.False(tt, keybindIsHidden(keybinds, "s"))
+	require.False(tt, keybindIsHidden(keybinds, "S"))
+	require.False(tt, keybindIsHidden(keybinds, "U"))
 	require.True(tt, keybindIsHidden(keybinds, "r"))
 	require.True(tt, keybindIsHidden(keybinds, "d"))
 	require.True(tt, keybindIsHidden(keybinds, "ctrl+h"))
@@ -746,6 +918,43 @@ func TestDv_PipeModeKeybindsOmitIgnoreWhitespaceToggle(tt *testing.T) {
 	}, false)
 	_, ok := findKeybindByKey(app.Keybinds(), "x")
 	require.False(tt, ok)
+	_, ok = findKeybindByKey(app.Keybinds(), "s")
+	require.False(tt, ok)
+	_, ok = findKeybindByKey(app.Keybinds(), "S")
+	require.False(tt, ok)
+	_, ok = findKeybindByKey(app.Keybinds(), "U")
+	require.False(tt, ok)
+}
+
+func TestDv_KeybindsIncludeStageShortcuts(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	stageFile, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.Equal(tt, "Stage file", stageFile.Name)
+	require.False(tt, stageFile.Hidden)
+
+	stageAll, ok := findKeybindByKey(app.Keybinds(), "S")
+	require.True(tt, ok)
+	require.Equal(tt, "Stage all files", stageAll.Name)
+	require.False(tt, stageAll.Hidden)
+}
+
+func TestDv_KeybindsUseSameSingleFileShortcutForUnstage(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:    "/tmp/repo",
+		stagedDiffs: []string{diffForPaths("a.txt")},
+	}, true)
+
+	unstageFile, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.Equal(tt, "Unstage file", unstageFile.Name)
+	require.False(tt, unstageFile.Hidden)
+
+	unstageAll, ok := findKeybindByKey(app.Keybinds(), "U")
+	require.True(tt, ok)
+	require.Equal(tt, "Unstage all files", unstageAll.Name)
+	require.False(tt, unstageAll.Hidden)
 }
 
 func TestDv_KeybindsIncludeSideBySideSplitShiftShortcuts(tt *testing.T) {
@@ -2026,7 +2235,9 @@ func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 	texts := widgetTextContents(emptyState)
 	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[ctrl+p] Open command palette"), 0)
 	require.Equal(tt, -1, indexOfTextContaining(texts, "[r] Refresh diff"))
-	require.Equal(tt, -1, indexOfTextContaining(texts, "[s] Switch section"))
+	require.Equal(tt, -1, indexOfTextContaining(texts, "[s] Stage file"))
+	require.Equal(tt, -1, indexOfTextContaining(texts, "[S] Stage all files"))
+	require.Equal(tt, -1, indexOfTextContaining(texts, "[U] Unstage all files"))
 	require.Equal(tt, -1, indexOfTextContaining(texts, "[x] Toggle ignore whitespace"))
 }
 
@@ -2756,18 +2967,25 @@ func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
 }
 
 type scriptedDiffProvider struct {
-	repoRoot      string
-	branch        string
-	diffs         []string
-	unstagedDiffs []string
-	stagedDiffs   []string
-	sections      []DiffSection
-	manualRefresh *bool
-	index         int
-	unstagedIndex int
-	stagedIndex   int
-	loadStaged    []bool
-	loadIgnoreWS  []bool
+	repoRoot        string
+	branch          string
+	diffs           []string
+	unstagedDiffs   []string
+	stagedDiffs     []string
+	sections        []DiffSection
+	manualRefresh   *bool
+	index           int
+	unstagedIndex   int
+	stagedIndex     int
+	loadStaged      []bool
+	loadIgnoreWS    []bool
+	stagedPaths     []string
+	stageAllCalls   int
+	unstagedPaths   []string
+	unstageAllCalls int
+	stagePathBlock  chan struct{}
+	stagePathStart  chan struct{}
+	operationOrder  []string
 }
 
 func (p *scriptedDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
@@ -2831,8 +3049,52 @@ func (p *scriptedDiffProvider) ManualRefreshEnabled() bool {
 	return *p.manualRefresh
 }
 
+func (p *scriptedDiffProvider) StagePath(path string) error {
+	p.stagedPaths = append(p.stagedPaths, path)
+	p.operationOrder = append(p.operationOrder, "stage:"+path)
+	if p.stagePathStart != nil {
+		select {
+		case p.stagePathStart <- struct{}{}:
+		default:
+		}
+	}
+	if p.stagePathBlock != nil {
+		<-p.stagePathBlock
+	}
+	return nil
+}
+
+func (p *scriptedDiffProvider) StageAll() error {
+	p.stageAllCalls++
+	p.operationOrder = append(p.operationOrder, "stage-all")
+	return nil
+}
+
+func (p *scriptedDiffProvider) UnstagePath(path string) error {
+	p.unstagedPaths = append(p.unstagedPaths, path)
+	p.operationOrder = append(p.operationOrder, "unstage:"+path)
+	return nil
+}
+
+func (p *scriptedDiffProvider) UnstageAll() error {
+	p.unstageAllCalls++
+	p.operationOrder = append(p.operationOrder, "unstage-all")
+	return nil
+}
+
 func boolPtr(value bool) *bool {
 	return &value
+}
+
+func flushAsyncIndexWork(tt *testing.T, app *Dv) {
+	tt.Helper()
+	require.Eventually(tt, func() bool {
+		app.flushPendingIndexUpdates()
+		app.indexResultMu.Lock()
+		pendingResults := len(app.pendingIndexResults)
+		app.indexResultMu.Unlock()
+		return app.indexPendingCount.Peek() == 0 && pendingResults == 0
+	}, 2*time.Second, 10*time.Millisecond)
 }
 
 func diffForPaths(paths ...string) string {

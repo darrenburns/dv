@@ -60,6 +60,7 @@ Some things that aren't as clear at the moment:
   * As a shortcut you can use `ctrl+h`/`ctrl+l` to shift it left/right.
 * Tab and shift-tab move focus
 * Press `/` from the file tree or diff view to filter files (if the sidebar is hidden, this opens it). While the filter input is focused, `up`/`down` move through matching files, `tab` moves focus back to the tree, and `esc` clears the filter.
+* Press `s` to stage or unstage the active file, `S` to stage all files, or `U` to unstage all files (all are also available in the command palette, except in piped mode).
 * Press `y` to copy the active file or directory path to your clipboard (also available via the command palette).
 * Press `m` to toggle seen on the active file, or `M` to clear all seen marks (both are also available in the command palette).
 * Press `ctrl+j`/`ctrl+k` to move to the next/previous file (same as `n`/`p`).

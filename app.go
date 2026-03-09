@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
@@ -115,7 +116,25 @@ type infoCardModel struct {
 	Background t.ColorProvider
 }
 
-// Dv is a read-only, syntax-highlighted git diff viewer.
+type indexCommandKind int
+
+const (
+	indexCommandStagePath indexCommandKind = iota
+	indexCommandUnstagePath
+	indexCommandStageAll
+	indexCommandUnstageAll
+)
+
+type indexCommand struct {
+	Kind indexCommandKind
+	Path string
+}
+
+type indexResult struct {
+	Refresh bool
+}
+
+// Dv is a syntax-highlighted git diff viewer.
 type Dv struct {
 	provider DiffProvider
 
@@ -142,14 +161,19 @@ type Dv struct {
 	initialSection     DiffSection
 	sections           map[DiffSection]*diffSectionState
 
-	treeState       *t.TreeState[DiffTreeNodeData]
-	treeScrollState *t.ScrollState
-	treeFilterState *t.FilterState
-	treeFilterInput *t.TextInputState
-	diffScrollState *t.ScrollState
-	diffViewState   *DiffViewState
-	splitState      *t.SplitPaneState
-	commandPalette  *t.CommandPaletteState
+	treeState           *t.TreeState[DiffTreeNodeData]
+	treeScrollState     *t.ScrollState
+	treeFilterState     *t.FilterState
+	treeFilterInput     *t.TextInputState
+	diffScrollState     *t.ScrollState
+	diffViewState       *DiffViewState
+	splitState          *t.SplitPaneState
+	commandPalette      *t.CommandPaletteState
+	indexPendingCount   t.Signal[int]
+	indexResultVersion  t.Signal[int]
+	indexCommandQueue   chan indexCommand
+	indexResultMu       sync.Mutex
+	pendingIndexResults []indexResult
 
 	treeFilterVisible    bool
 	treeFilterNoMatches  bool
@@ -219,6 +243,10 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		diffScrollState:      t.NewScrollState(),
 		diffViewState:        NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
 		splitState:           t.NewSplitPaneState(0.30),
+		indexPendingCount:    t.NewSignal(0),
+		indexResultVersion:   t.NewSignal(0),
+		indexCommandQueue:    make(chan indexCommand, 256),
+		pendingIndexResults:  []indexResult{},
 		sidebarVisible:       initialState.SidebarVisible,
 		diffLayoutMode:       initialState.LayoutMode,
 		diffHideChangeSigns:  !initialState.ShowChangeSigns,
@@ -234,6 +262,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 	if app.isPipedDiffMode() {
 		app.diffIgnoreWhitespace = false
 	}
+	go app.runIndexCommandQueue()
 	app.configureDiffHorizontalScroll()
 	app.commandPalette = app.newCommandPalette()
 	app.refreshDiff()
@@ -470,7 +499,6 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
-		{Key: "s", Name: "Switch section", Action: a.switchSectionFocus, Hidden: true},
 		{Key: "y", Name: "Copy path", Action: a.copyActiveFilePath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
@@ -484,6 +512,27 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "t", Name: "Theme menu", Action: a.openThemePalette, Hidden: true},
 		{Key: "q", Name: "Quit", Action: t.Quit},
 	}
+	if a.canToggleStageActiveFile() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "s",
+			Name:   a.activeFileStageActionName(),
+			Action: a.toggleStageActiveFile,
+		})
+	}
+	if a.canStageFiles() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "S",
+			Name:   "Stage all files",
+			Action: a.stageAllFiles,
+		})
+	}
+	if a.canUnstageFiles() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "U",
+			Name:   "Unstage all files",
+			Action: a.unstageAllFiles,
+		})
+	}
 	if a.canToggleDiffIgnoreWhitespace() {
 		keybinds = append(keybinds, t.Keybind{
 			Key:    "x",
@@ -496,6 +545,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 }
 
 func (a *Dv) Build(ctx t.BuildContext) t.Widget {
+	a.flushPendingIndexUpdates()
 	a.syncFocusState(ctx)
 	theme := ctx.Theme()
 	body := a.buildRightPane(theme)
@@ -1127,6 +1177,14 @@ func (a *Dv) actionHint(actionName string, description string) string {
 	return fmt.Sprintf("[%s] %s", key, description)
 }
 
+func (a *Dv) paletteHint(actionName string) string {
+	key := a.keybindKeyByName(actionName)
+	if key == "" {
+		return ""
+	}
+	return fmt.Sprintf("[%s]", key)
+}
+
 func (a *Dv) dualActionHint(firstActionName string, secondActionName string, description string) string {
 	firstKey := a.keybindKeyByName(firstActionName)
 	secondKey := a.keybindKeyByName(secondActionName)
@@ -1346,11 +1404,153 @@ func (a *Dv) canToggleDiffIgnoreWhitespace() bool {
 	return !a.isPipedDiffMode()
 }
 
+func (a *Dv) indexProvider() IndexCapable {
+	if a.isPipedDiffMode() {
+		return nil
+	}
+	provider, ok := a.provider.(IndexCapable)
+	if !ok {
+		return nil
+	}
+	return provider
+}
+
+func (a *Dv) canStageFiles() bool {
+	return a.indexProvider() != nil
+}
+
+func (a *Dv) canStageActiveFile() bool {
+	if !a.canStageFiles() {
+		return false
+	}
+	return a.activeKind == DiffTreeNodeFile && a.activePath != ""
+}
+
+func (a *Dv) canToggleStageActiveFile() bool {
+	return a.canStageActiveFile()
+}
+
+func (a *Dv) canUnstageFiles() bool {
+	return a.indexProvider() != nil
+}
+
 func (a *Dv) canCopyActiveFilePath() bool {
 	if a.activePath == "" {
 		return false
 	}
 	return a.activeKind == DiffTreeNodeFile || a.activeKind == DiffTreeNodeDirectory
+}
+
+func (a *Dv) activeFileIsStaged() bool {
+	return a.activeKind == DiffTreeNodeFile && a.activeFileSection == DiffSectionStaged
+}
+
+func (a *Dv) activeFileStageActionName() string {
+	if a.activeFileIsStaged() {
+		return "Unstage file"
+	}
+	return "Stage file"
+}
+
+func (a *Dv) toggleStageActiveFile() {
+	if !a.canToggleStageActiveFile() {
+		return
+	}
+	path := a.activePath
+	staged := a.activeFileIsStaged()
+	a.rememberActiveFileScrollOffset()
+	commandKind := indexCommandStagePath
+	if staged {
+		commandKind = indexCommandUnstagePath
+	}
+	a.enqueueIndexCommand(indexCommand{
+		Kind: commandKind,
+		Path: path,
+	})
+}
+
+func (a *Dv) stageAllFiles() {
+	a.enqueueIndexCommand(indexCommand{Kind: indexCommandStageAll})
+}
+
+func (a *Dv) unstageAllFiles() {
+	a.enqueueIndexCommand(indexCommand{Kind: indexCommandUnstageAll})
+}
+
+func (a *Dv) enqueueIndexCommand(command indexCommand) {
+	if a.indexProvider() == nil {
+		return
+	}
+	a.indexPendingCount.Update(func(count int) int { return count + 1 })
+	a.indexCommandQueue <- command
+}
+
+func (a *Dv) runIndexCommandQueue() {
+	for command := range a.indexCommandQueue {
+		result := a.executeIndexCommand(command)
+		if result.Refresh {
+			a.indexResultMu.Lock()
+			a.pendingIndexResults = append(a.pendingIndexResults, result)
+			a.indexResultMu.Unlock()
+			a.indexResultVersion.Update(func(version int) int { return version + 1 })
+		}
+		a.indexPendingCount.Update(func(count int) int {
+			if count <= 0 {
+				return 0
+			}
+			return count - 1
+		})
+	}
+}
+
+func (a *Dv) executeIndexCommand(command indexCommand) indexResult {
+	provider := a.indexProvider()
+	if provider == nil {
+		return indexResult{Refresh: true}
+	}
+
+	var err error
+	switch command.Kind {
+	case indexCommandStagePath:
+		err = provider.StagePath(command.Path)
+	case indexCommandUnstagePath:
+		err = provider.UnstagePath(command.Path)
+	case indexCommandStageAll:
+		err = provider.StageAll()
+	case indexCommandUnstageAll:
+		err = provider.UnstageAll()
+	default:
+		return indexResult{Refresh: true}
+	}
+	if err != nil {
+		return indexResult{Refresh: true}
+	}
+	return indexResult{Refresh: true}
+}
+
+func (a *Dv) flushPendingIndexUpdates() {
+	_ = a.indexResultVersion.Get()
+	results := a.drainPendingIndexResults()
+	refreshNeeded := false
+	for _, result := range results {
+		if result.Refresh {
+			refreshNeeded = true
+		}
+	}
+	if refreshNeeded {
+		a.refreshDiff()
+	}
+}
+
+func (a *Dv) drainPendingIndexResults() []indexResult {
+	a.indexResultMu.Lock()
+	defer a.indexResultMu.Unlock()
+	if len(a.pendingIndexResults) == 0 {
+		return nil
+	}
+	results := append([]indexResult(nil), a.pendingIndexResults...)
+	a.pendingIndexResults = a.pendingIndexResults[:0]
+	return results
 }
 
 func (a *Dv) copyActiveFilePath() {
@@ -2738,21 +2938,45 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		items = append(items, t.CommandPaletteItem{
 			Label:      "Switch section",
 			FilterText: "Switch section staged unstaged files",
-			Hint:       "[s]",
+			Hint:       a.paletteHint("Switch section"),
 			Action:     a.paletteAction(a.switchSectionFocus),
+		})
+	}
+	if a.canToggleStageActiveFile() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      currentFileStagePaletteLabel(a.activeFileIsStaged()),
+			FilterText: "Stage current file unstage current file selected git add restore staged",
+			Hint:       a.paletteHint(a.activeFileStageActionName()),
+			Action:     a.paletteAction(a.toggleStageActiveFile),
+		})
+	}
+	if a.canStageFiles() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Stage all files",
+			FilterText: "Stage all files git add all",
+			Hint:       a.paletteHint("Stage all files"),
+			Action:     a.paletteAction(a.stageAllFiles),
+		})
+	}
+	if a.canUnstageFiles() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Unstage all files",
+			FilterText: "Unstage all files git restore staged reset",
+			Hint:       a.paletteHint("Unstage all files"),
+			Action:     a.paletteAction(a.unstageAllFiles),
 		})
 	}
 	items = append(items, t.CommandPaletteItem{
 		Label:      "Refresh",
 		FilterText: "Refresh reload diff",
-		Hint:       "[r]",
+		Hint:       a.paletteHint("Refresh"),
 		Action:     a.paletteAction(a.manualRefresh),
 	})
 	if a.canCopyActiveFilePath() {
 		items = append(items, t.CommandPaletteItem{
 			Label:      "Copy path",
 			FilterText: "Copy path clipboard file directory",
-			Hint:       "[y]",
+			Hint:       a.paletteHint("Copy path"),
 			Action:     a.paletteAction(a.copyActiveFilePath),
 		})
 	}
@@ -2761,26 +2985,26 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		t.CommandPaletteItem{
 			Label:      "Toggle sidebar",
 			FilterText: "Toggle sidebar layout panel",
-			Hint:       "[b]",
+			Hint:       a.paletteHint("Toggle sidebar"),
 			Action:     a.paletteAction(a.toggleSidebar),
 		},
 		t.CommandPaletteItem{
 			Label:      "Focus divider",
 			FilterText: "Focus divider split resize",
-			Hint:       "[d]",
+			Hint:       a.paletteHint("Focus divider"),
 			Action:     a.focusDividerFromPalette,
 		},
 		t.CommandPaletteItem{Divider: "Appearance"},
 		t.CommandPaletteItem{
 			Label:      "Toggle line wrap",
 			FilterText: "Toggle line wrap hard wrap soft wrap",
-			Hint:       "[w]",
+			Hint:       a.paletteHint("Toggle line wrap"),
 			Action:     a.paletteAction(a.toggleDiffWrap),
 		},
 		t.CommandPaletteItem{
 			Label:      "Toggle split mode",
 			FilterText: "Toggle split mode side by side unified layout view",
-			Hint:       "[v]",
+			Hint:       a.paletteHint("Toggle split"),
 			Action:     a.paletteAction(a.toggleDiffLayoutMode),
 		},
 	)
@@ -2803,7 +3027,7 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		items = append(items, t.CommandPaletteItem{
 			Label:      "Toggle ignore whitespace",
 			FilterText: "Toggle ignore whitespace differences -w ignore-all-space",
-			Hint:       "[x]",
+			Hint:       a.paletteHint("Toggle ignore whitespace"),
 			Action:     a.paletteAction(a.toggleDiffIgnoreWhitespace),
 		})
 	}
@@ -2811,29 +3035,36 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 		t.CommandPaletteItem{
 			Label:      "Toggle seen",
 			FilterText: "Toggle seen mark file seen reviewed done checked",
-			Hint:       "[m]",
+			Hint:       a.paletteHint("Toggle seen"),
 			Action:     a.paletteAction(a.toggleActiveFileReviewed),
 		},
 		t.CommandPaletteItem{
 			Label:      "Clear all seen",
 			FilterText: "Clear all seen marks reset seen reviewed",
-			Hint:       "[M]",
+			Hint:       a.paletteHint("Clear all seen"),
 			Action:     a.paletteAction(a.clearAllReviewed),
 		},
 		t.CommandPaletteItem{
 			Label:      "Toggle intraline style",
 			FilterText: "Toggle intraline style highlight background underline off disable changed characters",
-			Hint:       "[i]",
+			Hint:       a.paletteHint("Toggle intraline style"),
 			Action:     a.paletteAction(a.toggleDiffIntralineStyle),
 		},
 		t.CommandPaletteItem{
 			Label:         "Theme",
-			Hint:          "[t]",
+			Hint:          a.paletteHint("Theme menu"),
 			ChildrenTitle: diffThemesPalette,
 			Children:      a.themeItems,
 		},
 	)
 	return items
+}
+
+func currentFileStagePaletteLabel(staged bool) string {
+	if staged {
+		return "Unstage current file"
+	}
+	return "Stage current file"
 }
 
 func (a *Dv) themeItems() []t.CommandPaletteItem {
