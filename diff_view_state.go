@@ -20,7 +20,7 @@ type DiffViewState struct {
 	viewportWidth  int
 	viewportHeight int
 
-	sideDividerDragging     bool
+	sideDividerDragging     t.Signal[bool]
 	sideDividerDragOffset   int
 	sideDividerLastResize   t.Signal[int64]
 	sideDividerOverlayPing  t.Signal[int]
@@ -35,6 +35,7 @@ func NewDiffViewState(rendered *RenderedFile) *DiffViewState {
 		Rendered:               t.NewAnySignal(rendered),
 		SideBySide:             t.NewAnySignal(buildSideBySideFromRendered(rendered)),
 		SplitRatio:             t.NewSignal(0.5),
+		sideDividerDragging:    t.NewSignal(false),
 		sideDividerLastResize:  t.NewSignal(int64(0)),
 		sideDividerOverlayPing: t.NewSignal(0),
 	}
@@ -50,7 +51,7 @@ func (s *DiffViewState) SetRenderedPair(rendered *RenderedFile, sideBySide *Side
 	}
 	s.Rendered.Set(rendered)
 	s.SideBySide.Set(sideBySide)
-	s.sideDividerDragging = false
+	s.sideDividerDragging.Set(false)
 	s.sideDividerDragOffset = 0
 	s.sideDividerLastResize.Set(0)
 	s.stopSideDividerOverlayTimer()
@@ -63,7 +64,7 @@ func (s *DiffViewState) SideBySideSplitRatio() float64 {
 	if s == nil || !s.SplitRatio.IsValid() {
 		return 0.5
 	}
-	return clampSideBySideSplitRatio(s.SplitRatio.Peek())
+	return clampSideBySideSplitRatio(s.SplitRatio.Get())
 }
 
 func (s *DiffViewState) SetSideBySideSplitRatio(ratio float64) {
@@ -77,7 +78,7 @@ func (s *DiffViewState) StartSideDividerDrag(pointerX int, dividerX int) {
 	if s == nil {
 		return
 	}
-	s.sideDividerDragging = true
+	s.sideDividerDragging.Set(true)
 	s.sideDividerDragOffset = pointerX - dividerX
 }
 
@@ -85,12 +86,12 @@ func (s *DiffViewState) StopSideDividerDrag() {
 	if s == nil {
 		return
 	}
-	s.sideDividerDragging = false
+	s.sideDividerDragging.Set(false)
 	s.sideDividerDragOffset = 0
 }
 
 func (s *DiffViewState) SideDividerDragging() bool {
-	return s != nil && s.sideDividerDragging
+	return s != nil && s.sideDividerDragging.Peek()
 }
 
 func (s *DiffViewState) SideDividerDragOffset() int {
@@ -116,7 +117,7 @@ func (s *DiffViewState) sideDividerOverlayVisibleAt(now time.Time) bool {
 	if s == nil {
 		return false
 	}
-	if s.sideDividerDragging {
+	if s.sideDividerDragging.Get() {
 		return true
 	}
 	_ = s.sideDividerOverlayPing.Get()

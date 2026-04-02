@@ -761,7 +761,7 @@ func TestDv_KeybindsIncludeSideBySideSplitShiftShortcuts(tt *testing.T) {
 	require.Equal(tt, "Shift split right", right.Name)
 	require.True(tt, right.Hidden)
 
-	app.diffLayoutMode = DiffLayoutSideBySide
+	app.diffLayoutMode.Set(DiffLayoutSideBySide)
 
 	left, ok = findKeybindByKey(app.Keybinds(), "ctrl+h")
 	require.True(tt, ok)
@@ -1114,18 +1114,18 @@ func TestDv_OpenTreeFilterAllowsViewerFocus(tt *testing.T) {
 
 func TestDv_OpenTreeFilterShowsHiddenSidebarAndKeepsItAfterDismiss(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	app.sidebarVisible = false
+	app.sidebarVisible.Set(false)
 	app.focusedWidgetID = diffViewerScrollID
 
 	app.openTreeFilter()
-	require.True(tt, app.sidebarVisible)
+	require.True(tt, app.sidebarVisible.Get())
 	require.True(tt, app.treeFilterVisible)
 
 	app.focusedWidgetID = diffFilesFilterID
 	app.handleEscape()
 
 	require.False(tt, app.treeFilterVisible)
-	require.True(tt, app.sidebarVisible)
+	require.True(tt, app.sidebarVisible.Get())
 }
 
 func TestDv_HandleEscapeClearsActiveTreeFilter(tt *testing.T) {
@@ -2032,15 +2032,15 @@ func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 
 func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.True(tt, app.sidebarVisible)
+	require.True(tt, app.sidebarVisible.Get())
 	app.dividerHovered = true
 
 	app.toggleSidebar()
-	require.False(tt, app.sidebarVisible)
+	require.False(tt, app.sidebarVisible.Get())
 	require.False(tt, app.dividerHovered)
 
 	app.toggleSidebar()
-	require.True(tt, app.sidebarVisible)
+	require.True(tt, app.sidebarVisible.Get())
 }
 
 func TestDividerHoverColorUsesHalfActiveAlpha(tt *testing.T) {
@@ -2071,20 +2071,20 @@ func TestDv_ToggleDiffWrap(tt *testing.T) {
 func TestDv_ToggleDiffLayoutModePreservesSelection(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt", "b.txt")}}, false)
 	require.True(tt, app.selectFilePath("b.txt"))
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 
 	activePath := app.activePath
 	activeIsDir := app.activeIsDir
 	cursorPath := clonePath(app.treeState.CursorPath.Peek())
 
 	app.toggleDiffLayoutMode()
-	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode.Get())
 	require.Equal(tt, activePath, app.activePath)
 	require.Equal(tt, activeIsDir, app.activeIsDir)
 	require.Equal(tt, cursorPath, app.treeState.CursorPath.Peek())
 
 	app.toggleDiffLayoutMode()
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 	require.Equal(tt, activePath, app.activePath)
 	require.Equal(tt, activeIsDir, app.activeIsDir)
 	require.Equal(tt, cursorPath, app.treeState.CursorPath.Peek())
@@ -2092,46 +2092,46 @@ func TestDv_ToggleDiffLayoutModePreservesSelection(tt *testing.T) {
 
 func TestDv_ToggleDiffLayoutModeMapsVerticalScrollBetweenLayouts(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 
 	// Unified rows for diffForPaths: hunk header, removed line, added line.
 	app.diffScrollState.SetOffset(2)
 	app.diffViewState.ScrollY.Set(2)
 
 	app.toggleDiffLayoutMode()
-	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode.Get())
 	// Side-by-side rows collapse remove+add into one paired row.
 	require.Equal(tt, 1, app.diffViewState.ScrollY.Peek())
 }
 
 func TestDv_ToggleDiffLayoutModeRoundTripRestoresExactVerticalScroll(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 
 	// Start on the removed line row in unified mode.
 	app.diffScrollState.SetOffset(1)
 	app.diffViewState.ScrollY.Set(1)
 
 	app.toggleDiffLayoutMode()
-	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode.Get())
 	require.Equal(tt, 1, app.diffViewState.ScrollY.Peek())
 
 	// Without scrolling in-between, toggling back should return to the exact same row.
 	app.toggleDiffLayoutMode()
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 	require.Equal(tt, 1, app.diffViewState.ScrollY.Peek())
 }
 
 func TestDv_ToggleDiffLayoutModeKeepsScrollableOffsetWhenScrollMetricsAreStale(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 
 	// Simulate stale ScrollState layout metadata where SetOffset would clamp to 0.
 	app.diffScrollState.Offset.Set(0)
 	app.diffViewState.ScrollY.Set(2)
 
 	app.toggleDiffLayoutMode()
-	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
+	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode.Get())
 	require.Equal(tt, 1, app.diffViewState.ScrollY.Peek())
 	require.Equal(tt, 1, app.diffScrollState.Offset.Peek())
 }
@@ -2174,7 +2174,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksNoopWhenWrapped(tt *testing.T) {
 
 func TestDv_DiffScrollStateHorizontalCallbacksMoveAndClampInSideBySideMode(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
-	app.diffLayoutMode = DiffLayoutSideBySide
+	app.diffLayoutMode.Set(DiffLayoutSideBySide)
 
 	rendered := buildTestRenderedFile(20, 120)
 	side := &SideBySideRenderedFile{
@@ -2213,7 +2213,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksMoveAndClampInSideBySideMode(tt *t
 
 func TestDv_DiffScrollStateHorizontalCallbacksNoopWhenWrappedInSideBySideMode(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
-	app.diffLayoutMode = DiffLayoutSideBySide
+	app.diffLayoutMode.Set(DiffLayoutSideBySide)
 
 	rendered := buildTestRenderedFile(20, 120)
 	side := &SideBySideRenderedFile{
@@ -2285,7 +2285,7 @@ func TestDv_DiffJumpKeybindsNoopWhenViewerNotFocused(tt *testing.T) {
 
 func TestDv_ShiftSideBySideSplitActionsMoveDividerByOneCell(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
-	app.diffLayoutMode = DiffLayoutSideBySide
+	app.diffLayoutMode.Set(DiffLayoutSideBySide)
 
 	rendered := buildTestRenderedFile(20, 120)
 	side := &SideBySideRenderedFile{
@@ -2391,8 +2391,8 @@ func TestDv_NewDvAppliesProvidedDefaults(tt *testing.T) {
 		IgnoreWhitespace: true,
 	})
 
-	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode)
-	require.False(tt, app.sidebarVisible)
+	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode.Get())
+	require.False(tt, app.sidebarVisible.Get())
 	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
 	require.False(tt, app.diffHideChangeSigns)
 	require.True(tt, app.diffIgnoreWhitespace)
@@ -2425,8 +2425,8 @@ func TestDv_NewDvNormalizesInvalidValues(tt *testing.T) {
 		ShowChangeSigns: false,
 	})
 
-	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode)
-	require.False(tt, app.sidebarVisible)
+	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
+	require.False(tt, app.sidebarVisible.Get())
 	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
 	require.True(tt, app.diffHideChangeSigns)
 	require.Equal(tt, t.ThemeNameObsidianTide, t.CurrentThemeName())
@@ -2635,7 +2635,7 @@ func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T)
 
 func TestDv_FocusDividerNoopWhenSidebarHidden(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
-	app.sidebarVisible = false
+	app.sidebarVisible.Set(false)
 	app.dividerFocusRequested = false
 
 	app.focusDivider()
@@ -2746,7 +2746,7 @@ func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
 	theme, ok := t.GetTheme(t.CurrentThemeName())
 	require.True(tt, ok)
 
-	app.diffLayoutMode = DiffLayoutSideBySide
+	app.diffLayoutMode.Set(DiffLayoutSideBySide)
 	widget := app.buildViewerTitle(theme)
 	row, ok := widget.(t.Row)
 	require.True(tt, ok)
