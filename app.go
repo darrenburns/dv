@@ -17,6 +17,7 @@ const (
 	diffFilesTreeID       = "terma-diff-files-tree"
 	diffFilesScrollID     = "terma-diff-files-scroll"
 	diffFilesFilterID     = "terma-diff-files-filter"
+	diffCommitMessageID   = "terma-diff-commit-message"
 	diffViewerID          = "terma-diff-viewer"
 	diffViewerScrollID    = "terma-diff-viewer-scroll"
 	diffSplitPaneID       = "terma-diff-split"
@@ -124,15 +125,18 @@ const (
 	indexCommandUnstagePath
 	indexCommandStageAll
 	indexCommandUnstageAll
+	indexCommandCommit
 )
 
 type indexCommand struct {
-	Kind indexCommandKind
-	Path string
+	Kind    indexCommandKind
+	Path    string
+	Message string
 }
 
 type indexResult struct {
-	Refresh bool
+	Refresh            bool
+	ClearCommitMessage bool
 }
 
 type diffRefreshRequest struct {
@@ -182,6 +186,7 @@ type Dv struct {
 	treeScrollState     *t.ScrollState
 	treeFilterState     *t.FilterState
 	treeFilterInput     *t.TextInputState
+	commitMessageInput  *t.TextAreaState
 	diffScrollState     *t.ScrollState
 	diffViewState       *DiffViewState
 	refreshTask         *t.Task[struct{}]
@@ -258,6 +263,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		treeScrollState:       t.NewScrollState(),
 		treeFilterState:       t.NewFilterState(),
 		treeFilterInput:       t.NewTextInputState(""),
+		commitMessageInput:    t.NewTextAreaState(""),
 		diffScrollState:       t.NewScrollState(),
 		diffViewState:         NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
 		refreshTask:           t.NewTask[struct{}](),
@@ -570,6 +576,14 @@ func (a *Dv) Keybinds() []t.Keybind {
 			Hidden: true,
 		})
 	}
+	if a.canCommitChanges() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "c",
+			Name:   "Focus commit message",
+			Action: a.focusCommitMessage,
+			Hidden: true,
+		})
+	}
 	return keybinds
 }
 
@@ -794,6 +808,24 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 		},
 		Child: treeContent,
 	})
+
+	if a.canCommitChanges() {
+		children = append(children, t.TextArea{
+			ID:          diffCommitMessageID,
+			State:       a.commitMessageInput,
+			Placeholder: "Write a commit message. Ctrl+Enter to commit.",
+			Width:       t.Flex(1),
+			OnSubmit:    a.submitCommitMessage,
+			Style: t.Style{
+				Width:           t.Flex(1),
+				MinHeight:       t.Cells(3),
+				MaxHeight:       t.Percent(50),
+				Padding:         t.EdgeInsets{Left: 1, Right: 1},
+				BackgroundColor: theme.Surface,
+				ForegroundColor: theme.Text,
+			},
+		})
+	}
 
 	return t.Column{
 		Height: t.Flex(1),
@@ -1470,6 +1502,21 @@ func (a *Dv) canStageFiles() bool {
 	return a.indexProvider() != nil
 }
 
+func (a *Dv) commitProvider() CommitCapable {
+	if a.isPipedDiffMode() {
+		return nil
+	}
+	provider, ok := a.provider.(CommitCapable)
+	if !ok {
+		return nil
+	}
+	return provider
+}
+
+func (a *Dv) canCommitChanges() bool {
+	return a.commitProvider() != nil
+}
+
 func (a *Dv) canStageActiveFile() bool {
 	if !a.canStageFiles() {
 		return false
@@ -1529,8 +1576,15 @@ func (a *Dv) unstageAllFiles() {
 }
 
 func (a *Dv) enqueueIndexCommand(command indexCommand) {
-	if a.indexProvider() == nil {
-		return
+	switch command.Kind {
+	case indexCommandCommit:
+		if !a.canCommitChanges() {
+			return
+		}
+	default:
+		if a.indexProvider() == nil {
+			return
+		}
 	}
 	a.indexPendingCount.Update(func(count int) int { return count + 1 })
 	a.indexCommandQueue <- command
@@ -1540,6 +1594,9 @@ func (a *Dv) runIndexCommandQueue() {
 	for command := range a.indexCommandQueue {
 		result := a.executeIndexCommand(command)
 		t.Dispatch(func() {
+			if result.ClearCommitMessage && a.commitMessageInput != nil {
+				a.commitMessageInput.SetText("")
+			}
 			if result.Refresh {
 				a.refreshDiff()
 			}
@@ -1554,43 +1611,70 @@ func (a *Dv) runIndexCommandQueue() {
 }
 
 func (a *Dv) executeIndexCommand(command indexCommand) indexResult {
-	provider := a.indexProvider()
-	if provider == nil {
-		return indexResult{Refresh: true}
-	}
-
-	contextProvider, hasContextProvider := provider.(ContextIndexCapable)
 	var err error
 	switch command.Kind {
 	case indexCommandStagePath:
+		provider := a.indexProvider()
+		if provider == nil {
+			return indexResult{Refresh: true}
+		}
+		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
 		if hasContextProvider {
 			err = contextProvider.StagePathContext(context.Background(), command.Path)
 		} else {
 			err = provider.StagePath(command.Path)
 		}
 	case indexCommandUnstagePath:
+		provider := a.indexProvider()
+		if provider == nil {
+			return indexResult{Refresh: true}
+		}
+		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
 		if hasContextProvider {
 			err = contextProvider.UnstagePathContext(context.Background(), command.Path)
 		} else {
 			err = provider.UnstagePath(command.Path)
 		}
 	case indexCommandStageAll:
+		provider := a.indexProvider()
+		if provider == nil {
+			return indexResult{Refresh: true}
+		}
+		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
 		if hasContextProvider {
 			err = contextProvider.StageAllContext(context.Background())
 		} else {
 			err = provider.StageAll()
 		}
 	case indexCommandUnstageAll:
+		provider := a.indexProvider()
+		if provider == nil {
+			return indexResult{Refresh: true}
+		}
+		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
 		if hasContextProvider {
 			err = contextProvider.UnstageAllContext(context.Background())
 		} else {
 			err = provider.UnstageAll()
+		}
+	case indexCommandCommit:
+		provider := a.commitProvider()
+		if provider == nil {
+			return indexResult{Refresh: true}
+		}
+		if contextProvider, ok := provider.(ContextCommitCapable); ok {
+			err = contextProvider.CommitMessageContext(context.Background(), command.Message)
+		} else {
+			err = provider.CommitMessage(command.Message)
 		}
 	default:
 		return indexResult{Refresh: true}
 	}
 	if err != nil {
 		return indexResult{Refresh: true}
+	}
+	if command.Kind == indexCommandCommit {
+		return indexResult{Refresh: true, ClearCommitMessage: true}
 	}
 	return indexResult{Refresh: true}
 }
@@ -2664,7 +2748,7 @@ func (a *Dv) toggleSidebar() {
 	a.dividerFocused = false
 
 	switch a.focusedWidgetID {
-	case diffSplitPaneID, diffFilesTreeID, diffFilesFilterID, diffFilesScrollID:
+	case diffSplitPaneID, diffFilesTreeID, diffFilesFilterID, diffFilesScrollID, diffCommitMessageID:
 		t.RequestFocus(diffViewerScrollID)
 	}
 }
@@ -2681,6 +2765,35 @@ func (a *Dv) openTreeFilter() {
 		a.treeFilterInput.CursorEnd()
 	}
 	t.RequestFocus(diffFilesFilterID)
+}
+
+func (a *Dv) focusCommitMessage() {
+	if !a.canCommitChanges() {
+		return
+	}
+	if !a.sidebarVisible.Get() {
+		a.sidebarVisible.Set(true)
+		a.dividerFocusRequested.Set(false)
+		a.dividerFocused = false
+	}
+	if a.commitMessageInput != nil {
+		a.commitMessageInput.CursorEnd()
+	}
+	t.RequestFocus(diffCommitMessageID)
+}
+
+func (a *Dv) submitCommitMessage(_ string) {
+	if !a.canCommitChanges() || a.commitMessageInput == nil {
+		return
+	}
+	message := a.commitMessageInput.GetText()
+	if strings.TrimSpace(message) == "" {
+		return
+	}
+	a.enqueueIndexCommand(indexCommand{
+		Kind:    indexCommandCommit,
+		Message: message,
+	})
 }
 
 func (a *Dv) handleEscape() {

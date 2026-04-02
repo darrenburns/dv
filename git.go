@@ -46,6 +46,14 @@ type ContextIndexCapable interface {
 	UnstageAllContext(ctx context.Context) error
 }
 
+type CommitCapable interface {
+	CommitMessage(message string) error
+}
+
+type ContextCommitCapable interface {
+	CommitMessageContext(ctx context.Context, message string) error
+}
+
 // GitDiffProvider loads diff data by shelling out to git.
 type GitDiffProvider struct {
 	WorkDir string
@@ -126,8 +134,24 @@ func (p GitDiffProvider) UnstageAllContext(ctx context.Context) error {
 	return runGitMutation(ctx, p.WorkDir, buildUnstageAllArgsWithoutHead())
 }
 
+func (p GitDiffProvider) CommitMessage(message string) error {
+	return p.CommitMessageContext(context.Background(), message)
+}
+
+func (p GitDiffProvider) CommitMessageContext(ctx context.Context, message string) error {
+	return runGitMutationWithInput(ctx, p.WorkDir, buildCommitMessageArgs(), message)
+}
+
 func runGitMutation(ctx context.Context, workDir string, args []string) error {
 	_, stderr, err := runGit(ctx, workDir, args)
+	if err != nil {
+		return fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
+	}
+	return nil
+}
+
+func runGitMutationWithInput(ctx context.Context, workDir string, args []string, input string) error {
+	_, stderr, err := runGitWithInput(ctx, workDir, args, input)
 	if err != nil {
 		return fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
 	}
@@ -140,6 +164,10 @@ func gitHeadExists(workDir string) bool {
 }
 
 func runGit(ctx context.Context, workDir string, args []string) (stdout string, stderr string, err error) {
+	return runGitWithInput(ctx, workDir, args, "")
+}
+
+func runGitWithInput(ctx context.Context, workDir string, args []string, input string) (stdout string, stderr string, err error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = workDir
 
@@ -147,6 +175,9 @@ func runGit(ctx context.Context, workDir string, args []string) (stdout string, 
 	var errBuf bytes.Buffer
 	cmd.Stdout = &outBuf
 	cmd.Stderr = &errBuf
+	if input != "" {
+		cmd.Stdin = strings.NewReader(input)
+	}
 
 	err = cmd.Run()
 	return outBuf.String(), errBuf.String(), err
@@ -192,4 +223,8 @@ func buildUnstagePathArgsWithoutHead(path string) []string {
 
 func buildUnstageAllArgsWithoutHead() []string {
 	return []string{"rm", "--cached", "-r", "--", ":/"}
+}
+
+func buildCommitMessageArgs() []string {
+	return []string{"commit", "--file", "-"}
 }

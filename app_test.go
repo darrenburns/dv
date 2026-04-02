@@ -864,6 +864,14 @@ func TestDv_KeybindsIncludeSidebarToggle(tt *testing.T) {
 	require.True(tt, keybind.Hidden)
 }
 
+func TestDv_KeybindsIncludeCommitMessageFocus(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "c")
+	require.True(tt, ok)
+	require.Equal(tt, "Focus commit message", keybind.Name)
+	require.True(tt, keybind.Hidden)
+}
+
 func TestDv_KeybindsIncludeWrapToggle(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	keybind, ok := findKeybindByKey(app.Keybinds(), "w")
@@ -926,6 +934,8 @@ func TestDv_PipeModeKeybindsOmitIgnoreWhitespaceToggle(tt *testing.T) {
 	_, ok = findKeybindByKey(app.Keybinds(), "S")
 	require.False(tt, ok)
 	_, ok = findKeybindByKey(app.Keybinds(), "U")
+	require.False(tt, ok)
+	_, ok = findKeybindByKey(app.Keybinds(), "c")
 	require.False(tt, ok)
 }
 
@@ -2290,6 +2300,47 @@ func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 	require.True(tt, app.sidebarVisible.Get())
 }
 
+func TestDv_BuildLeftPaneIncludesCommitMessageInput(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	area := findCommitMessageInput(tt, app)
+	require.Equal(tt, diffCommitMessageID, area.ID)
+	require.Equal(tt, "Write a commit message. Ctrl+Enter to commit.", area.Placeholder)
+	require.Equal(tt, t.Cells(3), area.Style.MinHeight)
+
+	submit, ok := findKeybindByKey(area.Keybinds(), "ctrl+enter")
+	require.True(tt, ok)
+	require.Equal(tt, "Submit", submit.Name)
+}
+
+func TestDv_FocusCommitMessageShowsHiddenSidebar(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	app.sidebarVisible.Set(false)
+
+	keybind, ok := findKeybindByKey(app.Keybinds(), "c")
+	require.True(tt, ok)
+	require.NotNil(tt, keybind.Action)
+	keybind.Action()
+
+	require.True(tt, app.sidebarVisible.Get())
+}
+
+func TestDv_CommitMessageSubmitRunsCommitAndClearsInput(tt *testing.T) {
+	provider := &scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt"), ""}}
+	app := newTestDv(provider, false)
+	app.commitMessageInput.SetText("feat: add sidebar commit box\n\nBody")
+
+	area := findCommitMessageInput(tt, app)
+	submit, ok := findKeybindByKey(area.Keybinds(), "ctrl+enter")
+	require.True(tt, ok)
+	require.NotNil(tt, submit.Action)
+	submit.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"feat: add sidebar commit box\n\nBody"}, provider.commitMessages)
+	require.Equal(tt, "", app.commitMessageInput.GetText())
+}
+
 func TestDividerHoverColorUsesHalfActiveAlpha(tt *testing.T) {
 	theme, ok := t.GetTheme(t.CurrentThemeName())
 	require.True(tt, ok)
@@ -3022,6 +3073,7 @@ type scriptedDiffProvider struct {
 	stageAllCalls   int
 	unstagedPaths   []string
 	unstageAllCalls int
+	commitMessages  []string
 	stagePathBlock  chan struct{}
 	stagePathStart  chan struct{}
 	loadDiffBlock   chan struct{}
@@ -3129,6 +3181,12 @@ func (p *scriptedDiffProvider) UnstagePath(path string) error {
 func (p *scriptedDiffProvider) UnstageAll() error {
 	p.unstageAllCalls++
 	p.operationOrder = append(p.operationOrder, "unstage-all")
+	return nil
+}
+
+func (p *scriptedDiffProvider) CommitMessage(message string) error {
+	p.commitMessages = append(p.commitMessages, message)
+	p.operationOrder = append(p.operationOrder, "commit")
 	return nil
 }
 
@@ -3262,6 +3320,27 @@ func findFilterInput(tt *testing.T, app *Dv) t.TextInput {
 	}
 	require.FailNow(tt, "expected filter input in left pane")
 	return t.TextInput{}
+}
+
+func findCommitMessageInput(tt *testing.T, app *Dv) t.TextArea {
+	tt.Helper()
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	for _, child := range column.Children {
+		area, ok := child.(t.TextArea)
+		if !ok {
+			continue
+		}
+		if area.ID == diffCommitMessageID {
+			return area
+		}
+	}
+	require.FailNow(tt, "expected commit message input in left pane")
+	return t.TextArea{}
 }
 
 func keybindIsHidden(keybinds []t.Keybind, key string) bool {
