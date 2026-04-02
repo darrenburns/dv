@@ -4,6 +4,15 @@ import t "github.com/darrenburns/terma"
 
 type syntaxColorResolver func(theme t.ThemeData) t.Color
 
+var darkThemeStructuralSyntaxResolvers = map[TokenRole]syntaxColorResolver{
+	TokenRoleSyntaxOperator: func(theme t.ThemeData) t.Color {
+		return theme.Text.Blend(theme.Info, 0.35)
+	},
+	TokenRoleSyntaxPunctuation: func(theme t.ThemeData) t.Color {
+		return theme.TextMuted.Blend(theme.Primary, 0.25)
+	},
+}
+
 var lightThemeReadableSyntaxResolvers = map[TokenRole]syntaxColorResolver{
 	TokenRoleSyntaxPlain: func(theme t.ThemeData) t.Color { return theme.Text },
 	TokenRoleSyntaxKeyword: func(theme t.ThemeData) t.Color {
@@ -45,24 +54,26 @@ var syntaxThemeOverrides = map[string]map[TokenRole]syntaxColorResolver{
 	t.ThemeNameSolarizedLight:  lightThemeReadableSyntaxResolvers,
 	t.ThemeNameTokyoNightDay:   lightThemeReadableSyntaxResolvers,
 	t.ThemeNameTokyoNight: {
-		TokenRoleSyntaxPlain:       func(theme t.ThemeData) t.Color { return t.Hex("#c0caf5") },
-		TokenRoleSyntaxKeyword:     func(theme t.ThemeData) t.Color { return t.Hex("#bb9af7") },
-		TokenRoleSyntaxType:        func(theme t.ThemeData) t.Color { return t.Hex("#7dcfff") },
-		TokenRoleSyntaxFunction:    func(theme t.ThemeData) t.Color { return t.Hex("#7aa2f7") },
-		TokenRoleSyntaxIdentifier:  func(theme t.ThemeData) t.Color { return t.Hex("#c0caf5") },
-		TokenRoleSyntaxConstant:    func(theme t.ThemeData) t.Color { return t.Hex("#ff9e64") },
-		TokenRoleSyntaxBuiltin:     func(theme t.ThemeData) t.Color { return t.Hex("#7dcfff") },
+		TokenRoleSyntaxPlain:        func(theme t.ThemeData) t.Color { return t.Hex("#c0caf5") },
+		TokenRoleSyntaxKeyword:      func(theme t.ThemeData) t.Color { return t.Hex("#bb9af7") },
+		TokenRoleSyntaxType:         func(theme t.ThemeData) t.Color { return t.Hex("#7dcfff") },
+		TokenRoleSyntaxFunction:     func(theme t.ThemeData) t.Color { return t.Hex("#7aa2f7") },
+		TokenRoleSyntaxIdentifier:   func(theme t.ThemeData) t.Color { return t.Hex("#c0caf5") },
+		TokenRoleSyntaxConstant:     func(theme t.ThemeData) t.Color { return t.Hex("#ff9e64") },
+		TokenRoleSyntaxBuiltin:      func(theme t.ThemeData) t.Color { return t.Hex("#7dcfff") },
 		TokenRoleSyntaxPreprocessor: func(theme t.ThemeData) t.Color { return t.Hex("#f7768e") },
-		TokenRoleSyntaxAttribute:   func(theme t.ThemeData) t.Color { return t.Hex("#bb9af7") },
-		TokenRoleSyntaxParameter:   func(theme t.ThemeData) t.Color { return t.Hex("#e0af68") },
-		TokenRoleSyntaxString:      func(theme t.ThemeData) t.Color { return t.Hex("#9ece6a") },
-		TokenRoleSyntaxNumber:      func(theme t.ThemeData) t.Color { return t.Hex("#ff9e64") },
-		TokenRoleSyntaxRegex:       func(theme t.ThemeData) t.Color { return t.Hex("#e0af68") },
+		TokenRoleSyntaxAttribute:    func(theme t.ThemeData) t.Color { return t.Hex("#bb9af7") },
+		TokenRoleSyntaxParameter:    func(theme t.ThemeData) t.Color { return t.Hex("#e0af68") },
+		TokenRoleSyntaxString:       func(theme t.ThemeData) t.Color { return t.Hex("#9ece6a") },
+		TokenRoleSyntaxNumber:       func(theme t.ThemeData) t.Color { return t.Hex("#ff9e64") },
+		TokenRoleSyntaxRegex:        func(theme t.ThemeData) t.Color { return t.Hex("#e0af68") },
 		TokenRoleSyntaxStringEscape: func(theme t.ThemeData) t.Color { return t.Hex("#89ddff") },
-		TokenRoleSyntaxTag:         func(theme t.ThemeData) t.Color { return t.Hex("#f7768e") },
-		TokenRoleSyntaxComment:     func(theme t.ThemeData) t.Color { return t.Hex("#565f89") },
-		TokenRoleSyntaxOperator:    func(theme t.ThemeData) t.Color { return t.Hex("#89ddff") },
-		TokenRoleSyntaxPunctuation: func(theme t.ThemeData) t.Color { return t.Hex("#c0caf5") },
+		TokenRoleSyntaxTag:          func(theme t.ThemeData) t.Color { return t.Hex("#f7768e") },
+		TokenRoleSyntaxComment:      func(theme t.ThemeData) t.Color { return t.Hex("#565f89") },
+		TokenRoleSyntaxOperator:     func(theme t.ThemeData) t.Color { return t.Hex("#89ddff") },
+		TokenRoleSyntaxPunctuation: func(theme t.ThemeData) t.Color {
+			return theme.TextMuted.Blend(theme.Primary, 0.25)
+		},
 	},
 	t.ThemeNameKanagawa: {
 		TokenRoleSyntaxKeyword:    func(theme t.ThemeData) t.Color { return theme.Secondary },
@@ -70,7 +81,7 @@ var syntaxThemeOverrides = map[string]map[TokenRole]syntaxColorResolver{
 		TokenRoleSyntaxFunction:   func(theme t.ThemeData) t.Color { return theme.Primary },
 		TokenRoleSyntaxIdentifier: func(theme t.ThemeData) t.Color { return theme.Text },
 		TokenRoleSyntaxConstant:   func(theme t.ThemeData) t.Color { return t.Hex("#FFA066") },
-			TokenRoleSyntaxBuiltin:    func(theme t.ThemeData) t.Color { return theme.Info },
+		TokenRoleSyntaxBuiltin:    func(theme t.ThemeData) t.Color { return theme.Info },
 		TokenRoleSyntaxPreprocessor: func(theme t.ThemeData) t.Color {
 			return t.Hex("#E46876")
 		},
@@ -90,23 +101,13 @@ var syntaxThemeOverrides = map[string]map[TokenRole]syntaxColorResolver{
 }
 
 func applySyntaxThemeOverrides(theme t.ThemeData, roleStyles map[TokenRole]t.SpanStyle) {
-	overrides, ok := syntaxThemeOverrides[theme.Name]
-	if !ok {
-		return
+	if !theme.IsLight {
+		applySyntaxResolvers(theme, roleStyles, darkThemeStructuralSyntaxResolvers)
 	}
 
-	for role, resolver := range overrides {
-		if !isSyntaxOverrideableRole(role) || resolver == nil {
-			continue
-		}
-
-		style, ok := roleStyles[role]
-		if !ok {
-			continue
-		}
-
-		style.Foreground = resolver(theme)
-		roleStyles[role] = style
+	overrides, ok := syntaxThemeOverrides[theme.Name]
+	if ok {
+		applySyntaxResolvers(theme, roleStyles, overrides)
 	}
 }
 
@@ -133,5 +134,21 @@ func isSyntaxOverrideableRole(role TokenRole) bool {
 		return true
 	default:
 		return false
+	}
+}
+
+func applySyntaxResolvers(theme t.ThemeData, roleStyles map[TokenRole]t.SpanStyle, resolvers map[TokenRole]syntaxColorResolver) {
+	for role, resolver := range resolvers {
+		if !isSyntaxOverrideableRole(role) || resolver == nil {
+			continue
+		}
+
+		style, ok := roleStyles[role]
+		if !ok {
+			continue
+		}
+
+		style.Foreground = resolver(theme)
+		roleStyles[role] = style
 	}
 }

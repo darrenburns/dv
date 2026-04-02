@@ -157,15 +157,35 @@ func TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile(tt *testing.
 	}
 }
 
-func TestThemePalette_SyntaxOverrides_NonOverriddenThemeUsesLegacyDefaults(tt *testing.T) {
+func TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile(tt *testing.T) {
 	theme, ok := t.GetTheme(t.ThemeNameObsidianTide)
 	require.True(tt, ok)
 
 	palette := NewThemePalette(theme)
-	expected := expectedDefaultSyntaxForegrounds(theme)
+	expected := expectedDarkThemeSyntaxForegrounds(theme)
 	for _, role := range syntaxOverrideRoles() {
 		style := mustRoleStyle(tt, palette, role)
 		require.Equal(tt, expected[role], style.Foreground)
+	}
+}
+
+func TestThemePalette_SyntaxOverrides_AllDarkThemesUseSpecificOperatorAndPunctuationColors(tt *testing.T) {
+	for _, themeName := range t.DarkThemeNames() {
+		themeName := themeName
+		tt.Run(themeName, func(tt *testing.T) {
+			theme, ok := t.GetTheme(themeName)
+			require.True(tt, ok)
+
+			palette := NewThemePalette(theme)
+
+			operatorStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxOperator)
+			require.Equal(tt, expectedDarkThemeOperatorForeground(theme), operatorStyle.Foreground)
+			require.NotEqual(tt, theme.Text, operatorStyle.Foreground)
+
+			punctuationStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxPunctuation)
+			require.Equal(tt, expectedDarkThemePunctuationForeground(theme), punctuationStyle.Foreground)
+			require.NotEqual(tt, theme.Text, punctuationStyle.Foreground)
+		})
 	}
 }
 
@@ -272,7 +292,7 @@ func expectedLightReadableSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.C
 	}
 }
 
-func expectedDefaultSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.Color {
+func expectedDarkThemeSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.Color {
 	return map[TokenRole]t.Color{
 		TokenRoleSyntaxPlain:        theme.Text,
 		TokenRoleSyntaxKeyword:      theme.Accent,
@@ -290,8 +310,30 @@ func expectedDefaultSyntaxForegrounds(theme t.ThemeData) map[TokenRole]t.Color {
 		TokenRoleSyntaxStringEscape: theme.Warning,
 		TokenRoleSyntaxTag:          theme.Accent,
 		TokenRoleSyntaxComment:      theme.TextMuted,
-		TokenRoleSyntaxOperator:     theme.Text,
-		TokenRoleSyntaxPunctuation:  theme.Text,
+		TokenRoleSyntaxOperator:     expectedDarkThemeOperatorForeground(theme),
+		TokenRoleSyntaxPunctuation:  expectedDarkThemePunctuationForeground(theme),
+	}
+}
+
+func expectedDarkThemeOperatorForeground(theme t.ThemeData) t.Color {
+	switch theme.Name {
+	case t.ThemeNameTokyoNight:
+		return t.Hex("#89ddff")
+	case t.ThemeNameKanagawa:
+		return t.Hex("#C0A36E")
+	default:
+		return theme.Text.Blend(theme.Info, 0.35)
+	}
+}
+
+func expectedDarkThemePunctuationForeground(theme t.ThemeData) t.Color {
+	switch theme.Name {
+	case t.ThemeNameTokyoNight:
+		return theme.TextMuted.Blend(theme.Primary, 0.25)
+	case t.ThemeNameKanagawa:
+		return t.Hex("#9CABCA")
+	default:
+		return theme.TextMuted.Blend(theme.Primary, 0.25)
 	}
 }
 

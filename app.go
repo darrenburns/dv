@@ -177,14 +177,14 @@ type Dv struct {
 
 	treeFilterVisible    bool
 	treeFilterNoMatches  bool
-	diffLayoutMode       DiffLayoutMode
+	diffLayoutMode       t.Signal[DiffLayoutMode]
 	diffHardWrap         bool
 	diffHideChangeSigns  bool
 	diffIntralineStyle   IntralineStyleMode
 	diffIgnoreWhitespace bool
 	manualRefreshEnabled bool
 	focusedWidgetID      string
-	sidebarVisible       bool
+	sidebarVisible       t.Signal[bool]
 
 	dividerFocused        bool
 	dividerHovered        bool
@@ -247,8 +247,8 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		indexResultVersion:   t.NewSignal(0),
 		indexCommandQueue:    make(chan indexCommand, 256),
 		pendingIndexResults:  []indexResult{},
-		sidebarVisible:       initialState.SidebarVisible,
-		diffLayoutMode:       initialState.LayoutMode,
+		sidebarVisible:       t.NewSignal(initialState.SidebarVisible),
+		diffLayoutMode:       t.NewSignal(initialState.LayoutMode),
 		diffHideChangeSigns:  !initialState.ShowChangeSigns,
 		diffIntralineStyle:   initialState.IntralineStyle,
 		diffIgnoreWhitespace: initialState.IgnoreWhitespace,
@@ -549,7 +549,7 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 	a.syncFocusState(ctx)
 	theme := ctx.Theme()
 	body := a.buildRightPane(theme)
-	if a.sidebarVisible {
+	if a.sidebarVisible.Get() {
 		dividerFg := dividerForeground(theme)
 		if a.dividerHovered {
 			dividerFg = dividerHoverForeground(theme)
@@ -879,7 +879,7 @@ func (a *Dv) buildRightPane(theme t.ThemeData) t.Widget {
 		DisableFocus:    true,
 		State:           a.diffViewState,
 		VerticalScroll:  a.diffScrollState,
-		LayoutMode:      a.diffLayoutMode,
+		LayoutMode:      a.diffLayoutMode.Get(),
 		HardWrap:        a.diffHardWrap,
 		HideChangeSigns: a.diffHideChangeSigns,
 		IntralineStyle:  a.diffIntralineStyle,
@@ -1387,7 +1387,7 @@ func (a *Dv) buildHeaderModeIndicator(theme t.ThemeData) t.Widget {
 }
 
 func (a *Dv) diffLayoutModeLabel() string {
-	if a.diffLayoutMode == DiffLayoutSideBySide {
+	if a.diffLayoutMode.Get() == DiffLayoutSideBySide {
 		return "split"
 	}
 	return "unified"
@@ -1910,7 +1910,7 @@ func (a *Dv) toggleDiffWrap() {
 }
 
 func (a *Dv) toggleDiffLayoutMode() {
-	sourceMode := a.diffLayoutMode
+	sourceMode := a.diffLayoutMode.Get()
 	targetMode := DiffLayoutSideBySide
 	if sourceMode == DiffLayoutSideBySide {
 		targetMode = DiffLayoutUnified
@@ -1925,13 +1925,13 @@ func (a *Dv) toggleDiffLayoutMode() {
 	}
 
 	a.rememberToggleLayoutScroll(sourceMode, targetMode, sourceOffset, targetOffset)
-	a.diffLayoutMode = targetMode
+	a.diffLayoutMode.Set(targetMode)
 	a.clampDiffHorizontalScroll()
 	a.setDiffVerticalOffset(targetOffset)
 }
 
 func (a *Dv) resetSideBySideSplit() {
-	if a.diffLayoutMode != DiffLayoutSideBySide || a.diffViewState == nil {
+	if a.diffLayoutMode.Get() != DiffLayoutSideBySide || a.diffViewState == nil {
 		return
 	}
 	if a.diffViewState.SideBySideSplitRatio() == 0.5 {
@@ -1951,7 +1951,7 @@ func (a *Dv) shiftSideBySideSplitRight() {
 }
 
 func (a *Dv) shiftSideBySideSplit(delta int) {
-	if delta == 0 || a.diffLayoutMode != DiffLayoutSideBySide || a.diffViewState == nil {
+	if delta == 0 || a.diffLayoutMode.Get() != DiffLayoutSideBySide || a.diffViewState == nil {
 		return
 	}
 	sideBySide := a.diffViewState.SideBySide.Peek()
@@ -2066,9 +2066,9 @@ func (a *Dv) rememberFileScrollOffset(section DiffSection, filePath string) {
 	}
 
 	offset := a.currentDiffVerticalOffset()
-	offset = a.clampDiffOffsetForViewport(a.diffLayoutMode, offset)
+	offset = a.clampDiffOffsetForViewport(a.diffLayoutMode.Get(), offset)
 	a.fileScrollOffsets[key] = fileScrollState{
-		mode:   a.diffLayoutMode,
+		mode:   a.diffLayoutMode.Get(),
 		offset: offset,
 	}
 }
@@ -2079,10 +2079,10 @@ func (a *Dv) restoreFileScrollOffset(filePath string) {
 		key := diffFileScrollKey(a.activeSection, filePath)
 		if state, ok := a.fileScrollOffsets[key]; ok {
 			targetOffset = state.offset
-			if state.mode != a.diffLayoutMode {
-				targetOffset = a.mapDiffVerticalOffsetForLayoutToggle(state.mode, a.diffLayoutMode, targetOffset)
+			if state.mode != a.diffLayoutMode.Get() {
+				targetOffset = a.mapDiffVerticalOffsetForLayoutToggle(state.mode, a.diffLayoutMode.Get(), targetOffset)
 			} else {
-				targetOffset = a.clampDiffOffsetForLayout(a.diffLayoutMode, targetOffset)
+				targetOffset = a.clampDiffOffsetForLayout(a.diffLayoutMode.Get(), targetOffset)
 			}
 		}
 	}
@@ -2090,7 +2090,7 @@ func (a *Dv) restoreFileScrollOffset(filePath string) {
 }
 
 func (a *Dv) setDiffVerticalOffset(offset int) {
-	offset = a.clampDiffOffsetForViewport(a.diffLayoutMode, offset)
+	offset = a.clampDiffOffsetForViewport(a.diffLayoutMode.Get(), offset)
 	if a.diffScrollState != nil {
 		a.diffScrollState.Offset.Set(offset)
 	}
@@ -2545,7 +2545,7 @@ func (a *Dv) diffScrollGutterWidth() int {
 	if a.diffViewState == nil {
 		return 0
 	}
-	if a.diffLayoutMode == DiffLayoutSideBySide {
+	if a.diffLayoutMode.Get() == DiffLayoutSideBySide {
 		return sideBySideStateGutterWidth(
 			a.diffViewState.Rendered.Peek(),
 			a.diffViewState.SideBySide.Peek(),
@@ -2558,8 +2558,9 @@ func (a *Dv) diffScrollGutterWidth() int {
 }
 
 func (a *Dv) toggleSidebar() {
-	a.sidebarVisible = !a.sidebarVisible
-	if a.sidebarVisible {
+	nextVisible := !a.sidebarVisible.Get()
+	a.sidebarVisible.Set(nextVisible)
+	if nextVisible {
 		return
 	}
 
@@ -2574,8 +2575,8 @@ func (a *Dv) toggleSidebar() {
 }
 
 func (a *Dv) openTreeFilter() {
-	if !a.sidebarVisible {
-		a.sidebarVisible = true
+	if !a.sidebarVisible.Get() {
+		a.sidebarVisible.Set(true)
 		a.dividerFocusRequested = false
 		a.dividerFocused = false
 	}
@@ -2632,7 +2633,7 @@ func (a *Dv) shouldShowTreeFilterInput() bool {
 	if a.treeFilterState == nil {
 		return false
 	}
-	return a.treeFilterState.PeekQuery() != ""
+	return a.treeFilterState.QueryText() != ""
 }
 
 func (a *Dv) syncTreeFilterSelection() {
@@ -2691,7 +2692,7 @@ func (a *Dv) setTreeFilterNoMatches() {
 func (a *Dv) buildTreeFilterEmptyState(theme t.ThemeData) t.Widget {
 	query := ""
 	if a.treeFilterState != nil {
-		query = a.treeFilterState.PeekQuery()
+		query = a.treeFilterState.QueryText()
 	}
 
 	message := "No files match the current filter."
@@ -2726,7 +2727,7 @@ func (a *Dv) buildTreeFilterEmptyState(theme t.ThemeData) t.Widget {
 }
 
 func (a *Dv) focusDivider() {
-	if !a.sidebarVisible {
+	if !a.sidebarVisible.Get() {
 		return
 	}
 	target := a.dividerReturnTarget()
@@ -2736,7 +2737,7 @@ func (a *Dv) focusDivider() {
 }
 
 func (a *Dv) focusDividerFromPalette() {
-	if !a.sidebarVisible {
+	if !a.sidebarVisible.Get() {
 		return
 	}
 	a.dividerFocusRequested = true
@@ -2794,11 +2795,11 @@ func (a *Dv) syncFocusState(ctx t.BuildContext) {
 	wasDividerFocused := a.dividerFocused
 	focusedID := focusedWidgetID(ctx)
 	a.focusedWidgetID = focusedID
-	a.dividerFocused = a.sidebarVisible && focusedID == diffSplitPaneID
+	a.dividerFocused = a.sidebarVisible.Get() && focusedID == diffSplitPaneID
 	if wasDividerFocused && !a.dividerFocused {
 		a.dividerFocusRequested = false
 	}
-	if !a.sidebarVisible {
+	if !a.sidebarVisible.Get() {
 		a.dividerFocusRequested = false
 	}
 	if focusedID != "" && focusedID != diffSplitPaneID {
@@ -3008,7 +3009,7 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			Action:     a.paletteAction(a.toggleDiffLayoutMode),
 		},
 	)
-	if a.diffLayoutMode == DiffLayoutSideBySide {
+	if a.diffLayoutMode.Get() == DiffLayoutSideBySide {
 		items = append(items, t.CommandPaletteItem{
 			Label:      "Reset pane split",
 			FilterText: "Reset pane split divider even ratio 50 50",

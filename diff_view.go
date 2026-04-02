@@ -1269,7 +1269,7 @@ func (d DiffView) clampSideBySideHorizontalScroll(viewportWidth int, sideBySide 
 		return
 	}
 	gutterWidth := sideBySideStateGutterWidth(
-		d.State.Rendered.Peek(),
+		d.State.Rendered.Get(),
 		sideBySide,
 		d.HideChangeSigns,
 		viewportWidth,
@@ -1282,14 +1282,14 @@ func (d DiffView) currentRendered() *RenderedFile {
 	if d.State == nil {
 		return nil
 	}
-	return d.State.Rendered.Peek()
+	return d.State.Rendered.Get()
 }
 
 func (d DiffView) currentSideBySide() *SideBySideRenderedFile {
 	if d.State == nil {
 		return nil
 	}
-	return d.State.SideBySide.Peek()
+	return d.State.SideBySide.Get()
 }
 
 func renderedGutterWidth(rendered *RenderedFile, hideChangeSigns bool) int {
