@@ -16,7 +16,9 @@ func newTestDv(provider DiffProvider, staged bool, initialStates ...DvInitialSta
 	if len(initialStates) > 0 {
 		initialState = initialStates[0]
 	}
-	return NewDv(provider, staged, initialState)
+	app := NewDv(provider, staged, initialState)
+	waitForRefreshTask(nil, app)
+	return app
 }
 
 func TestDv_RefreshDiff_StripsANSIFromDecoratedDiffInput(t *testing.T) {
@@ -65,6 +67,7 @@ func TestDv_RefreshPreservesActiveFileWhenStillPresent(t *testing.T) {
 	require.False(t, app.activeIsDir)
 
 	app.refreshDiff()
+	waitForRefreshTask(t, app)
 
 	require.Equal(t, "b.txt", app.activePath)
 	require.False(t, app.activeIsDir)
@@ -111,7 +114,7 @@ func TestDv_NextPrevCycleOnlyFilteredFiles(t *testing.T) {
 
 	app := newTestDv(provider, false)
 	app.onTreeFilterChange(".go")
-	require.False(t, app.treeFilterNoMatches)
+	require.False(t, app.treeFilterNoMatches.Get())
 	require.Equal(t, "a.go", app.activePath)
 
 	app.moveFileCursor(1)
@@ -137,7 +140,7 @@ func TestDv_NextPrevStartsAtFilteredSetWhenActiveFileExcluded(t *testing.T) {
 	require.Equal(t, "c.txt", app.activePath)
 
 	app.onTreeFilterChange(".go")
-	require.False(t, app.treeFilterNoMatches)
+	require.False(t, app.treeFilterNoMatches.Get())
 	require.Equal(t, "a.go", app.activePath)
 
 	app.moveFileCursor(1)
@@ -829,14 +832,14 @@ func TestDv_CommandPaletteUsesLayoutAndAppearanceSections(tt *testing.T) {
 }
 
 func TestDv_KeybindsHideCommandsExposedInPalette(tt *testing.T) {
-	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	keybinds := app.Keybinds()
 
 	require.True(tt, keybindIsHidden(keybinds, "J"))
 	require.True(tt, keybindIsHidden(keybinds, "K"))
-	require.False(tt, keybindIsHidden(keybinds, "s"))
-	require.False(tt, keybindIsHidden(keybinds, "S"))
-	require.False(tt, keybindIsHidden(keybinds, "U"))
+	require.True(tt, keybindIsHidden(keybinds, "s"))
+	require.True(tt, keybindIsHidden(keybinds, "S"))
+	require.True(tt, keybindIsHidden(keybinds, "U"))
 	require.True(tt, keybindIsHidden(keybinds, "r"))
 	require.True(tt, keybindIsHidden(keybinds, "d"))
 	require.True(tt, keybindIsHidden(keybinds, "ctrl+h"))
@@ -932,12 +935,12 @@ func TestDv_KeybindsIncludeStageShortcuts(tt *testing.T) {
 	stageFile, ok := findKeybindByKey(app.Keybinds(), "s")
 	require.True(tt, ok)
 	require.Equal(tt, "Stage file", stageFile.Name)
-	require.False(tt, stageFile.Hidden)
+	require.True(tt, stageFile.Hidden)
 
 	stageAll, ok := findKeybindByKey(app.Keybinds(), "S")
 	require.True(tt, ok)
 	require.Equal(tt, "Stage all files", stageAll.Name)
-	require.False(tt, stageAll.Hidden)
+	require.True(tt, stageAll.Hidden)
 }
 
 func TestDv_KeybindsUseSameSingleFileShortcutForUnstage(tt *testing.T) {
@@ -949,12 +952,12 @@ func TestDv_KeybindsUseSameSingleFileShortcutForUnstage(tt *testing.T) {
 	unstageFile, ok := findKeybindByKey(app.Keybinds(), "s")
 	require.True(tt, ok)
 	require.Equal(tt, "Unstage file", unstageFile.Name)
-	require.False(tt, unstageFile.Hidden)
+	require.True(tt, unstageFile.Hidden)
 
 	unstageAll, ok := findKeybindByKey(app.Keybinds(), "U")
 	require.True(tt, ok)
 	require.Equal(tt, "Unstage all files", unstageAll.Name)
-	require.False(tt, unstageAll.Hidden)
+	require.True(tt, unstageAll.Hidden)
 }
 
 func TestDv_KeybindsIncludeSideBySideSplitShiftShortcuts(tt *testing.T) {
@@ -1313,12 +1316,12 @@ func TestDv_OpenTreeFilterAllowsViewerFocus(tt *testing.T) {
 
 	app.focusedWidgetID = diffViewerScrollID
 	app.openTreeFilter()
-	require.True(tt, app.treeFilterVisible)
+	require.True(tt, app.treeFilterVisible.Get())
 
-	app.treeFilterVisible = false
+	app.treeFilterVisible.Set(false)
 	app.focusedWidgetID = diffFilesTreeID
 	app.openTreeFilter()
-	require.True(tt, app.treeFilterVisible)
+	require.True(tt, app.treeFilterVisible.Get())
 }
 
 func TestDv_OpenTreeFilterShowsHiddenSidebarAndKeepsItAfterDismiss(tt *testing.T) {
@@ -1328,18 +1331,18 @@ func TestDv_OpenTreeFilterShowsHiddenSidebarAndKeepsItAfterDismiss(tt *testing.T
 
 	app.openTreeFilter()
 	require.True(tt, app.sidebarVisible.Get())
-	require.True(tt, app.treeFilterVisible)
+	require.True(tt, app.treeFilterVisible.Get())
 
 	app.focusedWidgetID = diffFilesFilterID
 	app.handleEscape()
 
-	require.False(tt, app.treeFilterVisible)
+	require.False(tt, app.treeFilterVisible.Get())
 	require.True(tt, app.sidebarVisible.Get())
 }
 
 func TestDv_HandleEscapeClearsActiveTreeFilter(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	app.treeFilterVisible = true
+	app.treeFilterVisible.Set(true)
 	app.onTreeFilterChange("a")
 
 	require.Equal(tt, "a", app.treeFilterState.PeekQuery())
@@ -1350,7 +1353,7 @@ func TestDv_HandleEscapeClearsActiveTreeFilter(tt *testing.T) {
 
 	require.Equal(tt, "", app.treeFilterState.PeekQuery())
 	require.Equal(tt, "", app.treeFilterInput.GetText())
-	require.False(tt, app.treeFilterVisible)
+	require.False(tt, app.treeFilterVisible.Get())
 }
 
 func TestDv_FilterNoMatchesSetsExplicitState(tt *testing.T) {
@@ -1361,7 +1364,7 @@ func TestDv_FilterNoMatchesSetsExplicitState(tt *testing.T) {
 
 	app.onTreeFilterChange("zzz")
 
-	require.True(tt, app.treeFilterNoMatches)
+	require.True(tt, app.treeFilterNoMatches.Get())
 	require.Equal(tt, initialPath, app.activePath)
 	require.False(tt, app.activeIsDir)
 	require.Equal(tt, DiffTreeNodeFile, app.activeKind)
@@ -1379,21 +1382,21 @@ func TestDv_ClearTreeFilterResetsNoMatchesState(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt", "b.txt")}}, false)
 	app.treeFilterInput.SetText("zzz")
 	app.onTreeFilterChange("zzz")
-	require.True(tt, app.treeFilterNoMatches)
+	require.True(tt, app.treeFilterNoMatches.Get())
 
 	cleared := app.clearTreeFilter()
 
 	require.True(tt, cleared)
-	require.False(tt, app.treeFilterNoMatches)
+	require.False(tt, app.treeFilterNoMatches.Get())
 	require.Equal(tt, "", app.treeFilterState.PeekQuery())
 	require.Equal(tt, "", app.treeFilterInput.GetText())
-	require.False(tt, app.treeFilterVisible)
+	require.False(tt, app.treeFilterVisible.Get())
 	require.Equal(tt, app.orderedFilePaths[0], app.activePath)
 }
 
 func TestDv_FilterInputExposesArrowNavigationKeybinds(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt", "b.txt")}}, false)
-	app.treeFilterVisible = true
+	app.treeFilterVisible.Set(true)
 
 	filterInput := findFilterInput(tt, app)
 	up, ok := findKeybindByKey(filterInput.ExtraKeybinds, "up")
@@ -1412,7 +1415,7 @@ func TestDv_FilterInputArrowKeybindsNavigateFilteredFiles(tt *testing.T) {
 		repoRoot: "/tmp/repo",
 		diffs:    []string{diffForPaths("a.go", "b.go", "c.txt")},
 	}, false)
-	app.treeFilterVisible = true
+	app.treeFilterVisible.Set(true)
 	app.onTreeFilterChange(".go")
 	require.Equal(tt, "a.go", app.activePath)
 
@@ -1437,7 +1440,7 @@ func TestDv_FilterInputArrowKeybindsKeepInputFocus(tt *testing.T) {
 		repoRoot: "/tmp/repo",
 		diffs:    []string{diffForPaths("a.txt", "b.txt")},
 	}, false)
-	app.treeFilterVisible = true
+	app.treeFilterVisible.Set(true)
 	app.focusedWidgetID = diffFilesFilterID
 	require.GreaterOrEqual(tt, len(app.orderedFilePaths), 2)
 	require.Equal(tt, app.orderedFilePaths[0], app.activePath)
@@ -1851,7 +1854,7 @@ func TestDv_SidebarTotalsSpansAggregatesAllFiles(tt *testing.T) {
 	require.Equal(tt, theme.Error, spans[2].Style.Foreground)
 
 	app.onTreeFilterChange("zzz")
-	require.True(tt, app.treeFilterNoMatches)
+	require.True(tt, app.treeFilterNoMatches.Get())
 
 	spans = app.sidebarTotalsSpans(theme)
 	require.Len(tt, spans, 3)
@@ -2207,6 +2210,39 @@ func TestDv_EmptyStateMentionsIgnoreWhitespaceWhenEnabled(tt *testing.T) {
 	require.GreaterOrEqual(tt, indexOfTextContaining(texts, "[x] Toggle ignore whitespace"), 0)
 }
 
+func TestDv_InitialAsyncLoadKeepsLoadingPlaceholderUntilFirstRefreshCompletes(tt *testing.T) {
+	block := make(chan struct{})
+	started := make(chan struct{}, 1)
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		diffs:         []string{diffForPaths("a.txt")},
+		loadDiffBlock: block,
+		loadDiffStart: started,
+	}
+
+	app := NewDv(provider, false, DefaultDvInitialState())
+	<-started
+
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	widget := app.buildRightPane(theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	scrollable, ok := column.Children[1].(t.Scrollable)
+	require.True(tt, ok)
+
+	_, isEmptyState := scrollable.Child.(t.Column)
+	require.False(tt, isEmptyState)
+
+	viewer, ok := scrollable.Child.(DiffView)
+	require.True(tt, ok)
+	require.Equal(tt, "Loading diff...", viewer.State.Rendered.Peek().Lines[0].Segments[0].Text)
+
+	close(block)
+	waitForRefreshTask(tt, app)
+}
+
 func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
@@ -2244,11 +2280,11 @@ func TestDv_PipeModeEmptyStateDoesNotMentionRefreshKey(tt *testing.T) {
 func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	require.True(tt, app.sidebarVisible.Get())
-	app.dividerHovered = true
+	app.dividerHovered.Set(true)
 
 	app.toggleSidebar()
 	require.False(tt, app.sidebarVisible.Get())
-	require.False(tt, app.dividerHovered)
+	require.False(tt, app.dividerHovered.Get())
 
 	app.toggleSidebar()
 	require.True(tt, app.sidebarVisible.Get())
@@ -2270,13 +2306,13 @@ func TestDividerHoverColorUsesHalfActiveAlpha(tt *testing.T) {
 
 func TestDv_ToggleDiffWrap(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.False(tt, app.diffHardWrap)
+	require.False(tt, app.diffHardWrap.Get())
 
 	app.toggleDiffWrap()
-	require.True(tt, app.diffHardWrap)
+	require.True(tt, app.diffHardWrap.Get())
 
 	app.toggleDiffWrap()
-	require.False(tt, app.diffHardWrap)
+	require.False(tt, app.diffHardWrap.Get())
 }
 
 func TestDv_ToggleDiffLayoutModePreservesSelection(tt *testing.T) {
@@ -2352,7 +2388,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksMoveAndClamp(tt *testing.T) {
 
 	rendered := buildTestRenderedFile(20, 120)
 	app.diffViewState.SetRendered(rendered)
-	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns)
+	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns.Peek())
 	app.diffViewState.SetViewport(40, 10, gutterWidth)
 	require.NotNil(tt, app.diffScrollState.OnScrollRight)
 	require.NotNil(tt, app.diffScrollState.OnScrollLeft)
@@ -2377,7 +2413,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksNoopWhenWrapped(tt *testing.T) {
 	app.diffViewState.SetRendered(rendered)
 	app.diffViewState.ScrollX.Set(9)
 
-	app.diffHardWrap = true
+	app.diffHardWrap.Set(true)
 	handled := app.diffScrollState.ScrollRight(1)
 	require.False(tt, handled)
 	require.Equal(tt, 9, app.diffViewState.ScrollX.Peek())
@@ -2400,7 +2436,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksMoveAndClampInSideBySideMode(tt *t
 	gutterWidth := sideBySideStateGutterWidth(
 		rendered,
 		side,
-		app.diffHideChangeSigns,
+		app.diffHideChangeSigns.Peek(),
 		60,
 		app.diffViewState.SideBySideSplitRatio(),
 	)
@@ -2415,7 +2451,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksMoveAndClampInSideBySideMode(tt *t
 
 	handled = app.diffScrollState.ScrollRight(1000)
 	require.True(tt, handled)
-	require.Equal(tt, sideBySideMaxScrollX(side, app.diffHideChangeSigns, 60, app.diffViewState.SideBySideSplitRatio()), app.diffViewState.ScrollX.Peek())
+	require.Equal(tt, sideBySideMaxScrollX(side, app.diffHideChangeSigns.Peek(), 60, app.diffViewState.SideBySideSplitRatio()), app.diffViewState.ScrollX.Peek())
 
 	handled = app.diffScrollState.ScrollLeft(1000)
 	require.True(tt, handled)
@@ -2438,7 +2474,7 @@ func TestDv_DiffScrollStateHorizontalCallbacksNoopWhenWrappedInSideBySideMode(tt
 	app.diffViewState.SetRenderedPair(rendered, side)
 	app.diffViewState.ScrollX.Set(9)
 
-	app.diffHardWrap = true
+	app.diffHardWrap.Set(true)
 	handled := app.diffScrollState.ScrollRight(1)
 	require.False(tt, handled)
 	require.Equal(tt, 9, app.diffViewState.ScrollX.Peek())
@@ -2449,7 +2485,7 @@ func TestDv_DiffJumpKeybindsMoveByTenLinesWhenViewerFocused(tt *testing.T) {
 
 	rendered := buildTestRenderedFile(40, 80)
 	app.diffViewState.SetRendered(rendered)
-	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns)
+	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns.Peek())
 	app.diffViewState.SetViewport(80, 10, gutterWidth)
 	app.setDiffVerticalOffset(5)
 	app.focusedWidgetID = diffViewerScrollID
@@ -2480,7 +2516,7 @@ func TestDv_DiffJumpKeybindsNoopWhenViewerNotFocused(tt *testing.T) {
 
 	rendered := buildTestRenderedFile(40, 80)
 	app.diffViewState.SetRendered(rendered)
-	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns)
+	gutterWidth := renderedGutterWidth(rendered, app.diffHideChangeSigns.Peek())
 	app.diffViewState.SetViewport(80, 10, gutterWidth)
 	app.setDiffVerticalOffset(7)
 	app.focusedWidgetID = diffFilesTreeID
@@ -2511,20 +2547,20 @@ func TestDv_ShiftSideBySideSplitActionsMoveDividerByOneCell(tt *testing.T) {
 	gutterWidth := sideBySideStateGutterWidth(
 		rendered,
 		side,
-		app.diffHideChangeSigns,
+		app.diffHideChangeSigns.Peek(),
 		60,
 		app.diffViewState.SideBySideSplitRatio(),
 	)
 	app.diffViewState.SetViewport(60, 10, gutterWidth)
 
-	before := sideBySidePaneLayout(60, side, app.diffHideChangeSigns, app.diffViewState.SideBySideSplitRatio())
+	before := sideBySidePaneLayout(60, side, app.diffHideChangeSigns.Peek(), app.diffViewState.SideBySideSplitRatio())
 	right, ok := findKeybindByKey(app.Keybinds(), "ctrl+l")
 	require.True(tt, ok)
 	require.NotNil(tt, right.Action)
 	right.Action()
 	require.True(tt, app.diffViewState.SideDividerOverlayVisible())
 
-	afterRight := sideBySidePaneLayout(60, side, app.diffHideChangeSigns, app.diffViewState.SideBySideSplitRatio())
+	afterRight := sideBySidePaneLayout(60, side, app.diffHideChangeSigns.Peek(), app.diffViewState.SideBySideSplitRatio())
 	require.Equal(tt, before.DividerX+1, afterRight.DividerX)
 
 	left, ok := findKeybindByKey(app.Keybinds(), "ctrl+h")
@@ -2533,7 +2569,7 @@ func TestDv_ShiftSideBySideSplitActionsMoveDividerByOneCell(tt *testing.T) {
 	left.Action()
 	require.True(tt, app.diffViewState.SideDividerOverlayVisible())
 
-	afterLeft := sideBySidePaneLayout(60, side, app.diffHideChangeSigns, app.diffViewState.SideBySideSplitRatio())
+	afterLeft := sideBySidePaneLayout(60, side, app.diffHideChangeSigns.Peek(), app.diffViewState.SideBySideSplitRatio())
 	require.Equal(tt, before.DividerX, afterLeft.DividerX)
 }
 
@@ -2552,13 +2588,13 @@ func TestDv_ShiftSideBySideSplitActionsNoopOutsideSideBySide(tt *testing.T) {
 
 func TestDv_ToggleDiffChangeSigns(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.True(tt, app.diffHideChangeSigns)
+	require.True(tt, app.diffHideChangeSigns.Get())
 
 	app.toggleDiffChangeSigns()
-	require.False(tt, app.diffHideChangeSigns)
+	require.False(tt, app.diffHideChangeSigns.Get())
 
 	app.toggleDiffChangeSigns()
-	require.True(tt, app.diffHideChangeSigns)
+	require.True(tt, app.diffHideChangeSigns.Get())
 }
 
 func TestDv_ToggleDiffIgnoreWhitespaceRefreshesAndUpdatesProviderCalls(tt *testing.T) {
@@ -2567,7 +2603,7 @@ func TestDv_ToggleDiffIgnoreWhitespaceRefreshesAndUpdatesProviderCalls(tt *testi
 		diffs:    []string{diffForPaths("a.txt"), diffForPaths("a.txt"), diffForPaths("a.txt")},
 	}
 	app := newTestDv(provider, false)
-	require.False(tt, app.diffIgnoreWhitespace)
+	require.False(tt, app.diffIgnoreWhitespace.Get())
 	require.NotEmpty(tt, provider.loadIgnoreWS)
 	for _, value := range provider.loadIgnoreWS {
 		require.False(tt, value)
@@ -2575,15 +2611,17 @@ func TestDv_ToggleDiffIgnoreWhitespaceRefreshesAndUpdatesProviderCalls(tt *testi
 
 	initialCalls := len(provider.loadIgnoreWS)
 	app.toggleDiffIgnoreWhitespace()
+	waitForRefreshTask(tt, app)
 
-	require.True(tt, app.diffIgnoreWhitespace)
+	require.True(tt, app.diffIgnoreWhitespace.Get())
 	require.Greater(tt, len(provider.loadIgnoreWS), initialCalls)
 	for _, value := range provider.loadIgnoreWS[initialCalls:] {
 		require.True(tt, value)
 	}
 
 	app.toggleDiffIgnoreWhitespace()
-	require.False(tt, app.diffIgnoreWhitespace)
+	waitForRefreshTask(tt, app)
+	require.False(tt, app.diffIgnoreWhitespace.Get())
 	secondCalls := provider.loadIgnoreWS[len(provider.loadIgnoreWS)-2:]
 	require.Len(tt, secondCalls, 2)
 	require.Equal(tt, []bool{false, false}, secondCalls)
@@ -2604,9 +2642,9 @@ func TestDv_NewDvAppliesProvidedDefaults(tt *testing.T) {
 
 	require.Equal(tt, DiffLayoutSideBySide, app.diffLayoutMode.Get())
 	require.False(tt, app.sidebarVisible.Get())
-	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
-	require.False(tt, app.diffHideChangeSigns)
-	require.True(tt, app.diffIgnoreWhitespace)
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle.Get())
+	require.False(tt, app.diffHideChangeSigns.Get())
+	require.True(tt, app.diffIgnoreWhitespace.Get())
 	require.Equal(tt, t.ThemeNameDracula, t.CurrentThemeName())
 }
 
@@ -2621,7 +2659,7 @@ func TestDv_NewDvPipeModeDisablesIgnoreWhitespace(tt *testing.T) {
 	})
 
 	require.True(tt, app.isPipedDiffMode())
-	require.False(tt, app.diffIgnoreWhitespace)
+	require.False(tt, app.diffIgnoreWhitespace.Get())
 }
 
 func TestDv_NewDvNormalizesInvalidValues(tt *testing.T) {
@@ -2638,14 +2676,14 @@ func TestDv_NewDvNormalizesInvalidValues(tt *testing.T) {
 
 	require.Equal(tt, DiffLayoutUnified, app.diffLayoutMode.Get())
 	require.False(tt, app.sidebarVisible.Get())
-	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
-	require.True(tt, app.diffHideChangeSigns)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle.Get())
+	require.True(tt, app.diffHideChangeSigns.Get())
 	require.Equal(tt, t.ThemeNameObsidianTide, t.CurrentThemeName())
 }
 
 func TestDv_DefaultIntralineStyleModeIsBackground(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle.Get())
 
 	theme, ok := t.GetTheme(t.CurrentThemeName())
 	require.True(tt, ok)
@@ -2661,16 +2699,16 @@ func TestDv_DefaultIntralineStyleModeIsBackground(tt *testing.T) {
 
 func TestDv_ToggleDiffIntralineStyle(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle.Get())
 
 	app.toggleDiffIntralineStyle()
-	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle.Get())
 
 	app.toggleDiffIntralineStyle()
-	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle.Get())
 
 	app.toggleDiffIntralineStyle()
-	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle.Get())
 }
 
 func TestDv_ToggleActiveFileReviewed(tt *testing.T) {
@@ -2694,7 +2732,7 @@ func TestDv_ToggleActiveFileReviewedNoopForNonFile(tt *testing.T) {
 	require.Equal(tt, DiffTreeNodeSection, app.activeKind)
 
 	app.toggleActiveFileReviewed()
-	require.Empty(tt, app.reviewedByFile)
+	require.Empty(tt, app.reviewedByFile.Peek())
 }
 
 func TestDv_ClearAllReviewedClearsMarksWithoutChangingSelection(tt *testing.T) {
@@ -2714,17 +2752,17 @@ func TestDv_ClearAllReviewedClearsMarksWithoutChangingSelection(tt *testing.T) {
 	require.True(tt, ok)
 	app.toggleActiveFileReviewed()
 	require.True(tt, app.isReviewed(section, filePath))
-	require.Len(tt, app.reviewedByFile, 2)
+	require.Len(tt, app.reviewedByFile.Peek(), 2)
 
 	activeSection := app.activeSection
 	activePath := app.activePath
 	app.clearAllReviewed()
-	require.Empty(tt, app.reviewedByFile)
+	require.Empty(tt, app.reviewedByFile.Peek())
 	require.Equal(tt, activeSection, app.activeSection)
 	require.Equal(tt, activePath, app.activePath)
 
 	app.clearAllReviewed()
-	require.Empty(tt, app.reviewedByFile)
+	require.Empty(tt, app.reviewedByFile.Peek())
 }
 
 func TestDv_ReviewedMarksPersistAcrossRefresh(tt *testing.T) {
@@ -2744,6 +2782,7 @@ func TestDv_ReviewedMarksPersistAcrossRefresh(tt *testing.T) {
 	app.toggleActiveFileReviewed()
 	require.True(tt, app.isReviewed(section, filePath))
 	app.refreshDiff()
+	waitForRefreshTask(tt, app)
 	require.True(tt, app.isReviewed(section, filePath))
 }
 
@@ -2778,13 +2817,13 @@ func TestDv_CommandPaletteIntralineStyleActionTogglesMode(tt *testing.T) {
 	item := findPaletteItemByLabel(level.Items, "Toggle intraline style")
 	require.True(tt, item.IsSelectable())
 	require.NotNil(tt, item.Action)
-	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle.Get())
 
 	item.Action()
-	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle.Get())
 
 	item.Action()
-	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle.Get())
 }
 
 func TestDv_NewDvAcceptsIntralineStyleOff(tt *testing.T) {
@@ -2794,7 +2833,7 @@ func TestDv_NewDvAcceptsIntralineStyleOff(tt *testing.T) {
 	}, false, DvInitialState{
 		IntralineStyle: IntralineStyleModeOff,
 	})
-	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle.Get())
 }
 
 func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T) {
@@ -2820,7 +2859,7 @@ func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T)
 	require.NotNil(tt, initialSide)
 
 	app.toggleDiffIntralineStyle()
-	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeUnderline, app.diffIntralineStyle.Get())
 	rendered = app.diffViewState.Rendered.Peek()
 	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
 	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
@@ -2828,7 +2867,7 @@ func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T)
 	require.Same(tt, initialSide, app.sideRenderedByPath[app.activePath])
 
 	app.toggleDiffIntralineStyle()
-	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeOff, app.diffIntralineStyle.Get())
 	rendered = app.diffViewState.Rendered.Peek()
 	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
 	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
@@ -2836,7 +2875,7 @@ func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T)
 	require.Same(tt, initialSide, app.sideRenderedByPath[app.activePath])
 
 	app.toggleDiffIntralineStyle()
-	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle)
+	require.Equal(tt, IntralineStyleModeBackground, app.diffIntralineStyle.Get())
 	rendered = app.diffViewState.Rendered.Peek()
 	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[1], IntralineMarkRemove))
 	require.NotEmpty(tt, markedIndicesForLine(rendered.Lines[2], IntralineMarkAdd))
@@ -2847,13 +2886,13 @@ func TestDv_ToggleDiffIntralineStyle_DoesNotRebuildRenderedCaches(tt *testing.T)
 func TestDv_FocusDividerNoopWhenSidebarHidden(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	app.sidebarVisible.Set(false)
-	app.dividerFocusRequested = false
+	app.dividerFocusRequested.Set(false)
 
 	app.focusDivider()
-	require.False(tt, app.dividerFocusRequested)
+	require.False(tt, app.dividerFocusRequested.Get())
 
 	app.focusDividerFromPalette()
-	require.False(tt, app.dividerFocusRequested)
+	require.False(tt, app.dividerFocusRequested.Get())
 }
 
 func TestDv_DividerReturnTargetFallsBackFromCommandPalette(tt *testing.T) {
@@ -2876,7 +2915,7 @@ func TestDv_FocusDividerFromPaletteUsesViewerFallbackTarget(tt *testing.T) {
 
 	app.focusDividerFromPalette()
 
-	require.True(tt, app.dividerFocusRequested)
+	require.True(tt, app.dividerFocusRequested.Get())
 	require.Equal(tt, diffViewerScrollID, app.focusReturnID)
 }
 
@@ -2985,12 +3024,23 @@ type scriptedDiffProvider struct {
 	unstageAllCalls int
 	stagePathBlock  chan struct{}
 	stagePathStart  chan struct{}
+	loadDiffBlock   chan struct{}
+	loadDiffStart   chan struct{}
 	operationOrder  []string
 }
 
 func (p *scriptedDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
 	p.loadStaged = append(p.loadStaged, staged)
 	p.loadIgnoreWS = append(p.loadIgnoreWS, ignoreWhitespace)
+	if p.loadDiffStart != nil {
+		select {
+		case p.loadDiffStart <- struct{}{}:
+		default:
+		}
+	}
+	if p.loadDiffBlock != nil {
+		<-p.loadDiffBlock
+	}
 
 	if len(p.unstagedDiffs) > 0 || len(p.stagedDiffs) > 0 {
 		if staged {
@@ -3089,11 +3139,24 @@ func boolPtr(value bool) *bool {
 func flushAsyncIndexWork(tt *testing.T, app *Dv) {
 	tt.Helper()
 	require.Eventually(tt, func() bool {
-		app.flushPendingIndexUpdates()
-		app.indexResultMu.Lock()
-		pendingResults := len(app.pendingIndexResults)
-		app.indexResultMu.Unlock()
-		return app.indexPendingCount.Peek() == 0 && pendingResults == 0
+		return app.indexPendingCount.Peek() == 0 && (app.refreshTask == nil || !app.refreshTask.Running.Peek())
+	}, 2*time.Second, 10*time.Millisecond)
+}
+
+func waitForRefreshTask(tt testing.TB, app *Dv) {
+	if app == nil || app.refreshTask == nil {
+		return
+	}
+	if tt == nil {
+		deadline := time.Now().Add(2 * time.Second)
+		for app.refreshTask.Running.Peek() && time.Now().Before(deadline) {
+			time.Sleep(10 * time.Millisecond)
+		}
+		return
+	}
+	tt.Helper()
+	require.Eventually(tt, func() bool {
+		return !app.refreshTask.Running.Peek()
 	}, 2*time.Second, 10*time.Millisecond)
 }
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"os/exec"
 	"strings"
@@ -12,6 +13,12 @@ type DiffProvider interface {
 	LoadDiff(staged bool, ignoreWhitespace bool) (string, error)
 	RepoRoot() (string, error)
 	CurrentBranch() (string, error)
+}
+
+type ContextDiffProvider interface {
+	LoadDiffContext(ctx context.Context, staged bool, ignoreWhitespace bool) (string, error)
+	RepoRootContext(ctx context.Context) (string, error)
+	CurrentBranchContext(ctx context.Context) (string, error)
 }
 
 // DiffSectionsProvider optionally customizes which sections dv should render.
@@ -32,14 +39,25 @@ type IndexCapable interface {
 	UnstageAll() error
 }
 
+type ContextIndexCapable interface {
+	StagePathContext(ctx context.Context, path string) error
+	StageAllContext(ctx context.Context) error
+	UnstagePathContext(ctx context.Context, path string) error
+	UnstageAllContext(ctx context.Context) error
+}
+
 // GitDiffProvider loads diff data by shelling out to git.
 type GitDiffProvider struct {
 	WorkDir string
 }
 
 func (p GitDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
+	return p.LoadDiffContext(context.Background(), staged, ignoreWhitespace)
+}
+
+func (p GitDiffProvider) LoadDiffContext(ctx context.Context, staged bool, ignoreWhitespace bool) (string, error) {
 	args := buildDiffArgs(staged, ignoreWhitespace)
-	stdout, stderr, err := runGit(p.WorkDir, args)
+	stdout, stderr, err := runGit(ctx, p.WorkDir, args)
 	if err != nil {
 		return "", fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
 	}
@@ -47,7 +65,11 @@ func (p GitDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, e
 }
 
 func (p GitDiffProvider) RepoRoot() (string, error) {
-	stdout, stderr, err := runGit(p.WorkDir, []string{"rev-parse", "--show-toplevel"})
+	return p.RepoRootContext(context.Background())
+}
+
+func (p GitDiffProvider) RepoRootContext(ctx context.Context) (string, error) {
+	stdout, stderr, err := runGit(ctx, p.WorkDir, []string{"rev-parse", "--show-toplevel"})
 	if err != nil {
 		return "", fmt.Errorf("git rev-parse --show-toplevel failed: %w: %s", err, strings.TrimSpace(stderr))
 	}
@@ -55,7 +77,11 @@ func (p GitDiffProvider) RepoRoot() (string, error) {
 }
 
 func (p GitDiffProvider) CurrentBranch() (string, error) {
-	stdout, stderr, err := runGit(p.WorkDir, []string{"branch", "--show-current"})
+	return p.CurrentBranchContext(context.Background())
+}
+
+func (p GitDiffProvider) CurrentBranchContext(ctx context.Context) (string, error) {
+	stdout, stderr, err := runGit(ctx, p.WorkDir, []string{"branch", "--show-current"})
 	if err != nil {
 		return "", fmt.Errorf("git branch --show-current failed: %w: %s", err, strings.TrimSpace(stderr))
 	}
@@ -63,30 +89,45 @@ func (p GitDiffProvider) CurrentBranch() (string, error) {
 }
 
 func (p GitDiffProvider) StagePath(path string) error {
-	return runGitMutation(p.WorkDir, buildStagePathArgs(path))
+	return p.StagePathContext(context.Background(), path)
+}
+
+func (p GitDiffProvider) StagePathContext(ctx context.Context, path string) error {
+	return runGitMutation(ctx, p.WorkDir, buildStagePathArgs(path))
 }
 
 func (p GitDiffProvider) StageAll() error {
-	args := buildStageAllArgs()
-	return runGitMutation(p.WorkDir, args)
+	return p.StageAllContext(context.Background())
+}
+
+func (p GitDiffProvider) StageAllContext(ctx context.Context) error {
+	return runGitMutation(ctx, p.WorkDir, buildStageAllArgs())
 }
 
 func (p GitDiffProvider) UnstagePath(path string) error {
+	return p.UnstagePathContext(context.Background(), path)
+}
+
+func (p GitDiffProvider) UnstagePathContext(ctx context.Context, path string) error {
 	if gitHeadExists(p.WorkDir) {
-		return runGitMutation(p.WorkDir, buildUnstagePathArgs(path))
+		return runGitMutation(ctx, p.WorkDir, buildUnstagePathArgs(path))
 	}
-	return runGitMutation(p.WorkDir, buildUnstagePathArgsWithoutHead(path))
+	return runGitMutation(ctx, p.WorkDir, buildUnstagePathArgsWithoutHead(path))
 }
 
 func (p GitDiffProvider) UnstageAll() error {
-	if gitHeadExists(p.WorkDir) {
-		return runGitMutation(p.WorkDir, buildUnstageAllArgs())
-	}
-	return runGitMutation(p.WorkDir, buildUnstageAllArgsWithoutHead())
+	return p.UnstageAllContext(context.Background())
 }
 
-func runGitMutation(workDir string, args []string) error {
-	_, stderr, err := runGit(workDir, args)
+func (p GitDiffProvider) UnstageAllContext(ctx context.Context) error {
+	if gitHeadExists(p.WorkDir) {
+		return runGitMutation(ctx, p.WorkDir, buildUnstageAllArgs())
+	}
+	return runGitMutation(ctx, p.WorkDir, buildUnstageAllArgsWithoutHead())
+}
+
+func runGitMutation(ctx context.Context, workDir string, args []string) error {
+	_, stderr, err := runGit(ctx, workDir, args)
 	if err != nil {
 		return fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
 	}
@@ -94,12 +135,12 @@ func runGitMutation(workDir string, args []string) error {
 }
 
 func gitHeadExists(workDir string) bool {
-	_, _, err := runGit(workDir, []string{"rev-parse", "--verify", "HEAD"})
+	_, _, err := runGit(context.Background(), workDir, []string{"rev-parse", "--verify", "HEAD"})
 	return err == nil
 }
 
-func runGit(workDir string, args []string) (stdout string, stderr string, err error) {
-	cmd := exec.Command("git", args...)
+func runGit(ctx context.Context, workDir string, args []string) (stdout string, stderr string, err error) {
+	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = workDir
 
 	var outBuf bytes.Buffer

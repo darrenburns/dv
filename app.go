@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
+	"sync/atomic"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
@@ -134,6 +135,22 @@ type indexResult struct {
 	Refresh bool
 }
 
+type diffRefreshRequest struct {
+	ignoreWhitespace   bool
+	previousSelections map[DiffSection]string
+	previousActive     DiffSection
+}
+
+type diffRefreshResult struct {
+	repoRoot       string
+	hasRepoRoot    bool
+	branch         string
+	hasBranch      bool
+	sections       map[DiffSection]*diffSectionState
+	previousActive DiffSection
+	loadErr        string
+}
+
 // Dv is a syntax-highlighted git diff viewer.
 type Dv struct {
 	provider DiffProvider
@@ -167,28 +184,29 @@ type Dv struct {
 	treeFilterInput     *t.TextInputState
 	diffScrollState     *t.ScrollState
 	diffViewState       *DiffViewState
+	refreshTask         *t.Task[struct{}]
+	refreshApplied      t.Signal[int]
+	initialLoadResolved t.Signal[bool]
 	splitState          *t.SplitPaneState
 	commandPalette      *t.CommandPaletteState
 	indexPendingCount   t.Signal[int]
-	indexResultVersion  t.Signal[int]
 	indexCommandQueue   chan indexCommand
-	indexResultMu       sync.Mutex
-	pendingIndexResults []indexResult
+	refreshGeneration   atomic.Uint64
 
-	treeFilterVisible    bool
-	treeFilterNoMatches  bool
+	treeFilterVisible    t.Signal[bool]
+	treeFilterNoMatches  t.Signal[bool]
 	diffLayoutMode       t.Signal[DiffLayoutMode]
-	diffHardWrap         bool
-	diffHideChangeSigns  bool
-	diffIntralineStyle   IntralineStyleMode
-	diffIgnoreWhitespace bool
+	diffHardWrap         t.Signal[bool]
+	diffHideChangeSigns  t.Signal[bool]
+	diffIntralineStyle   t.Signal[IntralineStyleMode]
+	diffIgnoreWhitespace t.Signal[bool]
 	manualRefreshEnabled bool
 	focusedWidgetID      string
 	sidebarVisible       t.Signal[bool]
 
 	dividerFocused        bool
-	dividerHovered        bool
-	dividerFocusRequested bool
+	dividerHovered        t.Signal[bool]
+	dividerFocusRequested t.Signal[bool]
 	lastNonDividerFocus   string
 	focusReturnID         string
 	themeCursorSynced     bool
@@ -203,7 +221,7 @@ type Dv struct {
 	layoutToggleScrollActiveSection DiffSection
 
 	fileScrollOffsets map[string]fileScrollState
-	reviewedByFile    map[string]bool
+	reviewedByFile    t.AnySignal[map[string]bool]
 }
 
 func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv {
@@ -226,41 +244,47 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 	}
 
 	app := &Dv{
-		provider:             provider,
-		renderedByPath:       map[string]*RenderedFile{},
-		sideRenderedByPath:   map[string]*SideBySideRenderedFile{},
-		fileByPath:           map[string]*DiffFile{},
-		filePathToTreePath:   map[string][]int{},
-		orderedFilePaths:     []string{},
-		sectionOrder:         sectionOrder,
-		activeSection:        initialSection,
-		initialSection:       initialSection,
-		sections:             newDiffSectionStateMap(sectionOrder),
-		treeState:            t.NewTreeState([]t.TreeNode[DiffTreeNodeData]{}),
-		treeScrollState:      t.NewScrollState(),
-		treeFilterState:      t.NewFilterState(),
-		treeFilterInput:      t.NewTextInputState(""),
-		diffScrollState:      t.NewScrollState(),
-		diffViewState:        NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
-		splitState:           t.NewSplitPaneState(0.30),
-		indexPendingCount:    t.NewSignal(0),
-		indexResultVersion:   t.NewSignal(0),
-		indexCommandQueue:    make(chan indexCommand, 256),
-		pendingIndexResults:  []indexResult{},
-		sidebarVisible:       t.NewSignal(initialState.SidebarVisible),
-		diffLayoutMode:       t.NewSignal(initialState.LayoutMode),
-		diffHideChangeSigns:  !initialState.ShowChangeSigns,
-		diffIntralineStyle:   initialState.IntralineStyle,
-		diffIgnoreWhitespace: initialState.IgnoreWhitespace,
-		manualRefreshEnabled: manualRefreshEnabled,
-		lastNonDividerFocus:  diffViewerScrollID,
-		focusReturnID:        diffViewerScrollID,
-		copyPathToClipboard:  copyPathToClipboardOSC52,
-		fileScrollOffsets:    map[string]fileScrollState{},
-		reviewedByFile:       map[string]bool{},
+		provider:              provider,
+		renderedByPath:        map[string]*RenderedFile{},
+		sideRenderedByPath:    map[string]*SideBySideRenderedFile{},
+		fileByPath:            map[string]*DiffFile{},
+		filePathToTreePath:    map[string][]int{},
+		orderedFilePaths:      []string{},
+		sectionOrder:          sectionOrder,
+		activeSection:         initialSection,
+		initialSection:        initialSection,
+		sections:              newDiffSectionStateMap(sectionOrder),
+		treeState:             t.NewTreeState([]t.TreeNode[DiffTreeNodeData]{}),
+		treeScrollState:       t.NewScrollState(),
+		treeFilterState:       t.NewFilterState(),
+		treeFilterInput:       t.NewTextInputState(""),
+		diffScrollState:       t.NewScrollState(),
+		diffViewState:         NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
+		refreshTask:           t.NewTask[struct{}](),
+		refreshApplied:        t.NewSignal(0),
+		initialLoadResolved:   t.NewSignal(false),
+		splitState:            t.NewSplitPaneState(0.30),
+		indexPendingCount:     t.NewSignal(0),
+		indexCommandQueue:     make(chan indexCommand, 256),
+		treeFilterVisible:     t.NewSignal(false),
+		treeFilterNoMatches:   t.NewSignal(false),
+		sidebarVisible:        t.NewSignal(initialState.SidebarVisible),
+		diffLayoutMode:        t.NewSignal(initialState.LayoutMode),
+		diffHardWrap:          t.NewSignal(false),
+		diffHideChangeSigns:   t.NewSignal(!initialState.ShowChangeSigns),
+		diffIntralineStyle:    t.NewSignal(initialState.IntralineStyle),
+		diffIgnoreWhitespace:  t.NewSignal(initialState.IgnoreWhitespace),
+		manualRefreshEnabled:  manualRefreshEnabled,
+		dividerHovered:        t.NewSignal(false),
+		dividerFocusRequested: t.NewSignal(false),
+		lastNonDividerFocus:   diffViewerScrollID,
+		focusReturnID:         diffViewerScrollID,
+		copyPathToClipboard:   copyPathToClipboardOSC52,
+		fileScrollOffsets:     map[string]fileScrollState{},
+		reviewedByFile:        t.NewAnySignal(map[string]bool{}),
 	}
 	if app.isPipedDiffMode() {
-		app.diffIgnoreWhitespace = false
+		app.diffIgnoreWhitespace.Set(false)
 	}
 	go app.runIndexCommandQueue()
 	app.configureDiffHorizontalScroll()
@@ -475,9 +499,11 @@ func (a *Dv) setLoadError(message string) {
 	a.treeState.Nodes.Set(roots)
 	a.treeState.CursorPath.Set(nil)
 	a.treeState.Collapsed.Set(map[string]bool{})
-	a.treeFilterNoMatches = false
+	a.treeFilterNoMatches.Set(false)
 	a.diffViewState.SetRendered(messageToRendered("Error", a.errorMessage()))
 	a.diffScrollState.SetOffset(0)
+	a.initialLoadResolved.Set(true)
+	a.refreshApplied.Update(func(v int) int { return v + 1 })
 }
 
 func (a *Dv) toggleMode() {
@@ -517,6 +543,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 			Key:    "s",
 			Name:   a.activeFileStageActionName(),
 			Action: a.toggleStageActiveFile,
+			Hidden: true,
 		})
 	}
 	if a.canStageFiles() {
@@ -524,6 +551,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 			Key:    "S",
 			Name:   "Stage all files",
 			Action: a.stageAllFiles,
+			Hidden: true,
 		})
 	}
 	if a.canUnstageFiles() {
@@ -531,6 +559,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 			Key:    "U",
 			Name:   "Unstage all files",
 			Action: a.unstageAllFiles,
+			Hidden: true,
 		})
 	}
 	if a.canToggleDiffIgnoreWhitespace() {
@@ -545,13 +574,13 @@ func (a *Dv) Keybinds() []t.Keybind {
 }
 
 func (a *Dv) Build(ctx t.BuildContext) t.Widget {
-	a.flushPendingIndexUpdates()
+	_ = a.refreshApplied.Get()
 	a.syncFocusState(ctx)
 	theme := ctx.Theme()
 	body := a.buildRightPane(theme)
 	if a.sidebarVisible.Get() {
 		dividerFg := dividerForeground(theme)
-		if a.dividerHovered {
+		if a.dividerHovered.Get() {
 			dividerFg = dividerHoverForeground(theme)
 		}
 		body = FocusAwareSplitPane{
@@ -565,7 +594,7 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 				DividerForeground:      dividerFg,
 				DividerFocusForeground: dividerFocusForeground(theme),
 				Hover: func(event t.HoverEvent) {
-					a.dividerHovered = event.Type == t.HoverEnter
+					a.dividerHovered.Set(event.Type == t.HoverEnter)
 				},
 				OnExitFocus: a.exitDividerFocus,
 				Style: t.Style{
@@ -576,7 +605,7 @@ func (a *Dv) Build(ctx t.BuildContext) t.Widget {
 				First:  a.buildLeftPane(ctx, theme),
 				Second: a.buildRightPane(theme),
 			},
-			AllowFocus:     a.dividerFocused || a.dividerFocusRequested,
+			AllowFocus:     a.dividerFocused || a.dividerFocusRequested.Get(),
 			EnableKeybinds: a.dividerFocused,
 		}
 	}
@@ -751,7 +780,7 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 	}
 
 	treeContent := t.Widget(treeWidget)
-	if a.treeFilterNoMatches {
+	if a.treeFilterNoMatches.Get() {
 		treeContent = a.buildTreeFilterEmptyState(theme)
 	}
 
@@ -880,9 +909,9 @@ func (a *Dv) buildRightPane(theme t.ThemeData) t.Widget {
 		State:           a.diffViewState,
 		VerticalScroll:  a.diffScrollState,
 		LayoutMode:      a.diffLayoutMode.Get(),
-		HardWrap:        a.diffHardWrap,
-		HideChangeSigns: a.diffHideChangeSigns,
-		IntralineStyle:  a.diffIntralineStyle,
+		HardWrap:        a.diffHardWrap.Get(),
+		HideChangeSigns: a.diffHideChangeSigns.Get(),
+		IntralineStyle:  a.diffIntralineStyle.Get(),
 		Palette:         NewThemePalette(theme),
 		Style: t.Style{
 			Width:           t.Flex(1),
@@ -959,8 +988,9 @@ func (v viewerEmptySpaceHatch) Render(ctx *t.RenderContext) {
 }
 
 func (a *Dv) shouldShowDiffEmptyState() bool {
-	return a.loadErr == "" &&
-		!a.treeFilterNoMatches &&
+	return a.initialLoadResolved.Get() &&
+		a.loadErr == "" &&
+		!a.treeFilterNoMatches.Get() &&
 		a.activeKind == DiffTreeNodeUnknown &&
 		a.totalFileCount() == 0
 }
@@ -1369,7 +1399,7 @@ func (a *Dv) buildHeaderModeIndicator(theme t.ThemeData) t.Widget {
 	}
 	if a.canToggleDiffIgnoreWhitespace() {
 		ignoreWsLabel := "whitespace:off"
-		if a.diffIgnoreWhitespace {
+		if a.diffIgnoreWhitespace.Get() {
 			ignoreWsLabel = "whitespace:on"
 		}
 		spans = append(spans,
@@ -1413,6 +1443,27 @@ func (a *Dv) indexProvider() IndexCapable {
 		return nil
 	}
 	return provider
+}
+
+func (a *Dv) providerLoadDiff(ctx context.Context, staged bool, ignoreWhitespace bool) (string, error) {
+	if provider, ok := a.provider.(ContextDiffProvider); ok {
+		return provider.LoadDiffContext(ctx, staged, ignoreWhitespace)
+	}
+	return a.provider.LoadDiff(staged, ignoreWhitespace)
+}
+
+func (a *Dv) providerRepoRoot(ctx context.Context) (string, error) {
+	if provider, ok := a.provider.(ContextDiffProvider); ok {
+		return provider.RepoRootContext(ctx)
+	}
+	return a.provider.RepoRoot()
+}
+
+func (a *Dv) providerCurrentBranch(ctx context.Context) (string, error) {
+	if provider, ok := a.provider.(ContextDiffProvider); ok {
+		return provider.CurrentBranchContext(ctx)
+	}
+	return a.provider.CurrentBranch()
 }
 
 func (a *Dv) canStageFiles() bool {
@@ -1488,17 +1539,16 @@ func (a *Dv) enqueueIndexCommand(command indexCommand) {
 func (a *Dv) runIndexCommandQueue() {
 	for command := range a.indexCommandQueue {
 		result := a.executeIndexCommand(command)
-		if result.Refresh {
-			a.indexResultMu.Lock()
-			a.pendingIndexResults = append(a.pendingIndexResults, result)
-			a.indexResultMu.Unlock()
-			a.indexResultVersion.Update(func(version int) int { return version + 1 })
-		}
-		a.indexPendingCount.Update(func(count int) int {
-			if count <= 0 {
-				return 0
+		t.Dispatch(func() {
+			if result.Refresh {
+				a.refreshDiff()
 			}
-			return count - 1
+			a.indexPendingCount.Update(func(count int) int {
+				if count <= 0 {
+					return 0
+				}
+				return count - 1
+			})
 		})
 	}
 }
@@ -1509,16 +1559,33 @@ func (a *Dv) executeIndexCommand(command indexCommand) indexResult {
 		return indexResult{Refresh: true}
 	}
 
+	contextProvider, hasContextProvider := provider.(ContextIndexCapable)
 	var err error
 	switch command.Kind {
 	case indexCommandStagePath:
-		err = provider.StagePath(command.Path)
+		if hasContextProvider {
+			err = contextProvider.StagePathContext(context.Background(), command.Path)
+		} else {
+			err = provider.StagePath(command.Path)
+		}
 	case indexCommandUnstagePath:
-		err = provider.UnstagePath(command.Path)
+		if hasContextProvider {
+			err = contextProvider.UnstagePathContext(context.Background(), command.Path)
+		} else {
+			err = provider.UnstagePath(command.Path)
+		}
 	case indexCommandStageAll:
-		err = provider.StageAll()
+		if hasContextProvider {
+			err = contextProvider.StageAllContext(context.Background())
+		} else {
+			err = provider.StageAll()
+		}
 	case indexCommandUnstageAll:
-		err = provider.UnstageAll()
+		if hasContextProvider {
+			err = contextProvider.UnstageAllContext(context.Background())
+		} else {
+			err = provider.UnstageAll()
+		}
 	default:
 		return indexResult{Refresh: true}
 	}
@@ -1526,31 +1593,6 @@ func (a *Dv) executeIndexCommand(command indexCommand) indexResult {
 		return indexResult{Refresh: true}
 	}
 	return indexResult{Refresh: true}
-}
-
-func (a *Dv) flushPendingIndexUpdates() {
-	_ = a.indexResultVersion.Get()
-	results := a.drainPendingIndexResults()
-	refreshNeeded := false
-	for _, result := range results {
-		if result.Refresh {
-			refreshNeeded = true
-		}
-	}
-	if refreshNeeded {
-		a.refreshDiff()
-	}
-}
-
-func (a *Dv) drainPendingIndexResults() []indexResult {
-	a.indexResultMu.Lock()
-	defer a.indexResultMu.Unlock()
-	if len(a.pendingIndexResults) == 0 {
-		return nil
-	}
-	results := append([]indexResult(nil), a.pendingIndexResults...)
-	a.pendingIndexResults = a.pendingIndexResults[:0]
-	return results
 }
 
 func (a *Dv) copyActiveFilePath() {
@@ -1565,51 +1607,84 @@ func (a *Dv) copyActiveFilePath() {
 
 func (a *Dv) refreshDiff() {
 	a.rememberActiveFileScrollOffset()
+	request := a.buildRefreshRequest()
+	generation := a.refreshGeneration.Add(1)
+	a.refreshTask.Start(func(ctx context.Context) (struct{}, error) {
+		result, err := a.loadRefreshResult(ctx, request)
+		if err != nil {
+			return struct{}{}, err
+		}
+		if ctx.Err() != nil {
+			return struct{}{}, ctx.Err()
+		}
+		t.Dispatch(func() {
+			if generation != a.refreshGeneration.Load() {
+				return
+			}
+			a.applyRefreshResult(result)
+		})
+		return struct{}{}, nil
+	})
+}
 
-	if repoRoot, err := a.provider.RepoRoot(); err == nil {
-		a.repoRoot = repoRoot
-	}
-	if branch, err := a.provider.CurrentBranch(); err == nil {
-		a.branch = branch
-	}
-
+func (a *Dv) buildRefreshRequest() diffRefreshRequest {
 	previousSelections := map[DiffSection]string{}
 	for _, section := range a.sectionOrder {
 		state := a.sectionState(section)
-		if state == nil {
+		if state == nil || state.lastSelectedPath == "" {
 			continue
 		}
-		if state.lastSelectedPath != "" {
-			previousSelections[section] = state.lastSelectedPath
-		}
+		previousSelections[section] = state.lastSelectedPath
 	}
 	if a.activeKind == DiffTreeNodeFile && a.activePath != "" {
 		previousSelections[a.activeSection] = a.activePath
 	}
-	previousActiveSection := a.activeSection
-	if previousActiveSection == "" || !a.hasSection(previousActiveSection) {
-		previousActiveSection = a.initialSection
+
+	previousActive := a.activeSection
+	if previousActive == "" || !a.hasSection(previousActive) {
+		previousActive = a.initialSection
 	}
-	sectionRoots := map[DiffSection][]t.TreeNode[DiffTreeNodeData]{}
-	for _, section := range a.sectionOrder {
-		sectionRoots[section] = []t.TreeNode[DiffTreeNodeData]{}
+
+	return diffRefreshRequest{
+		ignoreWhitespace:   a.diffIgnoreWhitespace.Peek(),
+		previousSelections: previousSelections,
+		previousActive:     previousActive,
 	}
-	nextSections := newDiffSectionStateMap(a.sectionOrder)
+}
+
+func (a *Dv) loadRefreshResult(ctx context.Context, request diffRefreshRequest) (diffRefreshResult, error) {
+	result := diffRefreshResult{
+		sections:       newDiffSectionStateMap(a.sectionOrder),
+		previousActive: request.previousActive,
+	}
+
+	if repoRoot, err := a.providerRepoRoot(ctx); err == nil {
+		result.repoRoot = repoRoot
+		result.hasRepoRoot = true
+	}
+	if branch, err := a.providerCurrentBranch(ctx); err == nil {
+		result.branch = branch
+		result.hasBranch = true
+	}
 
 	for idx, section := range a.sectionOrder {
-		raw, err := a.provider.LoadDiff(section == DiffSectionStaged, a.diffIgnoreWhitespace)
+		if ctx.Err() != nil {
+			return diffRefreshResult{}, ctx.Err()
+		}
+
+		raw, err := a.providerLoadDiff(ctx, section == DiffSectionStaged, request.ignoreWhitespace)
 		if err != nil {
-			a.setLoadError(fmt.Sprintf("%s diff: %v", strings.ToLower(section.DisplayName()), err))
-			return
+			result.loadErr = fmt.Sprintf("%s diff: %v", strings.ToLower(section.DisplayName()), err)
+			return result, nil
 		}
 
 		doc, err := parseUnifiedDiff(raw)
 		if err != nil {
-			a.setLoadError(fmt.Sprintf("%s parse error: %v", strings.ToLower(section.DisplayName()), err))
-			return
+			result.loadErr = fmt.Sprintf("%s parse error: %v", strings.ToLower(section.DisplayName()), err)
+			return result, nil
 		}
 
-		state := nextSections[section]
+		state := result.sections[section]
 		if state == nil {
 			state = newDiffSectionState()
 		}
@@ -1639,7 +1714,7 @@ func (a *Dv) refreshDiff() {
 			state.filePathToTreePath[filePath] = globalPath
 		}
 
-		if previous, ok := previousSelections[section]; ok {
+		if previous, ok := request.previousSelections[section]; ok {
 			if _, exists := state.fileByPath[previous]; exists {
 				state.lastSelectedPath = previous
 			}
@@ -1648,12 +1723,27 @@ func (a *Dv) refreshDiff() {
 			state.lastSelectedPath = state.orderedFilePaths[0]
 		}
 
-		sectionRoots[section] = roots
-		nextSections[section] = state
+		result.sections[section] = state
+	}
+
+	return result, nil
+}
+
+func (a *Dv) applyRefreshResult(result diffRefreshResult) {
+	a.initialLoadResolved.Set(true)
+	if result.hasRepoRoot {
+		a.repoRoot = result.repoRoot
+	}
+	if result.hasBranch {
+		a.branch = result.branch
+	}
+	if result.loadErr != "" {
+		a.setLoadError(result.loadErr)
+		return
 	}
 
 	a.loadErr = ""
-	a.sections = nextSections
+	a.sections = result.sections
 
 	roots := make([]t.TreeNode[DiffTreeNodeData], 0, len(a.sectionOrder))
 	for _, section := range a.sectionOrder {
@@ -1673,7 +1763,7 @@ func (a *Dv) refreshDiff() {
 				NodeKind:     DiffTreeNodeSection,
 				NodeKey:      diffSectionRootNodeKey(section),
 			},
-			Children: sectionRoots[section],
+			Children: state.roots,
 		})
 	}
 	a.treeState.Nodes.Set(roots)
@@ -1687,24 +1777,26 @@ func (a *Dv) refreshDiff() {
 		a.activeKind = DiffTreeNodeUnknown
 		a.activeFileSection = ""
 		a.treeState.CursorPath.Set(nil)
-		a.treeFilterNoMatches = false
+		a.treeFilterNoMatches.Set(false)
 		a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
 		a.diffScrollState.SetOffset(0)
+		a.refreshApplied.Update(func(v int) int { return v + 1 })
 		return
 	}
 
-	targetSection := previousActiveSection
-	if !a.sectionHasFiles(targetSection) {
-		if sectionWithFiles, ok := a.findSectionWithFiles(previousActiveSection); ok {
-			targetSection = sectionWithFiles
-		} else {
-			targetSection = a.initialSection
+	targetSectionKey := result.previousActive
+	if targetSectionKey == "" || !a.sectionHasFiles(targetSectionKey) {
+		targetSectionKey = a.initialSection
+	}
+	if !a.sectionHasFiles(targetSectionKey) {
+		if sectionWithFiles, ok := a.findSectionWithFiles(targetSectionKey); ok {
+			targetSectionKey = sectionWithFiles
 		}
 	}
-	a.setActiveSection(targetSection)
+	a.setActiveSection(targetSectionKey)
 
 	targetPath := ""
-	state := a.sectionState(targetSection)
+	state := a.sectionState(targetSectionKey)
 	if state != nil {
 		targetPath = state.lastSelectedPath
 		if targetPath == "" && len(state.orderedFilePaths) > 0 {
@@ -1715,6 +1807,7 @@ func (a *Dv) refreshDiff() {
 		a.selectFilePath(targetPath)
 	}
 	a.syncTreeFilterSelection()
+	a.refreshApplied.Update(func(v int) int { return v + 1 })
 }
 
 func (a *Dv) moveFileCursor(delta int) {
@@ -1903,7 +1996,7 @@ func (a *Dv) switchSectionFocus() {
 }
 
 func (a *Dv) toggleDiffWrap() {
-	a.diffHardWrap = !a.diffHardWrap
+	a.diffHardWrap.Update(func(v bool) bool { return !v })
 	if a.diffViewState != nil {
 		a.diffViewState.ScrollX.Set(0)
 	}
@@ -1963,11 +2056,11 @@ func (a *Dv) shiftSideBySideSplit(delta int) {
 		return
 	}
 
-	metrics := sideBySideDividerMetrics(viewportWidth, sideBySide, a.diffHideChangeSigns)
+	metrics := sideBySideDividerMetrics(viewportWidth, sideBySide, a.diffHideChangeSigns.Peek())
 	panes := sideBySidePaneLayout(
 		viewportWidth,
 		sideBySide,
-		a.diffHideChangeSigns,
+		a.diffHideChangeSigns.Peek(),
 		a.diffViewState.SideBySideSplitRatio(),
 	)
 	nextOffset := clampInt(panes.DividerX+delta, metrics.MinOffset, metrics.MaxOffset)
@@ -2035,14 +2128,12 @@ func (a *Dv) activeReviewTarget() (section DiffSection, filePath string, ok bool
 }
 
 func (a *Dv) isReviewed(section DiffSection, filePath string) bool {
-	if a.reviewedByFile == nil {
-		return false
-	}
 	key := diffFileReviewKey(section, filePath)
 	if key == "" {
 		return false
 	}
-	return a.reviewedByFile[key]
+	reviewed := a.reviewedByFile.Get()
+	return reviewed[key]
 }
 
 func (a *Dv) rememberActiveFileScrollOffset() {
@@ -2149,7 +2240,7 @@ func (a *Dv) mapDiffVerticalOffsetForLayoutToggle(sourceMode DiffLayoutMode, tar
 		sourceOffset = 0
 	}
 
-	if !a.diffHardWrap {
+	if !a.diffHardWrap.Peek() {
 		anchor, ok := a.diffScrollAnchorForOffset(sourceMode, sourceOffset)
 		if ok {
 			targetOffset, ok := a.diffOffsetForAnchor(targetMode, anchor)
@@ -2202,7 +2293,7 @@ func (a *Dv) diffLayoutVisualRows(mode DiffLayoutMode) int {
 		if sideBySide == nil || len(sideBySide.Rows) == 0 {
 			return 0
 		}
-		if !a.diffHardWrap {
+		if !a.diffHardWrap.Peek() {
 			return len(sideBySide.Rows)
 		}
 		viewportWidth := a.diffViewState.ViewportWidth()
@@ -2212,7 +2303,7 @@ func (a *Dv) diffLayoutVisualRows(mode DiffLayoutMode) int {
 		panes := sideBySidePaneLayout(
 			viewportWidth,
 			sideBySide,
-			a.diffHideChangeSigns,
+			a.diffHideChangeSigns.Peek(),
 			a.diffViewState.SideBySideSplitRatio(),
 		)
 		return wrappedSideContentHeight(sideBySide.Rows, panes, viewportWidth)
@@ -2221,14 +2312,14 @@ func (a *Dv) diffLayoutVisualRows(mode DiffLayoutMode) int {
 	if rendered == nil || len(rendered.Lines) == 0 {
 		return 0
 	}
-	if !a.diffHardWrap {
+	if !a.diffHardWrap.Peek() {
 		return len(rendered.Lines)
 	}
 	viewportWidth := a.diffViewState.ViewportWidth()
 	if viewportWidth <= 0 {
 		return len(rendered.Lines)
 	}
-	wrapWidth := max(1, viewportWidth-renderedGutterWidth(rendered, a.diffHideChangeSigns))
+	wrapWidth := max(1, viewportWidth-renderedGutterWidth(rendered, a.diffHideChangeSigns.Peek()))
 	return wrappedContentHeight(rendered.Lines, wrapWidth)
 }
 
@@ -2475,7 +2566,7 @@ func (a *Dv) configureDiffHorizontalScroll() {
 }
 
 func (a *Dv) scrollDiffHorizontal(delta int) bool {
-	if delta == 0 || a.diffHardWrap || a.diffViewState == nil {
+	if delta == 0 || a.diffHardWrap.Peek() || a.diffViewState == nil {
 		return false
 	}
 	gutterWidth := a.diffScrollGutterWidth()
@@ -2485,7 +2576,7 @@ func (a *Dv) scrollDiffHorizontal(delta int) bool {
 }
 
 func (a *Dv) toggleDiffChangeSigns() {
-	a.diffHideChangeSigns = !a.diffHideChangeSigns
+	a.diffHideChangeSigns.Update(func(v bool) bool { return !v })
 	a.clampDiffHorizontalScroll()
 }
 
@@ -2493,18 +2584,18 @@ func (a *Dv) toggleDiffIgnoreWhitespace() {
 	if !a.canToggleDiffIgnoreWhitespace() {
 		return
 	}
-	a.diffIgnoreWhitespace = !a.diffIgnoreWhitespace
+	a.diffIgnoreWhitespace.Update(func(v bool) bool { return !v })
 	a.refreshDiff()
 }
 
 func (a *Dv) toggleDiffIntralineStyle() {
-	switch a.diffIntralineStyle {
+	switch a.diffIntralineStyle.Peek() {
 	case IntralineStyleModeBackground:
-		a.diffIntralineStyle = IntralineStyleModeUnderline
+		a.diffIntralineStyle.Set(IntralineStyleModeUnderline)
 	case IntralineStyleModeUnderline:
-		a.diffIntralineStyle = IntralineStyleModeOff
+		a.diffIntralineStyle.Set(IntralineStyleModeOff)
 	default:
-		a.diffIntralineStyle = IntralineStyleModeBackground
+		a.diffIntralineStyle.Set(IntralineStyleModeBackground)
 	}
 }
 
@@ -2513,25 +2604,29 @@ func (a *Dv) toggleActiveFileReviewed() {
 	if !ok {
 		return
 	}
-	if a.reviewedByFile == nil {
-		a.reviewedByFile = map[string]bool{}
-	}
 	key := diffFileReviewKey(section, filePath)
 	if key == "" {
 		return
 	}
-	if a.reviewedByFile[key] {
-		delete(a.reviewedByFile, key)
+	current := a.reviewedByFile.Peek()
+	next := make(map[string]bool, len(current))
+	for k, v := range current {
+		next[k] = v
+	}
+	if next[key] {
+		delete(next, key)
+		a.reviewedByFile.Set(next)
 		return
 	}
-	a.reviewedByFile[key] = true
+	next[key] = true
+	a.reviewedByFile.Set(next)
 }
 
 func (a *Dv) clearAllReviewed() {
-	if len(a.reviewedByFile) == 0 {
+	if len(a.reviewedByFile.Peek()) == 0 {
 		return
 	}
-	clear(a.reviewedByFile)
+	a.reviewedByFile.Set(map[string]bool{})
 }
 
 func (a *Dv) clampDiffHorizontalScroll() {
@@ -2549,12 +2644,12 @@ func (a *Dv) diffScrollGutterWidth() int {
 		return sideBySideStateGutterWidth(
 			a.diffViewState.Rendered.Peek(),
 			a.diffViewState.SideBySide.Peek(),
-			a.diffHideChangeSigns,
+			a.diffHideChangeSigns.Peek(),
 			a.diffViewState.ViewportWidth(),
 			a.diffViewState.SideBySideSplitRatio(),
 		)
 	}
-	return renderedGutterWidth(a.diffViewState.Rendered.Peek(), a.diffHideChangeSigns)
+	return renderedGutterWidth(a.diffViewState.Rendered.Peek(), a.diffHideChangeSigns.Peek())
 }
 
 func (a *Dv) toggleSidebar() {
@@ -2564,8 +2659,8 @@ func (a *Dv) toggleSidebar() {
 		return
 	}
 
-	a.dividerHovered = false
-	a.dividerFocusRequested = false
+	a.dividerHovered.Set(false)
+	a.dividerFocusRequested.Set(false)
 	a.dividerFocused = false
 
 	switch a.focusedWidgetID {
@@ -2577,10 +2672,10 @@ func (a *Dv) toggleSidebar() {
 func (a *Dv) openTreeFilter() {
 	if !a.sidebarVisible.Get() {
 		a.sidebarVisible.Set(true)
-		a.dividerFocusRequested = false
+		a.dividerFocusRequested.Set(false)
 		a.dividerFocused = false
 	}
-	a.treeFilterVisible = true
+	a.treeFilterVisible.Set(true)
 	if a.treeFilterInput != nil {
 		a.treeFilterInput.ClearSelection()
 		a.treeFilterInput.CursorEnd()
@@ -2592,14 +2687,14 @@ func (a *Dv) handleEscape() {
 	if a.clearTreeFilter() {
 		return
 	}
-	if a.focusedWidgetID == diffFilesFilterID && a.treeFilterVisible {
-		a.treeFilterVisible = false
+	if a.focusedWidgetID == diffFilesFilterID && a.treeFilterVisible.Get() {
+		a.treeFilterVisible.Set(false)
 		t.RequestFocus(diffFilesTreeID)
 	}
 }
 
 func (a *Dv) onTreeFilterChange(text string) {
-	a.treeFilterVisible = true
+	a.treeFilterVisible.Set(true)
 	if a.treeFilterState != nil {
 		a.treeFilterState.Query.Set(text)
 	}
@@ -2617,14 +2712,14 @@ func (a *Dv) clearTreeFilter() bool {
 		a.treeFilterInput.SetText("")
 	}
 	a.treeFilterState.Query.Set("")
-	a.treeFilterVisible = false
+	a.treeFilterVisible.Set(false)
 	a.syncTreeFilterSelection()
 	t.RequestFocus(diffFilesTreeID)
 	return true
 }
 
 func (a *Dv) shouldShowTreeFilterInput() bool {
-	if a.treeFilterVisible {
+	if a.treeFilterVisible.Get() {
 		return true
 	}
 	if a.focusedWidgetID == diffFilesFilterID {
@@ -2644,7 +2739,7 @@ func (a *Dv) syncTreeFilterSelection() {
 		options = a.treeFilterState.PeekOptions()
 	}
 	if query == "" {
-		a.treeFilterNoMatches = false
+		a.treeFilterNoMatches.Set(false)
 		if a.activeKind == DiffTreeNodeFile {
 			if a.treeState.CursorPath.Peek() == nil {
 				if treePath, ok := a.filePathToTreePath[a.activePath]; ok {
@@ -2679,13 +2774,13 @@ func (a *Dv) syncTreeFilterSelection() {
 		return
 	}
 
-	a.treeFilterNoMatches = false
+	a.treeFilterNoMatches.Set(false)
 	a.setActiveSection(targetSection)
 	a.selectFilePath(filtered[0])
 }
 
 func (a *Dv) setTreeFilterNoMatches() {
-	a.treeFilterNoMatches = true
+	a.treeFilterNoMatches.Set(true)
 	a.treeState.CursorPath.Set(nil)
 }
 
@@ -2731,7 +2826,7 @@ func (a *Dv) focusDivider() {
 		return
 	}
 	target := a.dividerReturnTarget()
-	a.dividerFocusRequested = true
+	a.dividerFocusRequested.Set(true)
 	a.focusReturnID = target
 	t.RequestFocus(diffSplitPaneID)
 }
@@ -2740,7 +2835,7 @@ func (a *Dv) focusDividerFromPalette() {
 	if !a.sidebarVisible.Get() {
 		return
 	}
-	a.dividerFocusRequested = true
+	a.dividerFocusRequested.Set(true)
 	a.focusReturnID = a.dividerReturnTarget()
 	if a.commandPalette != nil {
 		a.cancelThemePreview()
@@ -2750,7 +2845,7 @@ func (a *Dv) focusDividerFromPalette() {
 }
 
 func (a *Dv) exitDividerFocus() {
-	a.dividerFocusRequested = false
+	a.dividerFocusRequested.Set(false)
 	target := a.focusReturnID
 	if isInvalidDividerReturnTarget(target) {
 		target = diffViewerScrollID
@@ -2797,10 +2892,10 @@ func (a *Dv) syncFocusState(ctx t.BuildContext) {
 	a.focusedWidgetID = focusedID
 	a.dividerFocused = a.sidebarVisible.Get() && focusedID == diffSplitPaneID
 	if wasDividerFocused && !a.dividerFocused {
-		a.dividerFocusRequested = false
+		a.dividerFocusRequested.Set(false)
 	}
 	if !a.sidebarVisible.Get() {
-		a.dividerFocusRequested = false
+		a.dividerFocusRequested.Set(false)
 	}
 	if focusedID != "" && focusedID != diffSplitPaneID {
 		a.lastNonDividerFocus = focusedID
@@ -3289,7 +3384,7 @@ func (a *Dv) viewerTitle() string {
 		if a.loadErr != "" {
 			return "Error"
 		}
-		if a.treeFilterNoMatches {
+		if a.treeFilterNoMatches.Get() {
 			return "No matches"
 		}
 		return "Diff"
@@ -3310,7 +3405,7 @@ func (a *Dv) emptyMessageParts() (heading string, details string) {
 	if a.isPipedDiffMode() {
 		return "No files in piped diff.", "Run your diff command again and pipe it into dv."
 	}
-	if a.diffIgnoreWhitespace {
+	if a.diffIgnoreWhitespace.Get() {
 		return "No staged or unstaged changes (ignoring whitespace).", "Whitespace-only changes are hidden. Press x to toggle ignore whitespace."
 	}
 	return "No staged or unstaged changes.", "Make edits or stage files, then press r to refresh."
