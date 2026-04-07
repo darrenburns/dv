@@ -810,6 +810,28 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 	})
 
 	if a.canCommitChanges() {
+		commitHeaderBackground := theme.AccentBg
+		commitHeaderForeground := theme.AccentText
+		commitInput := t.TextArea{
+			ID:          diffCommitMessageID,
+			State:       a.commitMessageInput,
+			Placeholder: "Write a commit message. Ctrl+Enter to commit.",
+			Width:       t.Flex(1),
+			OnSubmit:    a.submitCommitMessage,
+			Style: t.Style{
+				Width:           t.Flex(1),
+				MinHeight:       t.Cells(3),
+				MaxHeight:       t.Percent(50),
+				Padding:         t.EdgeInsets{Left: 1, Right: 1},
+				BackgroundColor: theme.Surface,
+				ForegroundColor: theme.Text,
+			},
+		}
+		if ctx.IsFocused(commitInput) {
+			commitHeaderBackground = theme.ActiveCursor
+			commitHeaderForeground = theme.SelectionText
+		}
+
 		children = append(children, t.Column{
 			Style: t.Style{
 				Width: t.Flex(1),
@@ -820,32 +842,18 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 						Width:           t.Flex(1),
 						Height:          t.Cells(1),
 						Padding:         t.EdgeInsets{Left: 1, Right: 1},
-						BackgroundColor: theme.AccentBg,
+						BackgroundColor: commitHeaderBackground,
 					},
 					Children: []t.Widget{
 						t.Text{
 							Content: "Commit [c]",
 							Style: t.Style{
-								ForegroundColor: theme.AccentText,
+								ForegroundColor: commitHeaderForeground,
 							},
 						},
 					},
 				},
-				t.TextArea{
-					ID:          diffCommitMessageID,
-					State:       a.commitMessageInput,
-					Placeholder: "Write a commit message. Ctrl+Enter to commit.",
-					Width:       t.Flex(1),
-					OnSubmit:    a.submitCommitMessage,
-					Style: t.Style{
-						Width:           t.Flex(1),
-						MinHeight:       t.Cells(3),
-						MaxHeight:       t.Percent(50),
-						Padding:         t.EdgeInsets{Left: 1, Right: 1},
-						BackgroundColor: theme.Surface,
-						ForegroundColor: theme.Text,
-					},
-				},
+				commitInput,
 			},
 		})
 	}
