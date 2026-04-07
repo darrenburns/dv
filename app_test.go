@@ -2302,6 +2302,23 @@ func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 
 func TestDv_BuildLeftPaneIncludesCommitMessageInput(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+
+	composer, ok := column.Children[len(column.Children)-1].(t.Column)
+	require.True(tt, ok)
+	require.Len(tt, composer.Children, 2)
+
+	header, ok := composer.Children[0].(t.Row)
+	require.True(tt, ok)
+	require.Len(tt, header.Children, 1)
+	headerText, ok := header.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "Commit [c]", headerText.Content)
 
 	area := findCommitMessageInput(tt, app)
 	require.Equal(tt, diffCommitMessageID, area.ID)
@@ -3328,16 +3345,34 @@ func findCommitMessageInput(tt *testing.T, app *Dv) t.TextArea {
 	require.True(tt, ok)
 	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
 	widget := app.buildLeftPane(ctx, theme)
-	column, ok := widget.(t.Column)
-	require.True(tt, ok)
-	for _, child := range column.Children {
-		area, ok := child.(t.TextArea)
-		if !ok {
-			continue
+
+	var findTextArea func(widget t.Widget) (t.TextArea, bool)
+	findTextArea = func(widget t.Widget) (t.TextArea, bool) {
+		switch w := widget.(type) {
+		case t.TextArea:
+			if w.ID == diffCommitMessageID {
+				return w, true
+			}
+		case t.Column:
+			for _, child := range w.Children {
+				if area, ok := findTextArea(child); ok {
+					return area, true
+				}
+			}
+		case t.Row:
+			for _, child := range w.Children {
+				if area, ok := findTextArea(child); ok {
+					return area, true
+				}
+			}
+		case t.Scrollable:
+			return findTextArea(w.Child)
 		}
-		if area.ID == diffCommitMessageID {
-			return area
-		}
+		return t.TextArea{}, false
+	}
+
+	if area, ok := findTextArea(widget); ok {
+		return area
 	}
 	require.FailNow(tt, "expected commit message input in left pane")
 	return t.TextArea{}

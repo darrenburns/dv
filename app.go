@@ -810,19 +810,42 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 	})
 
 	if a.canCommitChanges() {
-		children = append(children, t.TextArea{
-			ID:          diffCommitMessageID,
-			State:       a.commitMessageInput,
-			Placeholder: "Write a commit message. Ctrl+Enter to commit.",
-			Width:       t.Flex(1),
-			OnSubmit:    a.submitCommitMessage,
+		children = append(children, t.Column{
 			Style: t.Style{
-				Width:           t.Flex(1),
-				MinHeight:       t.Cells(3),
-				MaxHeight:       t.Percent(50),
-				Padding:         t.EdgeInsets{Left: 1, Right: 1},
-				BackgroundColor: theme.Surface,
-				ForegroundColor: theme.Text,
+				Width: t.Flex(1),
+			},
+			Children: []t.Widget{
+				t.Row{
+					Style: t.Style{
+						Width:           t.Flex(1),
+						Height:          t.Cells(1),
+						Padding:         t.EdgeInsets{Left: 1, Right: 1},
+						BackgroundColor: theme.AccentBg,
+					},
+					Children: []t.Widget{
+						t.Text{
+							Content: "Commit [c]",
+							Style: t.Style{
+								ForegroundColor: theme.AccentText,
+							},
+						},
+					},
+				},
+				t.TextArea{
+					ID:          diffCommitMessageID,
+					State:       a.commitMessageInput,
+					Placeholder: "Write a commit message. Ctrl+Enter to commit.",
+					Width:       t.Flex(1),
+					OnSubmit:    a.submitCommitMessage,
+					Style: t.Style{
+						Width:           t.Flex(1),
+						MinHeight:       t.Cells(3),
+						MaxHeight:       t.Percent(50),
+						Padding:         t.EdgeInsets{Left: 1, Right: 1},
+						BackgroundColor: theme.Surface,
+						ForegroundColor: theme.Text,
+					},
+				},
 			},
 		})
 	}
