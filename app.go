@@ -816,6 +816,7 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 			ID:          diffCommitMessageID,
 			State:       a.commitMessageInput,
 			Placeholder: "Write a commit message. Ctrl+Enter to commit.",
+			Highlighter: commitMessageHighlighter(theme),
 			Width:       t.Flex(1),
 			OnSubmit:    a.submitCommitMessage,
 			Style: t.Style{
