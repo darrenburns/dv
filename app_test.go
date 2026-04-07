@@ -1366,6 +1366,19 @@ func TestDv_HandleEscapeClearsActiveTreeFilter(tt *testing.T) {
 	require.False(tt, app.treeFilterVisible.Get())
 }
 
+func TestDv_HandleEscapeFromCommitMessageDoesNotClearTreeFilter(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	app.treeFilterVisible.Set(true)
+	app.treeFilterState.Query.Set("a")
+	app.focusReturnID = diffFilesTreeID
+	app.focusedWidgetID = diffCommitMessageID
+
+	app.handleEscape()
+
+	require.Equal(tt, "a", app.treeFilterState.PeekQuery())
+	require.True(tt, app.treeFilterVisible.Get())
+}
+
 func TestDv_FilterNoMatchesSetsExplicitState(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt", "b.txt")}}, false)
 	initialRendered := app.diffViewState.Rendered.Peek()
@@ -2342,6 +2355,15 @@ func TestDv_FocusCommitMessageShowsHiddenSidebar(tt *testing.T) {
 	require.True(tt, app.sidebarVisible.Get())
 }
 
+func TestDv_FocusCommitMessageRemembersPreviousFocus(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	app.focusedWidgetID = diffFilesTreeID
+
+	app.focusCommitMessage()
+
+	require.Equal(tt, diffFilesTreeID, app.focusReturnID)
+}
+
 func TestDv_CommitMessageSubmitRunsCommitAndClearsInput(tt *testing.T) {
 	provider := &scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt"), ""}}
 	app := newTestDv(provider, false)
@@ -2987,6 +3009,14 @@ func TestDv_FocusDividerFromPaletteUsesViewerFallbackTarget(tt *testing.T) {
 	require.Equal(tt, diffViewerScrollID, app.focusReturnID)
 }
 
+func TestDv_CommitReturnTargetFallsBackFromCommandPaletteInput(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	app.focusedWidgetID = diffCommandPaletteID + "-input"
+	app.lastNonDividerFocus = diffCommandPaletteID + "-input"
+
+	require.Equal(tt, diffViewerScrollID, app.commitReturnTarget())
+}
+
 func TestIsInvalidDividerReturnTarget(tt *testing.T) {
 	require.True(tt, isInvalidDividerReturnTarget(""))
 	require.True(tt, isInvalidDividerReturnTarget(diffSplitPaneID))
@@ -2994,6 +3024,16 @@ func TestIsInvalidDividerReturnTarget(tt *testing.T) {
 	require.True(tt, isInvalidDividerReturnTarget(diffCommandPaletteID+"-input"))
 	require.True(tt, isInvalidDividerReturnTarget(diffCommandPaletteID+"-list"))
 	require.False(tt, isInvalidDividerReturnTarget(diffViewerScrollID))
+}
+
+func TestIsInvalidCommitReturnTarget(tt *testing.T) {
+	require.True(tt, isInvalidCommitReturnTarget(""))
+	require.True(tt, isInvalidCommitReturnTarget(diffCommitMessageID))
+	require.True(tt, isInvalidCommitReturnTarget(diffCommandPaletteID))
+	require.True(tt, isInvalidCommitReturnTarget(diffCommandPaletteID+"-input"))
+	require.True(tt, isInvalidCommitReturnTarget(diffCommandPaletteID+"-list"))
+	require.False(tt, isInvalidCommitReturnTarget(diffViewerScrollID))
+	require.False(tt, isInvalidCommitReturnTarget(diffFilesTreeID))
 }
 
 func TestDv_RefreshLoadsCurrentBranch(tt *testing.T) {

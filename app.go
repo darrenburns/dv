@@ -2802,6 +2802,9 @@ func (a *Dv) focusCommitMessage() {
 	if !a.canCommitChanges() {
 		return
 	}
+	if a.focusedWidgetID != diffCommitMessageID {
+		a.focusReturnID = a.commitReturnTarget()
+	}
 	if !a.sidebarVisible.Get() {
 		a.sidebarVisible.Set(true)
 		a.dividerFocusRequested.Set(false)
@@ -2828,6 +2831,10 @@ func (a *Dv) submitCommitMessage(_ string) {
 }
 
 func (a *Dv) handleEscape() {
+	if a.focusedWidgetID == diffCommitMessageID {
+		a.exitCommitMessageFocus()
+		return
+	}
 	if a.clearTreeFilter() {
 		return
 	}
@@ -2860,6 +2867,31 @@ func (a *Dv) clearTreeFilter() bool {
 	a.syncTreeFilterSelection()
 	t.RequestFocus(diffFilesTreeID)
 	return true
+}
+
+func (a *Dv) commitReturnTarget() string {
+	target := a.focusedWidgetID
+	if target == diffSplitPaneID {
+		target = a.dividerReturnTarget()
+	}
+	if isInvalidCommitReturnTarget(target) {
+		target = a.lastNonDividerFocus
+		if target == diffSplitPaneID {
+			target = a.dividerReturnTarget()
+		}
+	}
+	if isInvalidCommitReturnTarget(target) {
+		target = diffViewerScrollID
+	}
+	return target
+}
+
+func (a *Dv) exitCommitMessageFocus() {
+	target := a.focusReturnID
+	if isInvalidCommitReturnTarget(target) {
+		target = diffViewerScrollID
+	}
+	t.RequestFocus(target)
 }
 
 func (a *Dv) shouldShowTreeFilterInput() bool {
@@ -3057,6 +3089,16 @@ func (a *Dv) dividerReturnTarget() string {
 // We can't assume that the previous widget that was focused is still available (e.g. command palette).
 func isInvalidDividerReturnTarget(target string) bool {
 	if target == "" || target == diffSplitPaneID {
+		return true
+	}
+	if target == diffCommandPaletteID {
+		return true
+	}
+	return strings.HasPrefix(target, diffCommandPaletteID+"-")
+}
+
+func isInvalidCommitReturnTarget(target string) bool {
+	if target == "" || target == diffCommitMessageID {
 		return true
 	}
 	if target == diffCommandPaletteID {
