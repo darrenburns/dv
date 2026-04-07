@@ -812,6 +812,7 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 	if a.canCommitChanges() {
 		commitHeaderBackground := theme.AccentBg
 		commitHeaderForeground := theme.AccentText
+		commitHeaderText := "Commit [c]"
 		commitInput := t.TextArea{
 			ID:          diffCommitMessageID,
 			State:       a.commitMessageInput,
@@ -831,6 +832,7 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 		if ctx.IsFocused(commitInput) {
 			commitHeaderBackground = theme.ActiveCursor
 			commitHeaderForeground = theme.SelectionText
+			commitHeaderText = "Commit [ctrl+enter]"
 		}
 
 		children = append(children, t.Column{
@@ -847,7 +849,7 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 					},
 					Children: []t.Widget{
 						t.Text{
-							Content: "Commit [c]",
+							Content: commitHeaderText,
 							Style: t.Style{
 								ForegroundColor: commitHeaderForeground,
 							},

@@ -2343,6 +2343,37 @@ func TestDv_BuildLeftPaneIncludesCommitMessageInput(tt *testing.T) {
 	require.Equal(tt, "Submit", submit.Name)
 }
 
+func TestDv_BuildLeftPaneShowsSubmitShortcutWhenCommitInputFocused(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	focusManager := t.NewFocusManager()
+	focusManager.SetFocusables([]t.FocusableEntry{
+		{
+			ID: diffCommitMessageID,
+			Focusable: t.TextArea{
+				ID:    diffCommitMessageID,
+				State: app.commitMessageInput,
+			},
+		},
+	})
+	focusManager.FocusByID(diffCommitMessageID)
+
+	ctx := t.NewBuildContext(focusManager, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+
+	composer, ok := column.Children[len(column.Children)-1].(t.Column)
+	require.True(tt, ok)
+	header, ok := composer.Children[0].(t.Row)
+	require.True(tt, ok)
+	headerText, ok := header.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, "Commit [ctrl+enter]", headerText.Content)
+}
+
 func TestDv_FocusCommitMessageShowsHiddenSidebar(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
 	app.sidebarVisible.Set(false)
