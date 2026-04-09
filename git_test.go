@@ -98,6 +98,24 @@ func TestBuildPushArgsSetUpstream(t *testing.T) {
 	require.Equal(t, []string{"push", "--set-upstream", "origin", "HEAD"}, args)
 }
 
+func TestBuildPullRequestURLFromHTTPSRemote(t *testing.T) {
+	got, err := buildPullRequestURL("https://github.com/acme/dv.git", "feature/add-pr")
+	require.NoError(t, err)
+	require.Equal(t, "https://github.com/acme/dv/compare/feature%2Fadd-pr?expand=1", got)
+}
+
+func TestBuildPullRequestURLFromSSHRemote(t *testing.T) {
+	got, err := buildPullRequestURL("git@github.com:acme/dv.git", "feature/add-pr")
+	require.NoError(t, err)
+	require.Equal(t, "https://github.com/acme/dv/compare/feature%2Fadd-pr?expand=1", got)
+}
+
+func TestBuildPullRequestURLRejectsUnsupportedRemote(t *testing.T) {
+	_, err := buildPullRequestURL("/tmp/repo", "feature/add-pr")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "unsupported git remote URL")
+}
+
 func TestSelectDefaultPushRemote(t *testing.T) {
 	tests := []struct {
 		name    string

@@ -195,6 +195,7 @@ type Dv struct {
 	files    []*DiffFile
 
 	copyPathToClipboard func(string) error
+	openURL             func(string) error
 
 	activePath  string
 	activeIsDir bool
@@ -318,6 +319,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		lastNonDividerFocus:   diffViewerScrollID,
 		focusReturnID:         diffViewerScrollID,
 		copyPathToClipboard:   copyPathToClipboardOSC52,
+		openURL:               openURLInBrowser,
 		fileScrollOffsets:     map[string]fileScrollState{},
 		reviewedByFile:        t.NewAnySignal(map[string]bool{}),
 	}
@@ -622,6 +624,14 @@ func (a *Dv) Keybinds() []t.Keybind {
 			Key:    "P",
 			Name:   "Push current branch",
 			Action: a.pushCurrentBranch,
+			Hidden: true,
+		})
+	}
+	if a.canOpenPullRequest() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "O",
+			Name:   "Open pull request",
+			Action: a.openPullRequest,
 			Hidden: true,
 		})
 	}
@@ -1615,6 +1625,17 @@ func (a *Dv) pushProvider() PushCapable {
 	return provider
 }
 
+func (a *Dv) pullRequestURLProvider() PullRequestURLCapable {
+	if a.isPipedDiffMode() {
+		return nil
+	}
+	provider, ok := a.provider.(PullRequestURLCapable)
+	if !ok {
+		return nil
+	}
+	return provider
+}
+
 func (a *Dv) canPushChanges() bool {
 	return a.pushProvider() != nil && strings.TrimSpace(a.branch) != ""
 }
@@ -1625,6 +1646,10 @@ func (a *Dv) mutationRunning() bool {
 
 func (a *Dv) canPushCurrentBranch() bool {
 	return a.canPushChanges() && !a.mutationRunning()
+}
+
+func (a *Dv) canOpenPullRequest() bool {
+	return a.pullRequestURLProvider() != nil && strings.TrimSpace(a.branch) != ""
 }
 
 func (a *Dv) canCommitAndPush() bool {
@@ -3214,6 +3239,24 @@ func (a *Dv) pushCurrentBranch() {
 	a.enqueueIndexCommand(indexCommand{Kind: indexCommandPush})
 }
 
+func (a *Dv) providerPullRequestURL(ctx context.Context) (string, error) {
+	if provider, ok := a.provider.(ContextPullRequestURLCapable); ok {
+		return provider.PullRequestURLContext(ctx)
+	}
+	return a.pullRequestURLProvider().PullRequestURL()
+}
+
+func (a *Dv) openPullRequest() {
+	if !a.canOpenPullRequest() || a.openURL == nil {
+		return
+	}
+	url, err := a.providerPullRequestURL(context.Background())
+	if err != nil || strings.TrimSpace(url) == "" {
+		return
+	}
+	_ = a.openURL(url)
+}
+
 func (a *Dv) toggleMutationOutputViewer() {
 	if !a.hasMutationSession() {
 		return
@@ -3771,6 +3814,14 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			FilterText: "Push current branch git push upstream remote publish",
 			Hint:       a.paletteHint("Push current branch"),
 			Action:     a.paletteAction(a.pushCurrentBranch),
+		})
+	}
+	if a.canOpenPullRequest() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Open pull request",
+			FilterText: "Open pull request github pr compare current branch browser",
+			Hint:       a.paletteHint("Open pull request"),
+			Action:     a.paletteAction(a.openPullRequest),
 		})
 	}
 	if a.canCommitAndPush() {

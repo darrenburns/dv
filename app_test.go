@@ -2509,6 +2509,18 @@ func TestDv_KeybindsIncludePushWhenBranchAvailable(tt *testing.T) {
 	require.Equal(tt, "Push current branch", keybind.Name)
 }
 
+func TestDv_KeybindsIncludeOpenPullRequestWhenBranchAvailable(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:       "/tmp/repo",
+		branch:         "feature/pr-link",
+		diffs:          []string{diffForPaths("a.txt")},
+		pullRequestURL: "https://github.com/acme/dv/compare/feature%2Fpr-link?expand=1",
+	}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "O")
+	require.True(tt, ok)
+	require.Equal(tt, "Open pull request", keybind.Name)
+}
+
 func TestDv_KeybindsHideLastGitOutputWithoutSession(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
 	keybind, ok := findKeybindByKey(app.Keybinds(), "o")
@@ -2536,6 +2548,44 @@ func TestDv_PushCurrentBranchStoresSessionAndOutput(tt *testing.T) {
 	keybind, ok := findKeybindByKey(app.Keybinds(), "o")
 	require.True(tt, ok)
 	require.False(tt, keybind.Hidden)
+}
+
+func TestDv_OpenPullRequestUsesResolvedURLAndOpener(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:       "/tmp/repo",
+		branch:         "feature/pr-link",
+		diffs:          []string{diffForPaths("a.txt")},
+		pullRequestURL: "https://github.com/acme/dv/compare/feature%2Fpr-link?expand=1",
+	}
+	app := newTestDv(provider, false)
+
+	var opened []string
+	app.openURL = func(rawURL string) error {
+		opened = append(opened, rawURL)
+		return nil
+	}
+
+	app.openPullRequest()
+
+	require.Equal(tt, 1, provider.pullRequestURLCalls)
+	require.Equal(tt, []string{"https://github.com/acme/dv/compare/feature%2Fpr-link?expand=1"}, opened)
+}
+
+func TestDv_CommandPaletteIncludesOpenPullRequest(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot:       "/tmp/repo",
+		branch:         "feature/pr-link",
+		diffs:          []string{diffForPaths("a.txt")},
+		pullRequestURL: "https://github.com/acme/dv/compare/feature%2Fpr-link?expand=1",
+	}, false)
+	app.togglePalette()
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+
+	item := findPaletteItemByLabel(level.Items, "Open pull request")
+	require.True(tt, item.IsSelectable())
+	require.Equal(tt, "[O]", item.Hint)
 }
 
 func TestDv_CommitAndPushRunsBothAndClearsInput(tt *testing.T) {
@@ -3355,43 +3405,46 @@ func TestDv_ViewerTitleDoesNotIncludeLayoutMode(tt *testing.T) {
 }
 
 type scriptedDiffProvider struct {
-	repoRoot        string
-	branch          string
-	diffs           []string
-	unstagedDiffs   []string
-	stagedDiffs     []string
-	sections        []DiffSection
-	manualRefresh   *bool
-	index           int
-	unstagedIndex   int
-	stagedIndex     int
-	loadStaged      []bool
-	loadIgnoreWS    []bool
-	stagedPaths     []string
-	stageAllCalls   int
-	unstagedPaths   []string
-	unstageAllCalls int
-	commitMessages  []string
-	pushCalls       int
-	stagePathErr    error
-	stageAllErr     error
-	unstagePathErr  error
-	unstageAllErr   error
-	commitErr       error
-	pushErr         error
-	stageStdout     string
-	stageStderr     string
-	unstageStdout   string
-	unstageStderr   string
-	commitStdout    string
-	commitStderr    string
-	pushStdout      string
-	pushStderr      string
-	stagePathBlock  chan struct{}
-	stagePathStart  chan struct{}
-	loadDiffBlock   chan struct{}
-	loadDiffStart   chan struct{}
-	operationOrder  []string
+	repoRoot            string
+	branch              string
+	pullRequestURL      string
+	diffs               []string
+	unstagedDiffs       []string
+	stagedDiffs         []string
+	sections            []DiffSection
+	manualRefresh       *bool
+	index               int
+	unstagedIndex       int
+	stagedIndex         int
+	loadStaged          []bool
+	loadIgnoreWS        []bool
+	stagedPaths         []string
+	stageAllCalls       int
+	unstagedPaths       []string
+	unstageAllCalls     int
+	commitMessages      []string
+	pushCalls           int
+	pullRequestURLCalls int
+	stagePathErr        error
+	stageAllErr         error
+	unstagePathErr      error
+	unstageAllErr       error
+	commitErr           error
+	pushErr             error
+	pullRequestURLErr   error
+	stageStdout         string
+	stageStderr         string
+	unstageStdout       string
+	unstageStderr       string
+	commitStdout        string
+	commitStderr        string
+	pushStdout          string
+	pushStderr          string
+	stagePathBlock      chan struct{}
+	stagePathStart      chan struct{}
+	loadDiffBlock       chan struct{}
+	loadDiffStart       chan struct{}
+	operationOrder      []string
 }
 
 func (p *scriptedDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
@@ -3507,6 +3560,11 @@ func (p *scriptedDiffProvider) PushCurrentBranch() error {
 	p.pushCalls++
 	p.operationOrder = append(p.operationOrder, "push")
 	return p.pushErr
+}
+
+func (p *scriptedDiffProvider) PullRequestURL() (string, error) {
+	p.pullRequestURLCalls++
+	return p.pullRequestURL, p.pullRequestURLErr
 }
 
 func (p *scriptedDiffProvider) stagePathResult(path string) gitMutationResult {

@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"net/url"
 	"os/exec"
 	"strings"
 )
@@ -60,6 +61,14 @@ type PushCapable interface {
 
 type ContextPushCapable interface {
 	PushCurrentBranchContext(ctx context.Context) error
+}
+
+type PullRequestURLCapable interface {
+	PullRequestURL() (string, error)
+}
+
+type ContextPullRequestURLCapable interface {
+	PullRequestURLContext(ctx context.Context) (string, error)
 }
 
 type gitMutationResult struct {
@@ -247,6 +256,18 @@ func (p GitDiffProvider) pushCurrentBranchResultContext(ctx context.Context) git
 	return runGitMutationResult(ctx, p.WorkDir, args, "")
 }
 
+func (p GitDiffProvider) PullRequestURL() (string, error) {
+	return p.PullRequestURLContext(context.Background())
+}
+
+func (p GitDiffProvider) PullRequestURLContext(ctx context.Context) (string, error) {
+	branch, err := p.CurrentBranchContext(ctx)
+	if err != nil {
+		return "", err
+	}
+	return resolvePullRequestURL(ctx, p.WorkDir, branch)
+}
+
 func (p GitDiffProvider) resolvePushArgs(ctx context.Context) ([]string, error) {
 	hasUpstream, err := gitBranchHasUpstream(ctx, p.WorkDir)
 	if err != nil {
@@ -351,6 +372,129 @@ func selectDefaultPushRemote(remotes []string) (string, error) {
 		return "origin", nil
 	}
 	return "", fmt.Errorf("no upstream branch configured and refusing to guess a push remote")
+}
+
+func gitPullRequestRemote(ctx context.Context, workDir string) (string, error) {
+	remote, ok, err := gitBranchUpstreamRemote(ctx, workDir)
+	if err != nil {
+		return "", err
+	}
+	if ok {
+		return remote, nil
+	}
+	return gitDefaultPushRemote(ctx, workDir)
+}
+
+func gitBranchUpstreamRemote(ctx context.Context, workDir string) (string, bool, error) {
+	stdout, stderr, err := runGit(ctx, workDir, []string{"rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"})
+	if err == nil {
+		upstream := strings.TrimSpace(stdout)
+		remote, _, ok := strings.Cut(upstream, "/")
+		if !ok || strings.TrimSpace(remote) == "" {
+			return "", false, fmt.Errorf("unexpected upstream ref %q", upstream)
+		}
+		return remote, true, nil
+	}
+	if strings.Contains(strings.ToLower(stderr), "no upstream configured") || strings.Contains(strings.ToLower(stderr), "no upstream branch") {
+		return "", false, nil
+	}
+	return "", false, fmt.Errorf("git rev-parse --abbrev-ref --symbolic-full-name @{upstream} failed: %w: %s", err, strings.TrimSpace(stderr))
+}
+
+func gitRemoteURL(ctx context.Context, workDir string, remote string) (string, error) {
+	stdout, stderr, err := runGit(ctx, workDir, []string{"remote", "get-url", remote})
+	if err != nil {
+		return "", fmt.Errorf("git remote get-url %s failed: %w: %s", remote, err, strings.TrimSpace(stderr))
+	}
+	return strings.TrimSpace(stdout), nil
+}
+
+func resolvePullRequestURL(ctx context.Context, workDir string, branch string) (string, error) {
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return "", fmt.Errorf("current branch unavailable")
+	}
+	remote, err := gitPullRequestRemote(ctx, workDir)
+	if err != nil {
+		return "", err
+	}
+	remoteURL, err := gitRemoteURL(ctx, workDir, remote)
+	if err != nil {
+		return "", err
+	}
+	return buildPullRequestURL(remoteURL, branch)
+}
+
+func buildPullRequestURL(remoteURL string, branch string) (string, error) {
+	webBase, err := gitRemoteWebURL(remoteURL)
+	if err != nil {
+		return "", err
+	}
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		return "", fmt.Errorf("current branch unavailable")
+	}
+	return webBase + "/compare/" + url.PathEscape(branch) + "?expand=1", nil
+}
+
+func gitRemoteWebURL(remoteURL string) (string, error) {
+	remoteURL = strings.TrimSpace(remoteURL)
+	if remoteURL == "" {
+		return "", fmt.Errorf("git remote URL unavailable")
+	}
+
+	if strings.Contains(remoteURL, "@") && strings.Contains(remoteURL, ":") && !strings.Contains(remoteURL, "://") {
+		hostPart, pathPart, ok := strings.Cut(remoteURL, ":")
+		if !ok {
+			return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
+		}
+		_, host, ok := strings.Cut(hostPart, "@")
+		if !ok || strings.TrimSpace(host) == "" {
+			return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
+		}
+		repoPath, err := normalizeGitRemoteRepoPath(pathPart)
+		if err != nil {
+			return "", err
+		}
+		return "https://" + host + "/" + repoPath, nil
+	}
+
+	parsed, err := url.Parse(remoteURL)
+	if err != nil {
+		return "", fmt.Errorf("unsupported git remote URL %q: %w", remoteURL, err)
+	}
+
+	scheme := "https"
+	switch parsed.Scheme {
+	case "http", "https":
+		scheme = parsed.Scheme
+	case "ssh", "git":
+	default:
+		return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
+	}
+
+	host := parsed.Hostname()
+	if host == "" {
+		return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
+	}
+	repoPath, err := normalizeGitRemoteRepoPath(parsed.Path)
+	if err != nil {
+		return "", err
+	}
+	return scheme + "://" + host + "/" + repoPath, nil
+}
+
+func normalizeGitRemoteRepoPath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+	path = strings.Trim(path, "/")
+	path = strings.TrimSuffix(path, ".git")
+	if path == "" {
+		return "", fmt.Errorf("git remote repository path unavailable")
+	}
+	if !strings.Contains(path, "/") {
+		return "", fmt.Errorf("unsupported git remote repository path %q", path)
+	}
+	return path, nil
 }
 
 func buildDiffArgs(staged bool, ignoreWhitespace bool) []string {
