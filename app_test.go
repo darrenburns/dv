@@ -505,6 +505,28 @@ func TestDv_ToggleStageKeybindStagesActiveFileAndRefreshes(tt *testing.T) {
 	require.Equal(tt, "a.txt", app.activePath)
 }
 
+func TestDv_ToggleStageKeepsCursorNearRemovedFileWhenSectionStillHasFiles(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPaths("a.txt", "b.txt", "c.txt"), diffForPaths("a.txt", "c.txt")},
+		stagedDiffs:   []string{"", diffForPaths("b.txt")},
+	}
+	app := newTestDv(provider, false)
+	require.True(tt, app.selectFilePath("b.txt"))
+
+	toggleStage, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.NotNil(tt, toggleStage.Action)
+
+	toggleStage.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"b.txt"}, provider.stagedPaths)
+	require.Equal(tt, DiffSectionUnstaged, app.activeSection)
+	require.Equal(tt, "c.txt", app.activePath)
+	require.Equal(tt, app.filePathToTreePath["c.txt"], app.treeState.CursorPath.Peek())
+}
+
 func TestDv_StageAllPaletteActionStagesAllFilesAndRefreshes(tt *testing.T) {
 	provider := &scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
@@ -549,6 +571,28 @@ func TestDv_ToggleStageKeybindUnstagesActiveFileAndRefreshes(tt *testing.T) {
 	require.Len(tt, provider.loadStaged, 4)
 	require.Equal(tt, DiffSectionUnstaged, app.activeSection)
 	require.Equal(tt, "a.txt", app.activePath)
+}
+
+func TestDv_ToggleUnstageKeepsCursorNearRemovedFileWhenSectionStillHasFiles(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{"", diffForPaths("b.txt")},
+		stagedDiffs:   []string{diffForPaths("a.txt", "b.txt", "c.txt"), diffForPaths("a.txt", "c.txt")},
+	}
+	app := newTestDv(provider, true)
+	require.True(tt, app.selectFilePath("b.txt"))
+
+	toggleStage, ok := findKeybindByKey(app.Keybinds(), "s")
+	require.True(tt, ok)
+	require.NotNil(tt, toggleStage.Action)
+
+	toggleStage.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"b.txt"}, provider.unstagedPaths)
+	require.Equal(tt, DiffSectionStaged, app.activeSection)
+	require.Equal(tt, "c.txt", app.activePath)
+	require.Equal(tt, app.filePathToTreePath["c.txt"], app.treeState.CursorPath.Peek())
 }
 
 func TestDv_UnstageAllPaletteActionUnstagesAllFilesAndRefreshes(tt *testing.T) {
@@ -2314,16 +2358,12 @@ func TestDv_ToggleSidebarVisibility(tt *testing.T) {
 }
 
 func TestDv_BuildLeftPaneIncludesCommitMessageInput(tt *testing.T) {
-	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
-	theme, ok := t.GetTheme(t.CurrentThemeName())
-	require.True(tt, ok)
-	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
-	widget := app.buildLeftPane(ctx, theme)
-	column, ok := widget.(t.Column)
-	require.True(tt, ok)
-
-	composer, ok := column.Children[len(column.Children)-1].(t.Column)
-	require.True(tt, ok)
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		branch:   "main",
+		diffs:    []string{diffForPaths("a.txt")},
+	}, false)
+	composer := findCommitComposer(tt, app)
 	require.Len(tt, composer.Children, 2)
 
 	header, ok := composer.Children[0].(t.Row)
@@ -2335,12 +2375,16 @@ func TestDv_BuildLeftPaneIncludesCommitMessageInput(tt *testing.T) {
 
 	area := findCommitMessageInput(tt, app)
 	require.Equal(tt, diffCommitMessageID, area.ID)
-	require.Equal(tt, "Write a commit message. Ctrl+Enter to commit.", area.Placeholder)
+	require.Equal(tt, "Write a commit message. Ctrl+Enter to commit. Ctrl+Shift+Enter to commit & push.", area.Placeholder)
 	require.Equal(tt, t.Cells(3), area.Style.MinHeight)
 
 	submit, ok := findKeybindByKey(area.Keybinds(), "ctrl+enter")
 	require.True(tt, ok)
 	require.Equal(tt, "Submit", submit.Name)
+
+	commitAndPush, ok := findKeybindByKey(area.Keybinds(), "ctrl+shift+enter")
+	require.True(tt, ok)
+	require.Equal(tt, "Commit & push", commitAndPush.Name)
 }
 
 func TestDv_BuildLeftPaneShowsSubmitShortcutWhenCommitInputFocused(tt *testing.T) {
@@ -2364,9 +2408,23 @@ func TestDv_BuildLeftPaneShowsSubmitShortcutWhenCommitInputFocused(tt *testing.T
 	widget := app.buildLeftPane(ctx, theme)
 	column, ok := widget.(t.Column)
 	require.True(tt, ok)
-
-	composer, ok := column.Children[len(column.Children)-1].(t.Column)
-	require.True(tt, ok)
+	var composer t.Column
+	for _, child := range column.Children {
+		candidate, ok := child.(t.Column)
+		if !ok || len(candidate.Children) == 0 {
+			continue
+		}
+		header, ok := candidate.Children[0].(t.Row)
+		if !ok || len(header.Children) == 0 {
+			continue
+		}
+		headerText, ok := header.Children[0].(t.Text)
+		if ok && strings.HasPrefix(headerText.Content, "Commit [") {
+			composer = candidate
+			break
+		}
+	}
+	require.NotEmpty(tt, composer.Children)
 	header, ok := composer.Children[0].(t.Row)
 	require.True(tt, ok)
 	headerText, ok := header.Children[0].(t.Text)
@@ -2409,6 +2467,158 @@ func TestDv_CommitMessageSubmitRunsCommitAndClearsInput(tt *testing.T) {
 
 	require.Equal(tt, []string{"feat: add sidebar commit box\n\nBody"}, provider.commitMessages)
 	require.Equal(tt, "", app.commitMessageInput.GetText())
+}
+
+func TestDv_CommitMessageSubmitFailureKeepsInputAndShowsErrorStatus(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:     "/tmp/repo",
+		diffs:        []string{diffForPaths("a.txt"), diffForPaths("a.txt")},
+		commitErr:    fmt.Errorf("commit failed"),
+		commitStderr: "nothing staged",
+	}
+	app := newTestDv(provider, false)
+	app.commitMessageInput.SetText("feat: broken commit")
+
+	area := findCommitMessageInput(tt, app)
+	submit, ok := findKeybindByKey(area.Keybinds(), "ctrl+enter")
+	require.True(tt, ok)
+	submit.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, "feat: broken commit", app.commitMessageInput.GetText())
+	require.NotNil(tt, app.lastMutationSession)
+	require.Equal(tt, mutationStateError, app.lastMutationSession.State)
+	require.Equal(tt, "Commit failed: nothing staged", app.lastMutationSession.Summary)
+
+	statusBar := findMutationStatusBar(tt, app)
+	require.Equal(tt, themeColorValue(tt, "error_bg"), statusBar.Style.BackgroundColor)
+	statusText, ok := statusBar.Children[0].(t.Text)
+	require.True(tt, ok)
+	require.Equal(tt, themeColorValue(tt, "error_text"), statusText.Style.ForegroundColor)
+	require.Contains(tt, statusText.Content, "Commit failed: nothing staged")
+}
+
+func TestDv_KeybindsIncludePushWhenBranchAvailable(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		branch:   "main",
+		diffs:    []string{diffForPaths("a.txt")},
+	}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "P")
+	require.True(tt, ok)
+	require.Equal(tt, "Push current branch", keybind.Name)
+}
+
+func TestDv_KeybindsHideLastGitOutputWithoutSession(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	keybind, ok := findKeybindByKey(app.Keybinds(), "o")
+	require.True(tt, ok)
+	require.True(tt, keybind.Hidden)
+}
+
+func TestDv_PushCurrentBranchStoresSessionAndOutput(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:   "/tmp/repo",
+		branch:     "main",
+		diffs:      []string{diffForPaths("a.txt"), diffForPaths("a.txt")},
+		pushStdout: "up to date",
+	}
+	app := newTestDv(provider, false)
+
+	app.pushCurrentBranch()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, 1, provider.pushCalls)
+	require.NotNil(tt, app.lastMutationSession)
+	require.Equal(tt, mutationStateSuccess, app.lastMutationSession.State)
+	require.Equal(tt, "Pushed", app.lastMutationSession.Summary)
+
+	keybind, ok := findKeybindByKey(app.Keybinds(), "o")
+	require.True(tt, ok)
+	require.False(tt, keybind.Hidden)
+}
+
+func TestDv_CommitAndPushRunsBothAndClearsInput(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot: "/tmp/repo",
+		branch:   "main",
+		diffs:    []string{diffForPaths("a.txt"), "", ""},
+	}
+	app := newTestDv(provider, false)
+	app.commitMessageInput.SetText("feat: ship it")
+
+	area := findCommitMessageInput(tt, app)
+	commitAndPush, ok := findKeybindByKey(area.Keybinds(), "ctrl+shift+enter")
+	require.True(tt, ok)
+	commitAndPush.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, []string{"feat: ship it"}, provider.commitMessages)
+	require.Equal(tt, 1, provider.pushCalls)
+	require.Equal(tt, []string{"commit", "push"}, provider.operationOrder)
+	require.Equal(tt, "", app.commitMessageInput.GetText())
+	require.NotNil(tt, app.lastMutationSession)
+	require.Equal(tt, mutationStateSuccess, app.lastMutationSession.State)
+	require.Equal(tt, "Committed and pushed", app.lastMutationSession.Summary)
+}
+
+func TestDv_CommitAndPushPushFailurePreservesOutputTranscript(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:     "/tmp/repo",
+		branch:       "main",
+		diffs:        []string{diffForPaths("a.txt"), "", ""},
+		commitStdout: "created commit",
+		pushErr:      fmt.Errorf("push failed"),
+		pushStderr:   "no upstream configured",
+	}
+	app := newTestDv(provider, false)
+	app.commitMessageInput.SetText("feat: publish")
+
+	app.submitCommitAndPush()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, "", app.commitMessageInput.GetText())
+	require.NotNil(tt, app.lastMutationSession)
+	require.Equal(tt, mutationStateError, app.lastMutationSession.State)
+	require.Equal(tt, "Committed locally, push failed: no upstream configured", app.lastMutationSession.Summary)
+	require.Len(tt, app.lastMutationSession.Steps, 2)
+
+	app.toggleMutationOutputViewer()
+	require.True(tt, app.showMutationOutput)
+	rendered := app.diffViewState.Rendered.Peek()
+	require.NotNil(tt, rendered)
+	lines := make([]string, 0, len(rendered.Lines))
+	for _, line := range rendered.Lines {
+		lines = append(lines, lineText(line))
+	}
+	require.Contains(tt, lines, "Session: Commit & Push")
+	require.Contains(tt, lines, "Summary: Committed locally, push failed: no upstream configured")
+	require.Contains(tt, lines, "Command: git push")
+	require.Contains(tt, lines, "no upstream configured")
+}
+
+func TestDv_OutputViewerClosesWithEscapeAndFileSelection(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:   "/tmp/repo",
+		branch:     "main",
+		diffs:      []string{diffForPaths("a.txt", "b.txt"), diffForPaths("a.txt", "b.txt")},
+		pushStdout: "ok",
+	}
+	app := newTestDv(provider, false)
+	app.pushCurrentBranch()
+	flushAsyncIndexWork(tt, app)
+
+	app.toggleMutationOutputViewer()
+	require.True(tt, app.showMutationOutput)
+
+	app.handleEscape()
+	require.False(tt, app.showMutationOutput)
+
+	app.toggleMutationOutputViewer()
+	require.True(tt, app.showMutationOutput)
+	app.moveFileCursor(1)
+	require.False(tt, app.showMutationOutput)
+	require.Equal(tt, "b.txt", app.activePath)
 }
 
 func TestDividerHoverColorUsesHalfActiveAlpha(tt *testing.T) {
@@ -3162,6 +3372,21 @@ type scriptedDiffProvider struct {
 	unstagedPaths   []string
 	unstageAllCalls int
 	commitMessages  []string
+	pushCalls       int
+	stagePathErr    error
+	stageAllErr     error
+	unstagePathErr  error
+	unstageAllErr   error
+	commitErr       error
+	pushErr         error
+	stageStdout     string
+	stageStderr     string
+	unstageStdout   string
+	unstageStderr   string
+	commitStdout    string
+	commitStderr    string
+	pushStdout      string
+	pushStderr      string
 	stagePathBlock  chan struct{}
 	stagePathStart  chan struct{}
 	loadDiffBlock   chan struct{}
@@ -3251,31 +3476,97 @@ func (p *scriptedDiffProvider) StagePath(path string) error {
 	if p.stagePathBlock != nil {
 		<-p.stagePathBlock
 	}
-	return nil
+	return p.stagePathErr
 }
 
 func (p *scriptedDiffProvider) StageAll() error {
 	p.stageAllCalls++
 	p.operationOrder = append(p.operationOrder, "stage-all")
-	return nil
+	return p.stageAllErr
 }
 
 func (p *scriptedDiffProvider) UnstagePath(path string) error {
 	p.unstagedPaths = append(p.unstagedPaths, path)
 	p.operationOrder = append(p.operationOrder, "unstage:"+path)
-	return nil
+	return p.unstagePathErr
 }
 
 func (p *scriptedDiffProvider) UnstageAll() error {
 	p.unstageAllCalls++
 	p.operationOrder = append(p.operationOrder, "unstage-all")
-	return nil
+	return p.unstageAllErr
 }
 
 func (p *scriptedDiffProvider) CommitMessage(message string) error {
 	p.commitMessages = append(p.commitMessages, message)
 	p.operationOrder = append(p.operationOrder, "commit")
-	return nil
+	return p.commitErr
+}
+
+func (p *scriptedDiffProvider) PushCurrentBranch() error {
+	p.pushCalls++
+	p.operationOrder = append(p.operationOrder, "push")
+	return p.pushErr
+}
+
+func (p *scriptedDiffProvider) stagePathResult(path string) gitMutationResult {
+	err := p.StagePath(path)
+	return gitMutationResult{
+		Args:   buildStagePathArgs(path),
+		Stdout: p.stageStdout,
+		Stderr: p.stageStderr,
+		Err:    err,
+	}
+}
+
+func (p *scriptedDiffProvider) stageAllResult() gitMutationResult {
+	err := p.StageAll()
+	return gitMutationResult{
+		Args:   buildStageAllArgs(),
+		Stdout: p.stageStdout,
+		Stderr: p.stageStderr,
+		Err:    err,
+	}
+}
+
+func (p *scriptedDiffProvider) unstagePathResult(path string) gitMutationResult {
+	err := p.UnstagePath(path)
+	return gitMutationResult{
+		Args:   buildUnstagePathArgs(path),
+		Stdout: p.unstageStdout,
+		Stderr: p.unstageStderr,
+		Err:    err,
+	}
+}
+
+func (p *scriptedDiffProvider) unstageAllResult() gitMutationResult {
+	err := p.UnstageAll()
+	return gitMutationResult{
+		Args:   buildUnstageAllArgs(),
+		Stdout: p.unstageStdout,
+		Stderr: p.unstageStderr,
+		Err:    err,
+	}
+}
+
+func (p *scriptedDiffProvider) commitMessageResult(message string) gitMutationResult {
+	err := p.CommitMessage(message)
+	return gitMutationResult{
+		Args:   buildCommitMessageArgs(),
+		Stdout: p.commitStdout,
+		Stderr: p.commitStderr,
+		Err:    err,
+	}
+}
+
+func (p *scriptedDiffProvider) pushCurrentBranchResult() gitMutationResult {
+	err := p.PushCurrentBranch()
+	return gitMutationResult{
+		Args:   buildPushArgs("", false),
+		Stdout: p.pushStdout,
+		Stderr: p.pushStderr,
+		Err:    err,
+	}
 }
 
 func boolPtr(value bool) *bool {
@@ -3449,6 +3740,58 @@ func findCommitMessageInput(tt *testing.T, app *Dv) t.TextArea {
 	return t.TextArea{}
 }
 
+func findCommitComposer(tt *testing.T, app *Dv) t.Column {
+	tt.Helper()
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+
+	for _, child := range column.Children {
+		composer, ok := child.(t.Column)
+		if !ok || len(composer.Children) == 0 {
+			continue
+		}
+		header, ok := composer.Children[0].(t.Row)
+		if !ok || len(header.Children) == 0 {
+			continue
+		}
+		text, ok := header.Children[0].(t.Text)
+		if ok && strings.HasPrefix(text.Content, "Commit [") {
+			return composer
+		}
+	}
+
+	require.FailNow(tt, "expected commit composer in left pane")
+	return t.Column{}
+}
+
+func findMutationStatusBar(tt *testing.T, app *Dv) t.Row {
+	tt.Helper()
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+
+	for _, child := range column.Children {
+		row, ok := child.(t.Row)
+		if !ok || len(row.Children) == 0 {
+			continue
+		}
+		text, ok := row.Children[0].(t.Text)
+		if ok && strings.Contains(text.Content, "output") {
+			return row
+		}
+	}
+
+	require.FailNow(tt, "expected mutation status bar in left pane")
+	return t.Row{}
+}
+
 func keybindIsHidden(keybinds []t.Keybind, key string) bool {
 	for _, keybind := range keybinds {
 		if keybind.Key == key {
@@ -3556,4 +3899,28 @@ func indexOfTextContaining(texts []string, needle string) int {
 		}
 	}
 	return -1
+}
+
+func themeColorValue(tt testing.TB, name string) t.ColorProvider {
+	tt.Helper()
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	switch name {
+	case "error_bg":
+		return t.ColorProvider(theme.ErrorBg)
+	case "error_text":
+		return t.ColorProvider(theme.ErrorText)
+	case "success_bg":
+		return t.ColorProvider(theme.SuccessBg)
+	case "success_text":
+		return t.ColorProvider(theme.SuccessText)
+	case "warning_bg":
+		return t.ColorProvider(theme.WarningBg)
+	case "warning_text":
+		return t.ColorProvider(theme.WarningText)
+	default:
+		require.FailNow(tt, "unknown theme color")
+		return nil
+	}
 }

@@ -18,6 +18,7 @@ const (
 	diffFilesScrollID     = "terma-diff-files-scroll"
 	diffFilesFilterID     = "terma-diff-files-filter"
 	diffCommitMessageID   = "terma-diff-commit-message"
+	diffMutationStatusID  = "terma-diff-mutation-status"
 	diffViewerID          = "terma-diff-viewer"
 	diffViewerScrollID    = "terma-diff-viewer-scroll"
 	diffSplitPaneID       = "terma-diff-split"
@@ -126,6 +127,8 @@ const (
 	indexCommandStageAll
 	indexCommandUnstageAll
 	indexCommandCommit
+	indexCommandPush
+	indexCommandCommitAndPush
 )
 
 type indexCommand struct {
@@ -134,25 +137,52 @@ type indexCommand struct {
 	Message string
 }
 
+type mutationState int
+
+const (
+	mutationStateRunning mutationState = iota
+	mutationStateSuccess
+	mutationStateError
+)
+
+type mutationStepResult struct {
+	Action  string
+	Command string
+	Stdout  string
+	Stderr  string
+	Success bool
+}
+
+type mutationSessionResult struct {
+	Action  string
+	State   mutationState
+	Summary string
+	Steps   []mutationStepResult
+}
+
 type indexResult struct {
 	Refresh            bool
 	ClearCommitMessage bool
+	Session            *mutationSessionResult
 }
 
 type diffRefreshRequest struct {
 	ignoreWhitespace   bool
 	previousSelections map[DiffSection]string
+	previousIndices    map[DiffSection]int
 	previousActive     DiffSection
+	previousActivePath string
 }
 
 type diffRefreshResult struct {
-	repoRoot       string
-	hasRepoRoot    bool
-	branch         string
-	hasBranch      bool
-	sections       map[DiffSection]*diffSectionState
-	previousActive DiffSection
-	loadErr        string
+	repoRoot           string
+	hasRepoRoot        bool
+	branch             string
+	hasBranch          bool
+	sections           map[DiffSection]*diffSectionState
+	previousActive     DiffSection
+	previousActivePath string
+	loadErr            string
 }
 
 // Dv is a syntax-highlighted git diff viewer.
@@ -208,6 +238,8 @@ type Dv struct {
 	manualRefreshEnabled bool
 	focusedWidgetID      string
 	sidebarVisible       t.Signal[bool]
+	showMutationOutput   bool
+	lastMutationSession  *mutationSessionResult
 
 	dividerFocused        bool
 	dividerHovered        t.Signal[bool]
@@ -531,6 +563,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
+		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: !a.hasMutationSession()},
 		{Key: "y", Name: "Copy path", Action: a.copyActiveFilePath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
@@ -581,6 +614,14 @@ func (a *Dv) Keybinds() []t.Keybind {
 			Key:    "c",
 			Name:   "Focus commit message",
 			Action: a.focusCommitMessage,
+			Hidden: true,
+		})
+	}
+	if a.canPushCurrentBranch() {
+		keybinds = append(keybinds, t.Keybind{
+			Key:    "P",
+			Name:   "Push current branch",
+			Action: a.pushCurrentBranch,
 			Hidden: true,
 		})
 	}
@@ -814,12 +855,13 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 		commitHeaderForeground := theme.AccentText
 		commitHeaderText := "Commit [c]"
 		commitInput := t.TextArea{
-			ID:          diffCommitMessageID,
-			State:       a.commitMessageInput,
-			Placeholder: "Write a commit message. Ctrl+Enter to commit.",
-			Highlighter: commitMessageHighlighter(theme),
-			Width:       t.Flex(1),
-			OnSubmit:    a.submitCommitMessage,
+			ID:            diffCommitMessageID,
+			State:         a.commitMessageInput,
+			Placeholder:   "Write a commit message. Ctrl+Enter to commit. Ctrl+Shift+Enter to commit & push.",
+			Highlighter:   commitMessageHighlighter(theme),
+			Width:         t.Flex(1),
+			OnSubmit:      a.submitCommitMessage,
+			ExtraKeybinds: a.commitMessageExtraKeybinds(),
 			Style: t.Style{
 				Width:           t.Flex(1),
 				MinHeight:       t.Cells(3),
@@ -859,6 +901,9 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 				commitInput,
 			},
 		})
+		if statusBar, ok := a.buildMutationStatusBar(theme); ok {
+			children = append(children, statusBar)
+		}
 	}
 
 	return t.Column{
@@ -1062,6 +1107,9 @@ func (a *Dv) shouldShowDiffEmptyState() bool {
 }
 
 func (a *Dv) buildNonFileInfoCard(theme t.ThemeData) (t.Widget, bool) {
+	if a.showMutationOutput && a.lastMutationSession != nil {
+		return nil, false
+	}
 	if a.loadErr != "" {
 		return nil, false
 	}
@@ -1350,8 +1398,10 @@ func findDirectoryNodeInTree(nodes []t.TreeNode[DiffTreeNodeData], directoryPath
 
 func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 	background := t.ColorProvider(theme.Background)
-	if section, path, ok := a.activeReviewTarget(); ok && a.isReviewed(section, path) {
-		background = reviewedViewerTitleBackground(theme)
+	if !a.showMutationOutput {
+		if section, path, ok := a.activeReviewTarget(); ok && a.isReviewed(section, path) {
+			background = reviewedViewerTitleBackground(theme)
+		}
 	}
 
 	style := t.Style{
@@ -1376,7 +1426,8 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 				Content: title,
 				Style:   style,
 			},
-			FullPath: title,
+			FullPath:      title,
+			EllipsisColor: theme.Error,
 		}
 	}
 
@@ -1402,7 +1453,8 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 				Content: title,
 				Style:   style,
 			},
-			FullPath: title,
+			FullPath:      title,
+			EllipsisColor: theme.Error,
 		}
 	}
 
@@ -1422,7 +1474,8 @@ func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 						Bold:            true,
 					},
 				},
-				FullPath: title,
+				FullPath:      title,
+				EllipsisColor: theme.Error,
 			},
 			t.Spacer{Width: t.Cells(1)},
 			t.Text{
@@ -1551,6 +1604,40 @@ func (a *Dv) canCommitChanges() bool {
 	return a.commitProvider() != nil
 }
 
+func (a *Dv) pushProvider() PushCapable {
+	if a.isPipedDiffMode() {
+		return nil
+	}
+	provider, ok := a.provider.(PushCapable)
+	if !ok {
+		return nil
+	}
+	return provider
+}
+
+func (a *Dv) canPushChanges() bool {
+	return a.pushProvider() != nil && strings.TrimSpace(a.branch) != ""
+}
+
+func (a *Dv) mutationRunning() bool {
+	return a.indexPendingCount.Peek() > 0
+}
+
+func (a *Dv) canPushCurrentBranch() bool {
+	return a.canPushChanges() && !a.mutationRunning()
+}
+
+func (a *Dv) canCommitAndPush() bool {
+	if !a.canPushCurrentBranch() || a.commitMessageInput == nil {
+		return false
+	}
+	return strings.TrimSpace(a.commitMessageInput.GetText()) != ""
+}
+
+func (a *Dv) hasMutationSession() bool {
+	return a.lastMutationSession != nil
+}
+
 func (a *Dv) canStageActiveFile() bool {
 	if !a.canStageFiles() {
 		return false
@@ -1615,6 +1702,14 @@ func (a *Dv) enqueueIndexCommand(command indexCommand) {
 		if !a.canCommitChanges() {
 			return
 		}
+	case indexCommandPush:
+		if !a.canPushCurrentBranch() {
+			return
+		}
+	case indexCommandCommitAndPush:
+		if !a.canCommitAndPush() {
+			return
+		}
 	default:
 		if a.indexProvider() == nil {
 			return
@@ -1626,8 +1721,16 @@ func (a *Dv) enqueueIndexCommand(command indexCommand) {
 
 func (a *Dv) runIndexCommandQueue() {
 	for command := range a.indexCommandQueue {
-		result := a.executeIndexCommand(command)
+		result := a.executeIndexCommand(command, func(session mutationSessionResult) {
+			sessionCopy := cloneMutationSession(&session)
+			t.Dispatch(func() {
+				a.setMutationSession(sessionCopy)
+			})
+		})
 		t.Dispatch(func() {
+			if result.Session != nil {
+				a.setMutationSession(result.Session)
+			}
 			if result.ClearCommitMessage && a.commitMessageInput != nil {
 				a.commitMessageInput.SetText("")
 			}
@@ -1644,73 +1747,245 @@ func (a *Dv) runIndexCommandQueue() {
 	}
 }
 
-func (a *Dv) executeIndexCommand(command indexCommand) indexResult {
-	var err error
+func (a *Dv) executeIndexCommand(command indexCommand, report func(mutationSessionResult)) indexResult {
 	switch command.Kind {
 	case indexCommandStagePath:
-		provider := a.indexProvider()
-		if provider == nil {
-			return indexResult{Refresh: true}
-		}
-		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
-		if hasContextProvider {
-			err = contextProvider.StagePathContext(context.Background(), command.Path)
-		} else {
-			err = provider.StagePath(command.Path)
-		}
+		report(mutationSessionResult{Action: "stage", State: mutationStateRunning, Summary: "Staging..."})
+		step := a.stagePathMutationStep(command.Path)
+		return indexResult{Refresh: true, Session: singleStepSession("stage", step, "Staged file", "Stage failed")}
 	case indexCommandUnstagePath:
-		provider := a.indexProvider()
-		if provider == nil {
-			return indexResult{Refresh: true}
-		}
-		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
-		if hasContextProvider {
-			err = contextProvider.UnstagePathContext(context.Background(), command.Path)
-		} else {
-			err = provider.UnstagePath(command.Path)
-		}
+		report(mutationSessionResult{Action: "unstage", State: mutationStateRunning, Summary: "Unstaging..."})
+		step := a.unstagePathMutationStep(command.Path)
+		return indexResult{Refresh: true, Session: singleStepSession("unstage", step, "Unstaged file", "Unstage failed")}
 	case indexCommandStageAll:
-		provider := a.indexProvider()
-		if provider == nil {
-			return indexResult{Refresh: true}
-		}
-		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
-		if hasContextProvider {
-			err = contextProvider.StageAllContext(context.Background())
-		} else {
-			err = provider.StageAll()
-		}
+		report(mutationSessionResult{Action: "stage", State: mutationStateRunning, Summary: "Staging..."})
+		step := a.stageAllMutationStep()
+		return indexResult{Refresh: true, Session: singleStepSession("stage", step, "Staged all files", "Stage failed")}
 	case indexCommandUnstageAll:
-		provider := a.indexProvider()
-		if provider == nil {
-			return indexResult{Refresh: true}
-		}
-		contextProvider, hasContextProvider := provider.(ContextIndexCapable)
-		if hasContextProvider {
-			err = contextProvider.UnstageAllContext(context.Background())
-		} else {
-			err = provider.UnstageAll()
-		}
+		report(mutationSessionResult{Action: "unstage", State: mutationStateRunning, Summary: "Unstaging..."})
+		step := a.unstageAllMutationStep()
+		return indexResult{Refresh: true, Session: singleStepSession("unstage", step, "Unstaged all files", "Unstage failed")}
 	case indexCommandCommit:
-		provider := a.commitProvider()
-		if provider == nil {
-			return indexResult{Refresh: true}
+		report(mutationSessionResult{Action: "commit", State: mutationStateRunning, Summary: "Committing..."})
+		step := a.commitMutationStep(command.Message)
+		return indexResult{
+			Refresh:            true,
+			ClearCommitMessage: step.Success,
+			Session:            singleStepSession("commit", step, "Committed", "Commit failed"),
 		}
-		if contextProvider, ok := provider.(ContextCommitCapable); ok {
-			err = contextProvider.CommitMessageContext(context.Background(), command.Message)
+	case indexCommandPush:
+		report(mutationSessionResult{Action: "push", State: mutationStateRunning, Summary: "Pushing..."})
+		step := a.pushMutationStep()
+		return indexResult{Refresh: true, Session: singleStepSession("push", step, "Pushed", "Push failed")}
+	case indexCommandCommitAndPush:
+		report(mutationSessionResult{Action: "commit_and_push", State: mutationStateRunning, Summary: "Committing..."})
+		commitStep := a.commitMutationStep(command.Message)
+		if !commitStep.Success {
+			return indexResult{
+				Refresh: true,
+				Session: singleStepSession("commit_and_push", commitStep, "Committed", "Commit failed"),
+			}
+		}
+		report(mutationSessionResult{
+			Action:  "commit_and_push",
+			State:   mutationStateRunning,
+			Summary: "Pushing...",
+			Steps:   []mutationStepResult{commitStep},
+		})
+		pushStep := a.pushMutationStep()
+		session := &mutationSessionResult{
+			Action: "commit_and_push",
+			Steps:  []mutationStepResult{commitStep, pushStep},
+		}
+		if pushStep.Success {
+			session.State = mutationStateSuccess
+			session.Summary = "Committed and pushed"
 		} else {
-			err = provider.CommitMessage(command.Message)
+			session.State = mutationStateError
+			session.Summary = "Committed locally, push failed: " + mutationFailureDetail(pushStep)
+		}
+		return indexResult{
+			Refresh:            true,
+			ClearCommitMessage: true,
+			Session:            session,
 		}
 	default:
 		return indexResult{Refresh: true}
 	}
+}
+
+func (a *Dv) stagePathMutationStep(path string) mutationStepResult {
+	provider := a.indexProvider()
+	if provider == nil {
+		return mutationStepFromError("Stage file", buildStagePathArgs(path), fmt.Errorf("stage provider unavailable"))
+	}
+	if contextProvider, ok := provider.(contextMutationOutputProvider); ok {
+		return mutationStepFromGitResult("Stage file", contextProvider.stagePathResultContext(context.Background(), path), buildStagePathArgs(path))
+	}
+	if outputProvider, ok := provider.(mutationOutputProvider); ok {
+		return mutationStepFromGitResult("Stage file", outputProvider.stagePathResult(path), buildStagePathArgs(path))
+	}
+	if contextProvider, ok := provider.(ContextIndexCapable); ok {
+		return mutationStepFromError("Stage file", buildStagePathArgs(path), contextProvider.StagePathContext(context.Background(), path))
+	}
+	return mutationStepFromError("Stage file", buildStagePathArgs(path), provider.StagePath(path))
+}
+
+func (a *Dv) stageAllMutationStep() mutationStepResult {
+	provider := a.indexProvider()
+	if provider == nil {
+		return mutationStepFromError("Stage all files", buildStageAllArgs(), fmt.Errorf("stage provider unavailable"))
+	}
+	if contextProvider, ok := provider.(contextMutationOutputProvider); ok {
+		return mutationStepFromGitResult("Stage all files", contextProvider.stageAllResultContext(context.Background()), buildStageAllArgs())
+	}
+	if outputProvider, ok := provider.(mutationOutputProvider); ok {
+		return mutationStepFromGitResult("Stage all files", outputProvider.stageAllResult(), buildStageAllArgs())
+	}
+	if contextProvider, ok := provider.(ContextIndexCapable); ok {
+		return mutationStepFromError("Stage all files", buildStageAllArgs(), contextProvider.StageAllContext(context.Background()))
+	}
+	return mutationStepFromError("Stage all files", buildStageAllArgs(), provider.StageAll())
+}
+
+func (a *Dv) unstagePathMutationStep(path string) mutationStepResult {
+	provider := a.indexProvider()
+	if provider == nil {
+		return mutationStepFromError("Unstage file", buildUnstagePathArgs(path), fmt.Errorf("stage provider unavailable"))
+	}
+	if contextProvider, ok := provider.(contextMutationOutputProvider); ok {
+		return mutationStepFromGitResult("Unstage file", contextProvider.unstagePathResultContext(context.Background(), path), buildUnstagePathArgs(path))
+	}
+	if outputProvider, ok := provider.(mutationOutputProvider); ok {
+		return mutationStepFromGitResult("Unstage file", outputProvider.unstagePathResult(path), buildUnstagePathArgs(path))
+	}
+	if contextProvider, ok := provider.(ContextIndexCapable); ok {
+		return mutationStepFromError("Unstage file", buildUnstagePathArgs(path), contextProvider.UnstagePathContext(context.Background(), path))
+	}
+	return mutationStepFromError("Unstage file", buildUnstagePathArgs(path), provider.UnstagePath(path))
+}
+
+func (a *Dv) unstageAllMutationStep() mutationStepResult {
+	provider := a.indexProvider()
+	if provider == nil {
+		return mutationStepFromError("Unstage all files", buildUnstageAllArgs(), fmt.Errorf("stage provider unavailable"))
+	}
+	if contextProvider, ok := provider.(contextMutationOutputProvider); ok {
+		return mutationStepFromGitResult("Unstage all files", contextProvider.unstageAllResultContext(context.Background()), buildUnstageAllArgs())
+	}
+	if outputProvider, ok := provider.(mutationOutputProvider); ok {
+		return mutationStepFromGitResult("Unstage all files", outputProvider.unstageAllResult(), buildUnstageAllArgs())
+	}
+	if contextProvider, ok := provider.(ContextIndexCapable); ok {
+		return mutationStepFromError("Unstage all files", buildUnstageAllArgs(), contextProvider.UnstageAllContext(context.Background()))
+	}
+	return mutationStepFromError("Unstage all files", buildUnstageAllArgs(), provider.UnstageAll())
+}
+
+func (a *Dv) commitMutationStep(message string) mutationStepResult {
+	provider := a.commitProvider()
+	if provider == nil {
+		return mutationStepFromError("Commit", buildCommitMessageArgs(), fmt.Errorf("commit provider unavailable"))
+	}
+	if contextProvider, ok := provider.(contextMutationOutputProvider); ok {
+		return mutationStepFromGitResult("Commit", contextProvider.commitMessageResultContext(context.Background(), message), buildCommitMessageArgs())
+	}
+	if outputProvider, ok := provider.(mutationOutputProvider); ok {
+		return mutationStepFromGitResult("Commit", outputProvider.commitMessageResult(message), buildCommitMessageArgs())
+	}
+	if contextProvider, ok := provider.(ContextCommitCapable); ok {
+		return mutationStepFromError("Commit", buildCommitMessageArgs(), contextProvider.CommitMessageContext(context.Background(), message))
+	}
+	return mutationStepFromError("Commit", buildCommitMessageArgs(), provider.CommitMessage(message))
+}
+
+func (a *Dv) pushMutationStep() mutationStepResult {
+	provider := a.pushProvider()
+	if provider == nil {
+		return mutationStepFromError("Push", buildPushArgs("", false), fmt.Errorf("push provider unavailable"))
+	}
+	if contextProvider, ok := provider.(contextMutationOutputProvider); ok {
+		return mutationStepFromGitResult("Push", contextProvider.pushCurrentBranchResultContext(context.Background()), buildPushArgs("", false))
+	}
+	if outputProvider, ok := provider.(mutationOutputProvider); ok {
+		return mutationStepFromGitResult("Push", outputProvider.pushCurrentBranchResult(), buildPushArgs("", false))
+	}
+	if contextProvider, ok := provider.(ContextPushCapable); ok {
+		return mutationStepFromError("Push", buildPushArgs("", false), contextProvider.PushCurrentBranchContext(context.Background()))
+	}
+	return mutationStepFromError("Push", buildPushArgs("", false), provider.PushCurrentBranch())
+}
+
+func cloneMutationSession(session *mutationSessionResult) *mutationSessionResult {
+	if session == nil {
+		return nil
+	}
+	cloned := *session
+	if len(session.Steps) > 0 {
+		cloned.Steps = append([]mutationStepResult(nil), session.Steps...)
+	}
+	return &cloned
+}
+
+func singleStepSession(action string, step mutationStepResult, successSummary string, failurePrefix string) *mutationSessionResult {
+	session := &mutationSessionResult{
+		Action: action,
+		Steps:  []mutationStepResult{step},
+	}
+	if step.Success {
+		session.State = mutationStateSuccess
+		session.Summary = successSummary
+		return session
+	}
+	session.State = mutationStateError
+	session.Summary = failurePrefix + ": " + mutationFailureDetail(step)
+	return session
+}
+
+func mutationStepFromGitResult(action string, result gitMutationResult, fallbackArgs []string) mutationStepResult {
+	command := renderGitCommand(result.Args)
+	if command == "" {
+		command = renderGitCommand(fallbackArgs)
+	}
+	return mutationStepResult{
+		Action:  action,
+		Command: command,
+		Stdout:  strings.TrimRight(result.Stdout, "\n"),
+		Stderr:  strings.TrimRight(result.Stderr, "\n"),
+		Success: result.Err == nil,
+	}
+}
+
+func mutationStepFromError(action string, args []string, err error) mutationStepResult {
+	stderr := ""
 	if err != nil {
-		return indexResult{Refresh: true}
+		stderr = err.Error()
 	}
-	if command.Kind == indexCommandCommit {
-		return indexResult{Refresh: true, ClearCommitMessage: true}
+	return mutationStepResult{
+		Action:  action,
+		Command: renderGitCommand(args),
+		Stderr:  stderr,
+		Success: err == nil,
 	}
-	return indexResult{Refresh: true}
+}
+
+func renderGitCommand(args []string) string {
+	if len(args) == 0 {
+		return ""
+	}
+	return "git " + strings.Join(args, " ")
+}
+
+func mutationFailureDetail(step mutationStepResult) string {
+	for _, candidate := range []string{step.Stderr, step.Stdout} {
+		text := strings.TrimSpace(strings.ReplaceAll(candidate, "\r\n", "\n"))
+		if text == "" {
+			continue
+		}
+		lines := strings.Split(text, "\n")
+		return strings.TrimSpace(lines[0])
+	}
+	return "unknown error"
 }
 
 func (a *Dv) copyActiveFilePath() {
@@ -1747,15 +2022,26 @@ func (a *Dv) refreshDiff() {
 
 func (a *Dv) buildRefreshRequest() diffRefreshRequest {
 	previousSelections := map[DiffSection]string{}
+	previousIndices := map[DiffSection]int{}
 	for _, section := range a.sectionOrder {
 		state := a.sectionState(section)
 		if state == nil || state.lastSelectedPath == "" {
 			continue
 		}
 		previousSelections[section] = state.lastSelectedPath
+		if idx := indexOfPath(state.orderedFilePaths, state.lastSelectedPath); idx >= 0 {
+			previousIndices[section] = idx
+		}
 	}
+	previousActivePath := ""
 	if a.activeKind == DiffTreeNodeFile && a.activePath != "" {
 		previousSelections[a.activeSection] = a.activePath
+		previousActivePath = a.activePath
+		if state := a.sectionState(a.activeSection); state != nil {
+			if idx := indexOfPath(state.orderedFilePaths, a.activePath); idx >= 0 {
+				previousIndices[a.activeSection] = idx
+			}
+		}
 	}
 
 	previousActive := a.activeSection
@@ -1766,14 +2052,17 @@ func (a *Dv) buildRefreshRequest() diffRefreshRequest {
 	return diffRefreshRequest{
 		ignoreWhitespace:   a.diffIgnoreWhitespace.Peek(),
 		previousSelections: previousSelections,
+		previousIndices:    previousIndices,
 		previousActive:     previousActive,
+		previousActivePath: previousActivePath,
 	}
 }
 
 func (a *Dv) loadRefreshResult(ctx context.Context, request diffRefreshRequest) (diffRefreshResult, error) {
 	result := diffRefreshResult{
-		sections:       newDiffSectionStateMap(a.sectionOrder),
-		previousActive: request.previousActive,
+		sections:           newDiffSectionStateMap(a.sectionOrder),
+		previousActive:     request.previousActive,
+		previousActivePath: request.previousActivePath,
 	}
 
 	if repoRoot, err := a.providerRepoRoot(ctx); err == nil {
@@ -1837,6 +2126,16 @@ func (a *Dv) loadRefreshResult(ctx context.Context, request diffRefreshRequest) 
 				state.lastSelectedPath = previous
 			}
 		}
+		if state.lastSelectedPath == "" {
+			if previousIdx, ok := request.previousIndices[section]; ok && len(state.orderedFilePaths) > 0 {
+				if previousIdx >= len(state.orderedFilePaths) {
+					previousIdx = len(state.orderedFilePaths) - 1
+				}
+				if previousIdx >= 0 {
+					state.lastSelectedPath = state.orderedFilePaths[previousIdx]
+				}
+			}
+		}
 		if state.lastSelectedPath == "" && len(state.orderedFilePaths) > 0 {
 			state.lastSelectedPath = state.orderedFilePaths[0]
 		}
@@ -1896,15 +2195,28 @@ func (a *Dv) applyRefreshResult(result diffRefreshResult) {
 		a.activeFileSection = ""
 		a.treeState.CursorPath.Set(nil)
 		a.treeFilterNoMatches.Set(false)
-		a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
+		if a.showMutationOutput && a.lastMutationSession != nil {
+			a.renderMutationOutputViewer()
+		} else {
+			a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
+		}
 		a.diffScrollState.SetOffset(0)
 		a.refreshApplied.Update(func(v int) int { return v + 1 })
 		return
 	}
 
 	targetSectionKey := result.previousActive
+	targetPath := ""
 	if targetSectionKey == "" || !a.sectionHasFiles(targetSectionKey) {
-		targetSectionKey = a.initialSection
+		if result.previousActivePath != "" {
+			if section, ok := a.findSectionForFilePath(result.previousActivePath); ok {
+				targetSectionKey = section
+				targetPath = result.previousActivePath
+			}
+		}
+		if targetSectionKey == "" || !a.sectionHasFiles(targetSectionKey) {
+			targetSectionKey = a.initialSection
+		}
 	}
 	if !a.sectionHasFiles(targetSectionKey) {
 		if sectionWithFiles, ok := a.findSectionWithFiles(targetSectionKey); ok {
@@ -1913,19 +2225,39 @@ func (a *Dv) applyRefreshResult(result diffRefreshResult) {
 	}
 	a.setActiveSection(targetSectionKey)
 
-	targetPath := ""
 	state := a.sectionState(targetSectionKey)
 	if state != nil {
-		targetPath = state.lastSelectedPath
+		if targetPath == "" {
+			targetPath = state.lastSelectedPath
+		}
 		if targetPath == "" && len(state.orderedFilePaths) > 0 {
 			targetPath = state.orderedFilePaths[0]
 		}
 	}
 	if targetPath != "" {
-		a.selectFilePath(targetPath)
+		a.selectFilePathWithoutClosingOutput(targetPath)
+	}
+	if a.showMutationOutput && a.lastMutationSession != nil {
+		a.renderMutationOutputViewer()
 	}
 	a.syncTreeFilterSelection()
 	a.refreshApplied.Update(func(v int) int { return v + 1 })
+}
+
+func (a *Dv) findSectionForFilePath(filePath string) (DiffSection, bool) {
+	if filePath == "" {
+		return "", false
+	}
+	for _, section := range a.sectionOrder {
+		state := a.sectionState(section)
+		if state == nil {
+			continue
+		}
+		if _, ok := state.fileByPath[filePath]; ok {
+			return section, true
+		}
+	}
+	return "", false
 }
 
 func (a *Dv) moveFileCursor(delta int) {
@@ -1952,6 +2284,7 @@ func (a *Dv) moveFileCursor(delta int) {
 		nextIdx = nextIdx % len(filePaths)
 	}
 
+	a.closeMutationOutputViewer()
 	a.selectFilePath(filePaths[nextIdx])
 }
 
@@ -1963,12 +2296,23 @@ func (a *Dv) treeFilterInputKeybinds() []t.Keybind {
 }
 
 func (a *Dv) selectFilePath(filePath string) bool {
+	return a.selectFilePathWithOutput(filePath, true)
+}
+
+func (a *Dv) selectFilePathWithoutClosingOutput(filePath string) bool {
+	return a.selectFilePathWithOutput(filePath, false)
+}
+
+func (a *Dv) selectFilePathWithOutput(filePath string, closeOutput bool) bool {
 	if filePath == "" {
 		return false
 	}
 	treePath, ok := a.filePathToTreePath[filePath]
 	if !ok {
 		return false
+	}
+	if closeOutput {
+		a.closeMutationOutputViewer()
 	}
 	a.treeState.CursorPath.Set(clonePath(treePath))
 	node, ok := a.treeState.NodeAtPath(treePath)
@@ -1981,6 +2325,9 @@ func (a *Dv) selectFilePath(filePath string) bool {
 
 func (a *Dv) onTreeCursorChange(node DiffTreeNodeData) {
 	a.rememberActiveFileScrollOffset()
+	if a.focusedWidgetID == diffFilesTreeID {
+		a.closeMutationOutputViewer()
+	}
 
 	if node.Section != "" {
 		a.setActiveSection(node.Section)
@@ -2833,7 +3180,174 @@ func (a *Dv) submitCommitMessage(_ string) {
 	})
 }
 
+func (a *Dv) submitCommitAndPush() {
+	if !a.canCommitAndPush() || a.commitMessageInput == nil {
+		return
+	}
+	message := a.commitMessageInput.GetText()
+	if strings.TrimSpace(message) == "" {
+		return
+	}
+	a.enqueueIndexCommand(indexCommand{
+		Kind:    indexCommandCommitAndPush,
+		Message: message,
+	})
+}
+
+func (a *Dv) commitMessageExtraKeybinds() []t.Keybind {
+	if !a.canPushChanges() {
+		return nil
+	}
+	return []t.Keybind{
+		{
+			Key:    "ctrl+shift+enter",
+			Name:   "Commit & push",
+			Action: a.submitCommitAndPush,
+		},
+	}
+}
+
+func (a *Dv) pushCurrentBranch() {
+	if !a.canPushCurrentBranch() {
+		return
+	}
+	a.enqueueIndexCommand(indexCommand{Kind: indexCommandPush})
+}
+
+func (a *Dv) toggleMutationOutputViewer() {
+	if !a.hasMutationSession() {
+		return
+	}
+	if a.showMutationOutput {
+		a.closeMutationOutputViewer()
+		return
+	}
+	a.showMutationOutput = true
+	a.renderMutationOutputViewer()
+}
+
+func (a *Dv) closeMutationOutputViewer() {
+	if !a.showMutationOutput {
+		return
+	}
+	a.showMutationOutput = false
+	a.renderActiveViewerContent()
+}
+
+func (a *Dv) setMutationSession(session *mutationSessionResult) {
+	a.lastMutationSession = cloneMutationSession(session)
+	if a.showMutationOutput {
+		a.renderMutationOutputViewer()
+	}
+}
+
+func (a *Dv) renderMutationOutputViewer() {
+	if a.diffViewState == nil || a.lastMutationSession == nil {
+		return
+	}
+	a.diffViewState.SetRendered(buildMutationOutputRenderedFile(a.lastMutationSession))
+	a.diffScrollState.SetOffset(0)
+}
+
+func (a *Dv) renderActiveViewerContent() {
+	if a.diffViewState == nil {
+		return
+	}
+	if a.loadErr != "" {
+		a.diffViewState.SetRendered(messageToRendered("Error", a.errorMessage()))
+		a.diffScrollState.SetOffset(0)
+		return
+	}
+	switch a.activeKind {
+	case DiffTreeNodeFile:
+		rendered, ok := a.renderedByPath[a.activePath]
+		if !ok {
+			file := a.fileByPath[a.activePath]
+			if file == nil {
+				return
+			}
+			rendered = buildRenderedFile(file)
+			a.renderedByPath[a.activePath] = rendered
+			a.sideRenderedByPath[a.activePath] = buildSideBySideRenderedFile(file)
+		}
+		sideRendered := a.sideRenderedByPath[a.activePath]
+		if sideRendered == nil {
+			sideRendered = buildSideBySideFromRendered(rendered)
+		}
+		a.diffViewState.SetRenderedPair(rendered, sideRendered)
+	case DiffTreeNodeDirectory:
+		a.diffViewState.SetRendered(buildDirectorySummaryRenderedFile(DiffTreeNodeData{
+			Name:         filepath.Base(a.activePath),
+			Path:         a.activePath,
+			IsDir:        true,
+			Additions:    0,
+			Deletions:    0,
+			TouchedFiles: 0,
+			Section:      a.activeSection,
+			NodeKind:     DiffTreeNodeDirectory,
+		}))
+		if node, ok := a.findDirectoryNode(a.activeSection, a.activePath); ok {
+			a.diffViewState.SetRendered(buildDirectorySummaryRenderedFile(node))
+		}
+	case DiffTreeNodeSection:
+		a.diffViewState.SetRendered(buildSectionSummaryRenderedFile(a.activeSection, a.sectionState(a.activeSection)))
+	case DiffTreeNodeUnknown:
+		a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
+	}
+	a.diffScrollState.SetOffset(0)
+}
+
+func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
+	session := a.lastMutationSession
+	if session == nil {
+		return nil, false
+	}
+
+	background := t.ColorProvider(theme.WarningBg)
+	foreground := t.ColorProvider(theme.WarningText)
+	switch session.State {
+	case mutationStateSuccess:
+		background = t.ColorProvider(theme.SuccessBg)
+		foreground = t.ColorProvider(theme.SuccessText)
+	case mutationStateError:
+		background = t.ColorProvider(theme.ErrorBg)
+		foreground = t.ColorProvider(theme.ErrorText)
+	}
+
+	message := strings.TrimSpace(session.Summary)
+	if message == "" {
+		return nil, false
+	}
+	if a.hasMutationSession() {
+		if a.showMutationOutput {
+			message += " [o]/[escape] Close output"
+		} else {
+			message += " " + a.actionHint("Show last git output", "View output")
+		}
+	}
+
+	return t.Row{
+		Style: t.Style{
+			Width:           t.Flex(1),
+			Padding:         t.EdgeInsetsXY(1, 0),
+			BackgroundColor: background,
+		},
+		Children: []t.Widget{
+			t.Text{
+				Content: message,
+				Style: t.Style{
+					ForegroundColor: foreground,
+				},
+			},
+		},
+	}, true
+}
+
 func (a *Dv) handleEscape() {
+	if a.showMutationOutput {
+		a.closeMutationOutputViewer()
+		return
+	}
 	if a.focusedWidgetID == diffCommitMessageID {
 		a.exitCommitMessageFocus()
 		return
@@ -3251,12 +3765,36 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			Action:     a.paletteAction(a.unstageAllFiles),
 		})
 	}
+	if a.canPushCurrentBranch() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Push current branch",
+			FilterText: "Push current branch git push upstream remote publish",
+			Hint:       a.paletteHint("Push current branch"),
+			Action:     a.paletteAction(a.pushCurrentBranch),
+		})
+	}
+	if a.canCommitAndPush() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Commit & push",
+			FilterText: "Commit and push git commit push current branch",
+			Hint:       "[ctrl+shift+enter]",
+			Action:     a.paletteAction(a.submitCommitAndPush),
+		})
+	}
 	items = append(items, t.CommandPaletteItem{
 		Label:      "Refresh",
 		FilterText: "Refresh reload diff",
 		Hint:       a.paletteHint("Refresh"),
 		Action:     a.paletteAction(a.manualRefresh),
 	})
+	if a.hasMutationSession() {
+		items = append(items, t.CommandPaletteItem{
+			Label:      "Show last git output",
+			FilterText: "Show last git output stdout stderr command output",
+			Hint:       a.paletteHint("Show last git output"),
+			Action:     a.paletteAction(a.toggleMutationOutputViewer),
+		})
+	}
 	if a.canCopyActiveFilePath() {
 		items = append(items, t.CommandPaletteItem{
 			Label:      "Copy path",
@@ -3561,6 +4099,9 @@ func (a *Dv) sidebarTotalsSpans(theme t.ThemeData) []t.Span {
 }
 
 func (a *Dv) viewerTitle() string {
+	if a.showMutationOutput && a.lastMutationSession != nil {
+		return "Git output"
+	}
 	switch a.activeKind {
 	case DiffTreeNodeSection:
 		return a.activeSection.DisplayName() + " changes"
@@ -3695,6 +4236,77 @@ func buildDirectorySummaryRenderedFile(node DiffTreeNodeData) *RenderedFile {
 		"",
 		"Use n/p to jump between changed files.",
 	})
+}
+
+func buildMutationOutputRenderedFile(session *mutationSessionResult) *RenderedFile {
+	lines := []string{
+		"Session: " + mutationSessionDisplayName(session.Action),
+		"Result: " + mutationStateDisplayName(session.State),
+	}
+	if summary := strings.TrimSpace(session.Summary); summary != "" {
+		lines = append(lines, "Summary: "+summary)
+	}
+
+	for idx, step := range session.Steps {
+		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("Step %d: %s", idx+1, step.Action))
+		lines = append(lines, "Result: "+mutationStepResultDisplayName(step.Success))
+		if strings.TrimSpace(step.Command) != "" {
+			lines = append(lines, "Command: "+step.Command)
+		}
+
+		stdout := strings.TrimRight(strings.ReplaceAll(step.Stdout, "\r\n", "\n"), "\n")
+		stderr := strings.TrimRight(strings.ReplaceAll(step.Stderr, "\r\n", "\n"), "\n")
+		if stdout == "" && stderr == "" {
+			lines = append(lines, "Output: (no output)")
+			continue
+		}
+		if stdout != "" {
+			lines = append(lines, "stdout:")
+			lines = append(lines, strings.Split(stdout, "\n")...)
+		}
+		if stderr != "" {
+			lines = append(lines, "stderr:")
+			lines = append(lines, strings.Split(stderr, "\n")...)
+		}
+	}
+
+	return buildMetaRenderedFile("Git output", lines)
+}
+
+func mutationSessionDisplayName(action string) string {
+	switch action {
+	case "commit_and_push":
+		return "Commit & Push"
+	case "commit":
+		return "Commit"
+	case "push":
+		return "Push"
+	case "stage":
+		return "Stage"
+	case "unstage":
+		return "Unstage"
+	default:
+		return "Git mutation"
+	}
+}
+
+func mutationStateDisplayName(state mutationState) string {
+	switch state {
+	case mutationStateSuccess:
+		return "Success"
+	case mutationStateError:
+		return "Error"
+	default:
+		return "Running"
+	}
+}
+
+func mutationStepResultDisplayName(success bool) string {
+	if success {
+		return "Success"
+	}
+	return "Error"
 }
 
 func collectFilteredTreeFilePaths(nodes []t.TreeNode[DiffTreeNodeData], query string, options t.FilterOptions) []string {

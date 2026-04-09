@@ -54,6 +54,39 @@ type ContextCommitCapable interface {
 	CommitMessageContext(ctx context.Context, message string) error
 }
 
+type PushCapable interface {
+	PushCurrentBranch() error
+}
+
+type ContextPushCapable interface {
+	PushCurrentBranchContext(ctx context.Context) error
+}
+
+type gitMutationResult struct {
+	Args   []string
+	Stdout string
+	Stderr string
+	Err    error
+}
+
+type mutationOutputProvider interface {
+	stagePathResult(path string) gitMutationResult
+	stageAllResult() gitMutationResult
+	unstagePathResult(path string) gitMutationResult
+	unstageAllResult() gitMutationResult
+	commitMessageResult(message string) gitMutationResult
+	pushCurrentBranchResult() gitMutationResult
+}
+
+type contextMutationOutputProvider interface {
+	stagePathResultContext(ctx context.Context, path string) gitMutationResult
+	stageAllResultContext(ctx context.Context) gitMutationResult
+	unstagePathResultContext(ctx context.Context, path string) gitMutationResult
+	unstageAllResultContext(ctx context.Context) gitMutationResult
+	commitMessageResultContext(ctx context.Context, message string) gitMutationResult
+	pushCurrentBranchResultContext(ctx context.Context) gitMutationResult
+}
+
 // GitDiffProvider loads diff data by shelling out to git.
 type GitDiffProvider struct {
 	WorkDir string
@@ -104,12 +137,28 @@ func (p GitDiffProvider) StagePathContext(ctx context.Context, path string) erro
 	return runGitMutation(ctx, p.WorkDir, buildStagePathArgs(path))
 }
 
+func (p GitDiffProvider) stagePathResult(path string) gitMutationResult {
+	return p.stagePathResultContext(context.Background(), path)
+}
+
+func (p GitDiffProvider) stagePathResultContext(ctx context.Context, path string) gitMutationResult {
+	return runGitMutationResult(ctx, p.WorkDir, buildStagePathArgs(path), "")
+}
+
 func (p GitDiffProvider) StageAll() error {
 	return p.StageAllContext(context.Background())
 }
 
 func (p GitDiffProvider) StageAllContext(ctx context.Context) error {
 	return runGitMutation(ctx, p.WorkDir, buildStageAllArgs())
+}
+
+func (p GitDiffProvider) stageAllResult() gitMutationResult {
+	return p.stageAllResultContext(context.Background())
+}
+
+func (p GitDiffProvider) stageAllResultContext(ctx context.Context) gitMutationResult {
+	return runGitMutationResult(ctx, p.WorkDir, buildStageAllArgs(), "")
 }
 
 func (p GitDiffProvider) UnstagePath(path string) error {
@@ -123,6 +172,18 @@ func (p GitDiffProvider) UnstagePathContext(ctx context.Context, path string) er
 	return runGitMutation(ctx, p.WorkDir, buildUnstagePathArgsWithoutHead(path))
 }
 
+func (p GitDiffProvider) unstagePathResult(path string) gitMutationResult {
+	return p.unstagePathResultContext(context.Background(), path)
+}
+
+func (p GitDiffProvider) unstagePathResultContext(ctx context.Context, path string) gitMutationResult {
+	args := buildUnstagePathArgsWithoutHead(path)
+	if gitHeadExists(p.WorkDir) {
+		args = buildUnstagePathArgs(path)
+	}
+	return runGitMutationResult(ctx, p.WorkDir, args, "")
+}
+
 func (p GitDiffProvider) UnstageAll() error {
 	return p.UnstageAllContext(context.Background())
 }
@@ -134,6 +195,18 @@ func (p GitDiffProvider) UnstageAllContext(ctx context.Context) error {
 	return runGitMutation(ctx, p.WorkDir, buildUnstageAllArgsWithoutHead())
 }
 
+func (p GitDiffProvider) unstageAllResult() gitMutationResult {
+	return p.unstageAllResultContext(context.Background())
+}
+
+func (p GitDiffProvider) unstageAllResultContext(ctx context.Context) gitMutationResult {
+	args := buildUnstageAllArgsWithoutHead()
+	if gitHeadExists(p.WorkDir) {
+		args = buildUnstageAllArgs()
+	}
+	return runGitMutationResult(ctx, p.WorkDir, args, "")
+}
+
 func (p GitDiffProvider) CommitMessage(message string) error {
 	return p.CommitMessageContext(context.Background(), message)
 }
@@ -142,20 +215,73 @@ func (p GitDiffProvider) CommitMessageContext(ctx context.Context, message strin
 	return runGitMutationWithInput(ctx, p.WorkDir, buildCommitMessageArgs(), message)
 }
 
-func runGitMutation(ctx context.Context, workDir string, args []string) error {
-	_, stderr, err := runGit(ctx, workDir, args)
+func (p GitDiffProvider) commitMessageResult(message string) gitMutationResult {
+	return p.commitMessageResultContext(context.Background(), message)
+}
+
+func (p GitDiffProvider) commitMessageResultContext(ctx context.Context, message string) gitMutationResult {
+	return runGitMutationResult(ctx, p.WorkDir, buildCommitMessageArgs(), message)
+}
+
+func (p GitDiffProvider) PushCurrentBranch() error {
+	return p.PushCurrentBranchContext(context.Background())
+}
+
+func (p GitDiffProvider) PushCurrentBranchContext(ctx context.Context) error {
+	result := p.pushCurrentBranchResultContext(ctx)
+	return result.Err
+}
+
+func (p GitDiffProvider) pushCurrentBranchResult() gitMutationResult {
+	return p.pushCurrentBranchResultContext(context.Background())
+}
+
+func (p GitDiffProvider) pushCurrentBranchResultContext(ctx context.Context) gitMutationResult {
+	args, err := p.resolvePushArgs(ctx)
 	if err != nil {
-		return fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
+		return gitMutationResult{
+			Args: buildPushArgs("", false),
+			Err:  err,
+		}
 	}
-	return nil
+	return runGitMutationResult(ctx, p.WorkDir, args, "")
+}
+
+func (p GitDiffProvider) resolvePushArgs(ctx context.Context) ([]string, error) {
+	hasUpstream, err := gitBranchHasUpstream(ctx, p.WorkDir)
+	if err != nil {
+		return nil, err
+	}
+	if hasUpstream {
+		return buildPushArgs("", false), nil
+	}
+
+	remote, err := gitDefaultPushRemote(ctx, p.WorkDir)
+	if err != nil {
+		return nil, err
+	}
+	return buildPushArgs(remote, true), nil
+}
+
+func runGitMutation(ctx context.Context, workDir string, args []string) error {
+	return runGitMutationResult(ctx, workDir, args, "").Err
 }
 
 func runGitMutationWithInput(ctx context.Context, workDir string, args []string, input string) error {
-	_, stderr, err := runGitWithInput(ctx, workDir, args, input)
+	return runGitMutationResult(ctx, workDir, args, input).Err
+}
+
+func runGitMutationResult(ctx context.Context, workDir string, args []string, input string) gitMutationResult {
+	stdout, stderr, err := runGitWithInput(ctx, workDir, args, input)
 	if err != nil {
-		return fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
+		err = fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
 	}
-	return nil
+	return gitMutationResult{
+		Args:   append([]string(nil), args...),
+		Stdout: stdout,
+		Stderr: stderr,
+		Err:    err,
+	}
 }
 
 func gitHeadExists(workDir string) bool {
@@ -181,6 +307,50 @@ func runGitWithInput(ctx context.Context, workDir string, args []string, input s
 
 	err = cmd.Run()
 	return outBuf.String(), errBuf.String(), err
+}
+
+func gitBranchHasUpstream(ctx context.Context, workDir string) (bool, error) {
+	_, stderr, err := runGit(ctx, workDir, []string{"rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"})
+	if err == nil {
+		return true, nil
+	}
+	if strings.Contains(strings.ToLower(stderr), "no upstream configured") || strings.Contains(strings.ToLower(stderr), "no upstream branch") {
+		return false, nil
+	}
+	return false, fmt.Errorf("git rev-parse --abbrev-ref --symbolic-full-name @{upstream} failed: %w: %s", err, strings.TrimSpace(stderr))
+}
+
+func gitDefaultPushRemote(ctx context.Context, workDir string) (string, error) {
+	stdout, stderr, err := runGit(ctx, workDir, []string{"remote"})
+	if err != nil {
+		return "", fmt.Errorf("git remote failed: %w: %s", err, strings.TrimSpace(stderr))
+	}
+
+	remotes := parseGitRemotes(stdout)
+	return selectDefaultPushRemote(remotes)
+}
+
+func parseGitRemotes(stdout string) []string {
+	lines := strings.Split(strings.TrimSpace(stdout), "\n")
+	remotes := make([]string, 0, len(lines))
+	for _, line := range lines {
+		remote := strings.TrimSpace(line)
+		if remote == "" {
+			continue
+		}
+		remotes = append(remotes, remote)
+	}
+	return remotes
+}
+
+func selectDefaultPushRemote(remotes []string) (string, error) {
+	if len(remotes) == 0 {
+		return "", fmt.Errorf("no git remotes configured")
+	}
+	if len(remotes) == 1 && remotes[0] == "origin" {
+		return "origin", nil
+	}
+	return "", fmt.Errorf("no upstream branch configured and refusing to guess a push remote")
 }
 
 func buildDiffArgs(staged bool, ignoreWhitespace bool) []string {
@@ -227,4 +397,12 @@ func buildUnstageAllArgsWithoutHead() []string {
 
 func buildCommitMessageArgs() []string {
 	return []string{"commit", "--file", "-"}
+}
+
+func buildPushArgs(remote string, setUpstream bool) []string {
+	args := []string{"push"}
+	if setUpstream {
+		args = append(args, "--set-upstream", remote, "HEAD")
+	}
+	return args
 }

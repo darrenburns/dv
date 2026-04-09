@@ -98,6 +98,17 @@ var syntaxThemeOverrides = map[string]map[TokenRole]syntaxColorResolver{
 		TokenRoleSyntaxOperator:    func(theme t.ThemeData) t.Color { return t.Hex("#C0A36E") },
 		TokenRoleSyntaxPunctuation: func(theme t.ThemeData) t.Color { return t.Hex("#9CABCA") },
 	},
+	t.ThemeNameGalaxy: {
+		TokenRoleSyntaxFunction: func(theme t.ThemeData) t.Color {
+			return t.Hex("#D4B0FF")
+		},
+		TokenRoleSyntaxBuiltin: func(theme t.ThemeData) t.Color {
+			return t.Hex("#FF8BCB")
+		},
+		TokenRoleSyntaxPunctuation: func(theme t.ThemeData) t.Color {
+			return t.Hex("#B7B0E8")
+		},
+	},
 }
 
 func applySyntaxThemeOverrides(theme t.ThemeData, roleStyles map[TokenRole]t.SpanStyle) {

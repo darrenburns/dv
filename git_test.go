@@ -87,3 +87,56 @@ func TestBuildUnstageAllArgsWithoutHead(t *testing.T) {
 	args := buildUnstageAllArgsWithoutHead()
 	require.Equal(t, []string{"rm", "--cached", "-r", "--", ":/"}, args)
 }
+
+func TestBuildPushArgs(t *testing.T) {
+	args := buildPushArgs("", false)
+	require.Equal(t, []string{"push"}, args)
+}
+
+func TestBuildPushArgsSetUpstream(t *testing.T) {
+	args := buildPushArgs("origin", true)
+	require.Equal(t, []string{"push", "--set-upstream", "origin", "HEAD"}, args)
+}
+
+func TestSelectDefaultPushRemote(t *testing.T) {
+	tests := []struct {
+		name    string
+		remotes []string
+		want    string
+		wantErr string
+	}{
+		{
+			name:    "uses origin when it is the only remote",
+			remotes: []string{"origin"},
+			want:    "origin",
+		},
+		{
+			name:    "errors for non-origin sole remote",
+			remotes: []string{"fork"},
+			wantErr: "refusing to guess a push remote",
+		},
+		{
+			name:    "errors when multiple remotes exist",
+			remotes: []string{"origin", "upstream"},
+			wantErr: "refusing to guess a push remote",
+		},
+		{
+			name:    "errors when no remotes exist",
+			remotes: nil,
+			wantErr: "no git remotes configured",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := selectDefaultPushRemote(tt.remotes)
+			if tt.wantErr != "" {
+				require.Error(t, err)
+				require.Contains(t, err.Error(), tt.wantErr)
+				return
+			}
+			require.NoError(t, err)
+			require.Equal(t, tt.want, got)
+		})
+	}
+}
