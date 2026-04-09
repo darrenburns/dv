@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	uv "github.com/charmbracelet/ultraviolet"
 	"github.com/charmbracelet/x/ansi"
@@ -228,19 +229,22 @@ type Dv struct {
 	indexPendingCount   t.Signal[int]
 	indexCommandQueue   chan indexCommand
 	refreshGeneration   atomic.Uint64
+	mutationStatusNonce atomic.Uint64
 
-	treeFilterVisible    t.Signal[bool]
-	treeFilterNoMatches  t.Signal[bool]
-	diffLayoutMode       t.Signal[DiffLayoutMode]
-	diffHardWrap         t.Signal[bool]
-	diffHideChangeSigns  t.Signal[bool]
-	diffIntralineStyle   t.Signal[IntralineStyleMode]
-	diffIgnoreWhitespace t.Signal[bool]
-	manualRefreshEnabled bool
-	focusedWidgetID      string
-	sidebarVisible       t.Signal[bool]
-	showMutationOutput   t.Signal[bool]
-	lastMutationSession  *mutationSessionResult
+	treeFilterVisible       t.Signal[bool]
+	treeFilterNoMatches     t.Signal[bool]
+	diffLayoutMode          t.Signal[DiffLayoutMode]
+	diffHardWrap            t.Signal[bool]
+	diffHideChangeSigns     t.Signal[bool]
+	diffIntralineStyle      t.Signal[IntralineStyleMode]
+	diffIgnoreWhitespace    t.Signal[bool]
+	manualRefreshEnabled    bool
+	focusedWidgetID         string
+	sidebarVisible          t.Signal[bool]
+	showMutationStatus      t.Signal[bool]
+	showMutationOutput      t.Signal[bool]
+	lastMutationSession     *mutationSessionResult
+	mutationStatusHideDelay time.Duration
 
 	dividerFocused        bool
 	dividerHovered        t.Signal[bool]
@@ -282,47 +286,49 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 	}
 
 	app := &Dv{
-		provider:              provider,
-		renderedByPath:        map[string]*RenderedFile{},
-		sideRenderedByPath:    map[string]*SideBySideRenderedFile{},
-		fileByPath:            map[string]*DiffFile{},
-		filePathToTreePath:    map[string][]int{},
-		orderedFilePaths:      []string{},
-		sectionOrder:          sectionOrder,
-		activeSection:         initialSection,
-		initialSection:        initialSection,
-		sections:              newDiffSectionStateMap(sectionOrder),
-		treeState:             t.NewTreeState([]t.TreeNode[DiffTreeNodeData]{}),
-		treeScrollState:       t.NewScrollState(),
-		treeFilterState:       t.NewFilterState(),
-		treeFilterInput:       t.NewTextInputState(""),
-		commitMessageInput:    t.NewTextAreaState(""),
-		diffScrollState:       t.NewScrollState(),
-		diffViewState:         NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
-		refreshTask:           t.NewTask[struct{}](),
-		refreshApplied:        t.NewSignal(0),
-		initialLoadResolved:   t.NewSignal(false),
-		splitState:            t.NewSplitPaneState(0.30),
-		indexPendingCount:     t.NewSignal(0),
-		indexCommandQueue:     make(chan indexCommand, 256),
-		treeFilterVisible:     t.NewSignal(false),
-		treeFilterNoMatches:   t.NewSignal(false),
-		sidebarVisible:        t.NewSignal(initialState.SidebarVisible),
-		showMutationOutput:    t.NewSignal(false),
-		diffLayoutMode:        t.NewSignal(initialState.LayoutMode),
-		diffHardWrap:          t.NewSignal(false),
-		diffHideChangeSigns:   t.NewSignal(!initialState.ShowChangeSigns),
-		diffIntralineStyle:    t.NewSignal(initialState.IntralineStyle),
-		diffIgnoreWhitespace:  t.NewSignal(initialState.IgnoreWhitespace),
-		manualRefreshEnabled:  manualRefreshEnabled,
-		dividerHovered:        t.NewSignal(false),
-		dividerFocusRequested: t.NewSignal(false),
-		lastNonDividerFocus:   diffViewerScrollID,
-		focusReturnID:         diffViewerScrollID,
-		copyPathToClipboard:   copyPathToClipboardOSC52,
-		openURL:               openURLInBrowser,
-		fileScrollOffsets:     map[string]fileScrollState{},
-		reviewedByFile:        t.NewAnySignal(map[string]bool{}),
+		provider:                provider,
+		renderedByPath:          map[string]*RenderedFile{},
+		sideRenderedByPath:      map[string]*SideBySideRenderedFile{},
+		fileByPath:              map[string]*DiffFile{},
+		filePathToTreePath:      map[string][]int{},
+		orderedFilePaths:        []string{},
+		sectionOrder:            sectionOrder,
+		activeSection:           initialSection,
+		initialSection:          initialSection,
+		sections:                newDiffSectionStateMap(sectionOrder),
+		treeState:               t.NewTreeState([]t.TreeNode[DiffTreeNodeData]{}),
+		treeScrollState:         t.NewScrollState(),
+		treeFilterState:         t.NewFilterState(),
+		treeFilterInput:         t.NewTextInputState(""),
+		commitMessageInput:      t.NewTextAreaState(""),
+		diffScrollState:         t.NewScrollState(),
+		diffViewState:           NewDiffViewState(buildMetaRenderedFile("Diff", []string{"Loading diff..."})),
+		refreshTask:             t.NewTask[struct{}](),
+		refreshApplied:          t.NewSignal(0),
+		initialLoadResolved:     t.NewSignal(false),
+		splitState:              t.NewSplitPaneState(0.30),
+		indexPendingCount:       t.NewSignal(0),
+		indexCommandQueue:       make(chan indexCommand, 256),
+		treeFilterVisible:       t.NewSignal(false),
+		treeFilterNoMatches:     t.NewSignal(false),
+		sidebarVisible:          t.NewSignal(initialState.SidebarVisible),
+		showMutationStatus:      t.NewSignal(false),
+		showMutationOutput:      t.NewSignal(false),
+		diffLayoutMode:          t.NewSignal(initialState.LayoutMode),
+		diffHardWrap:            t.NewSignal(false),
+		diffHideChangeSigns:     t.NewSignal(!initialState.ShowChangeSigns),
+		diffIntralineStyle:      t.NewSignal(initialState.IntralineStyle),
+		diffIgnoreWhitespace:    t.NewSignal(initialState.IgnoreWhitespace),
+		manualRefreshEnabled:    manualRefreshEnabled,
+		mutationStatusHideDelay: 2 * time.Second,
+		dividerHovered:          t.NewSignal(false),
+		dividerFocusRequested:   t.NewSignal(false),
+		lastNonDividerFocus:     diffViewerScrollID,
+		focusReturnID:           diffViewerScrollID,
+		copyPathToClipboard:     copyPathToClipboardOSC52,
+		openURL:                 openURLInBrowser,
+		fileScrollOffsets:       map[string]fileScrollState{},
+		reviewedByFile:          t.NewAnySignal(map[string]bool{}),
 	}
 	if app.isPipedDiffMode() {
 		app.diffIgnoreWhitespace.Set(false)
@@ -888,6 +894,9 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 			commitHeaderText = "Commit [ctrl+enter]"
 		}
 
+		if statusBar, ok := a.buildMutationStatusBar(theme); ok {
+			children = append(children, statusBar)
+		}
 		children = append(children, t.Column{
 			Style: t.Style{
 				Width: t.Flex(1),
@@ -912,9 +921,6 @@ func (a *Dv) buildLeftPane(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 				commitInput,
 			},
 		})
-		if statusBar, ok := a.buildMutationStatusBar(theme); ok {
-			children = append(children, statusBar)
-		}
 	}
 
 	return t.Column{
@@ -3280,6 +3286,19 @@ func (a *Dv) closeMutationOutputViewer() {
 
 func (a *Dv) setMutationSession(session *mutationSessionResult) {
 	a.lastMutationSession = cloneMutationSession(session)
+	a.showMutationStatus.Set(session != nil)
+	nonce := a.mutationStatusNonce.Add(1)
+	if session != nil && session.State == mutationStateSuccess {
+		delay := a.mutationStatusHideDelay
+		time.AfterFunc(delay, func() {
+			t.Dispatch(func() {
+				if a.mutationStatusNonce.Load() != nonce || a.lastMutationSession == nil || a.lastMutationSession.State != mutationStateSuccess {
+					return
+				}
+				a.showMutationStatus.Set(false)
+			})
+		})
+	}
 	if a.showMutationOutput.Peek() {
 		a.renderMutationOutputViewer()
 	}
@@ -3343,7 +3362,7 @@ func (a *Dv) renderActiveViewerContent() {
 
 func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 	session := a.lastMutationSession
-	if session == nil {
+	if session == nil || !a.showMutationStatus.Get() {
 		return nil, false
 	}
 
@@ -3361,13 +3380,6 @@ func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 	message := strings.TrimSpace(session.Summary)
 	if message == "" {
 		return nil, false
-	}
-	if a.hasMutationSession() {
-		if a.showMutationOutput.Get() {
-			message += " [o]/[escape] Close output"
-		} else {
-			message += " " + a.actionHint("Show last git output", "View output")
-		}
 	}
 
 	return t.Row{

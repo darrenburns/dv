@@ -2495,7 +2495,46 @@ func TestDv_CommitMessageSubmitFailureKeepsInputAndShowsErrorStatus(tt *testing.
 	statusText, ok := statusBar.Children[0].(t.Text)
 	require.True(tt, ok)
 	require.Equal(tt, themeColorValue(tt, "error_text"), statusText.Style.ForegroundColor)
-	require.Contains(tt, statusText.Content, "Commit failed: nothing staged")
+	require.Equal(tt, "Commit failed: nothing staged", statusText.Content)
+}
+
+func TestDv_MutationStatusBarAppearsAboveCommitComposer(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:     "/tmp/repo",
+		diffs:        []string{diffForPaths("a.txt"), diffForPaths("a.txt")},
+		commitErr:    fmt.Errorf("commit failed"),
+		commitStderr: "nothing staged",
+	}
+	app := newTestDv(provider, false)
+	app.commitMessageInput.SetText("feat: broken commit")
+	app.submitCommitMessage("")
+	flushAsyncIndexWork(tt, app)
+
+	children := buildLeftPaneChildren(tt, app)
+	statusIndex := findMutationStatusBarIndex(tt, app, children)
+	composerIndex := findCommitComposerIndex(tt, children)
+	require.Less(tt, statusIndex, composerIndex)
+}
+
+func TestDv_SuccessMutationStatusAutoHides(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:   "/tmp/repo",
+		branch:     "main",
+		diffs:      []string{diffForPaths("a.txt"), diffForPaths("a.txt")},
+		pushStdout: "ok",
+	}
+	app := newTestDv(provider, false)
+	app.mutationStatusHideDelay = 100 * time.Millisecond
+
+	app.pushCurrentBranch()
+	flushAsyncIndexWork(tt, app)
+
+	require.True(tt, app.showMutationStatus.Peek())
+	require.Eventually(tt, func() bool {
+		return !app.showMutationStatus.Peek()
+	}, time.Second, 10*time.Millisecond)
+	require.NotNil(tt, app.lastMutationSession)
+	require.Equal(tt, mutationStateSuccess, app.lastMutationSession.State)
 }
 
 func TestDv_KeybindsIncludePushWhenBranchAvailable(tt *testing.T) {
@@ -3828,26 +3867,67 @@ func findCommitComposer(tt *testing.T, app *Dv) t.Column {
 
 func findMutationStatusBar(tt *testing.T, app *Dv) t.Row {
 	tt.Helper()
-	theme, ok := t.GetTheme(t.CurrentThemeName())
-	require.True(tt, ok)
-	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
-	widget := app.buildLeftPane(ctx, theme)
-	column, ok := widget.(t.Column)
-	require.True(tt, ok)
-
-	for _, child := range column.Children {
+	children := buildLeftPaneChildren(tt, app)
+	for _, child := range children {
 		row, ok := child.(t.Row)
 		if !ok || len(row.Children) == 0 {
 			continue
 		}
 		text, ok := row.Children[0].(t.Text)
-		if ok && strings.Contains(text.Content, "output") {
+		if ok && app.lastMutationSession != nil && strings.Contains(text.Content, app.lastMutationSession.Summary) {
 			return row
 		}
 	}
 
 	require.FailNow(tt, "expected mutation status bar in left pane")
 	return t.Row{}
+}
+
+func buildLeftPaneChildren(tt testing.TB, app *Dv) []t.Widget {
+	tt.Helper()
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+	ctx := t.NewBuildContext(nil, t.AnySignal[t.Focusable]{}, t.AnySignal[t.Widget]{}, nil)
+	widget := app.buildLeftPane(ctx, theme)
+	column, ok := widget.(t.Column)
+	require.True(tt, ok)
+	return column.Children
+}
+
+func findMutationStatusBarIndex(tt testing.TB, app *Dv, children []t.Widget) int {
+	tt.Helper()
+	for idx, child := range children {
+		row, ok := child.(t.Row)
+		if !ok || len(row.Children) == 0 {
+			continue
+		}
+		text, ok := row.Children[0].(t.Text)
+		if ok && app.lastMutationSession != nil && strings.Contains(text.Content, app.lastMutationSession.Summary) {
+			return idx
+		}
+	}
+	require.FailNow(tt, "expected mutation status bar in left pane")
+	return -1
+}
+
+func findCommitComposerIndex(tt testing.TB, children []t.Widget) int {
+	tt.Helper()
+	for idx, child := range children {
+		composer, ok := child.(t.Column)
+		if !ok || len(composer.Children) == 0 {
+			continue
+		}
+		header, ok := composer.Children[0].(t.Row)
+		if !ok || len(header.Children) == 0 {
+			continue
+		}
+		text, ok := header.Children[0].(t.Text)
+		if ok && strings.HasPrefix(text.Content, "Commit [") {
+			return idx
+		}
+	}
+	require.FailNow(tt, "expected commit composer in left pane")
+	return -1
 }
 
 func keybindIsHidden(keybinds []t.Keybind, key string) bool {
