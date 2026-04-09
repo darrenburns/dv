@@ -239,7 +239,7 @@ type Dv struct {
 	manualRefreshEnabled bool
 	focusedWidgetID      string
 	sidebarVisible       t.Signal[bool]
-	showMutationOutput   bool
+	showMutationOutput   t.Signal[bool]
 	lastMutationSession  *mutationSessionResult
 
 	dividerFocused        bool
@@ -308,6 +308,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		treeFilterVisible:     t.NewSignal(false),
 		treeFilterNoMatches:   t.NewSignal(false),
 		sidebarVisible:        t.NewSignal(initialState.SidebarVisible),
+		showMutationOutput:    t.NewSignal(false),
 		diffLayoutMode:        t.NewSignal(initialState.LayoutMode),
 		diffHardWrap:          t.NewSignal(false),
 		diffHideChangeSigns:   t.NewSignal(!initialState.ShowChangeSigns),
@@ -1117,7 +1118,7 @@ func (a *Dv) shouldShowDiffEmptyState() bool {
 }
 
 func (a *Dv) buildNonFileInfoCard(theme t.ThemeData) (t.Widget, bool) {
-	if a.showMutationOutput && a.lastMutationSession != nil {
+	if a.showMutationOutput.Get() && a.lastMutationSession != nil {
 		return nil, false
 	}
 	if a.loadErr != "" {
@@ -1408,7 +1409,7 @@ func findDirectoryNodeInTree(nodes []t.TreeNode[DiffTreeNodeData], directoryPath
 
 func (a *Dv) buildViewerTitle(theme t.ThemeData) t.Widget {
 	background := t.ColorProvider(theme.Background)
-	if !a.showMutationOutput {
+	if !a.showMutationOutput.Get() {
 		if section, path, ok := a.activeReviewTarget(); ok && a.isReviewed(section, path) {
 			background = reviewedViewerTitleBackground(theme)
 		}
@@ -2220,7 +2221,7 @@ func (a *Dv) applyRefreshResult(result diffRefreshResult) {
 		a.activeFileSection = ""
 		a.treeState.CursorPath.Set(nil)
 		a.treeFilterNoMatches.Set(false)
-		if a.showMutationOutput && a.lastMutationSession != nil {
+		if a.showMutationOutput.Peek() && a.lastMutationSession != nil {
 			a.renderMutationOutputViewer()
 		} else {
 			a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
@@ -2262,7 +2263,7 @@ func (a *Dv) applyRefreshResult(result diffRefreshResult) {
 	if targetPath != "" {
 		a.selectFilePathWithoutClosingOutput(targetPath)
 	}
-	if a.showMutationOutput && a.lastMutationSession != nil {
+	if a.showMutationOutput.Peek() && a.lastMutationSession != nil {
 		a.renderMutationOutputViewer()
 	}
 	a.syncTreeFilterSelection()
@@ -3261,25 +3262,25 @@ func (a *Dv) toggleMutationOutputViewer() {
 	if !a.hasMutationSession() {
 		return
 	}
-	if a.showMutationOutput {
+	if a.showMutationOutput.Peek() {
 		a.closeMutationOutputViewer()
 		return
 	}
-	a.showMutationOutput = true
+	a.showMutationOutput.Set(true)
 	a.renderMutationOutputViewer()
 }
 
 func (a *Dv) closeMutationOutputViewer() {
-	if !a.showMutationOutput {
+	if !a.showMutationOutput.Peek() {
 		return
 	}
-	a.showMutationOutput = false
+	a.showMutationOutput.Set(false)
 	a.renderActiveViewerContent()
 }
 
 func (a *Dv) setMutationSession(session *mutationSessionResult) {
 	a.lastMutationSession = cloneMutationSession(session)
-	if a.showMutationOutput {
+	if a.showMutationOutput.Peek() {
 		a.renderMutationOutputViewer()
 	}
 }
@@ -3362,7 +3363,7 @@ func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 		return nil, false
 	}
 	if a.hasMutationSession() {
-		if a.showMutationOutput {
+		if a.showMutationOutput.Get() {
 			message += " [o]/[escape] Close output"
 		} else {
 			message += " " + a.actionHint("Show last git output", "View output")
@@ -3387,7 +3388,7 @@ func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 }
 
 func (a *Dv) handleEscape() {
-	if a.showMutationOutput {
+	if a.showMutationOutput.Peek() {
 		a.closeMutationOutputViewer()
 		return
 	}
@@ -4150,7 +4151,7 @@ func (a *Dv) sidebarTotalsSpans(theme t.ThemeData) []t.Span {
 }
 
 func (a *Dv) viewerTitle() string {
-	if a.showMutationOutput && a.lastMutationSession != nil {
+	if a.showMutationOutput.Get() && a.lastMutationSession != nil {
 		return "Git output"
 	}
 	switch a.activeKind {

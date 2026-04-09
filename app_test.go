@@ -2634,7 +2634,7 @@ func TestDv_CommitAndPushPushFailurePreservesOutputTranscript(tt *testing.T) {
 	require.Len(tt, app.lastMutationSession.Steps, 2)
 
 	app.toggleMutationOutputViewer()
-	require.True(tt, app.showMutationOutput)
+	require.True(tt, app.showMutationOutput.Peek())
 	rendered := app.diffViewState.Rendered.Peek()
 	require.NotNil(tt, rendered)
 	lines := make([]string, 0, len(rendered.Lines))
@@ -2659,15 +2659,15 @@ func TestDv_OutputViewerClosesWithEscapeAndFileSelection(tt *testing.T) {
 	flushAsyncIndexWork(tt, app)
 
 	app.toggleMutationOutputViewer()
-	require.True(tt, app.showMutationOutput)
+	require.True(tt, app.showMutationOutput.Peek())
 
 	app.handleEscape()
-	require.False(tt, app.showMutationOutput)
+	require.False(tt, app.showMutationOutput.Peek())
 
 	app.toggleMutationOutputViewer()
-	require.True(tt, app.showMutationOutput)
+	require.True(tt, app.showMutationOutput.Peek())
 	app.moveFileCursor(1)
-	require.False(tt, app.showMutationOutput)
+	require.False(tt, app.showMutationOutput.Peek())
 	require.Equal(tt, "b.txt", app.activePath)
 }
 
