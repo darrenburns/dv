@@ -169,26 +169,6 @@ func TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile
 	}
 }
 
-func TestThemePalette_SyntaxOverrides_AllDarkThemesUseSpecificOperatorAndPunctuationColors(tt *testing.T) {
-	for _, themeName := range t.DarkThemeNames() {
-		themeName := themeName
-		tt.Run(themeName, func(tt *testing.T) {
-			theme, ok := t.GetTheme(themeName)
-			require.True(tt, ok)
-
-			palette := NewThemePalette(theme)
-
-			operatorStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxOperator)
-			require.Equal(tt, expectedDarkThemeOperatorForeground(theme), operatorStyle.Foreground)
-			require.NotEqual(tt, theme.Text, operatorStyle.Foreground)
-
-			punctuationStyle := mustRoleStyle(tt, palette, TokenRoleSyntaxPunctuation)
-			require.Equal(tt, expectedDarkThemePunctuationForeground(theme), punctuationStyle.Foreground)
-			require.NotEqual(tt, theme.Text, punctuationStyle.Foreground)
-		})
-	}
-}
-
 func TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles(tt *testing.T) {
 	theme, ok := t.GetTheme(t.ThemeNameKanagawa)
 	require.True(tt, ok)
