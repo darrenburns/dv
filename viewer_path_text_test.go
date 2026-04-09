@@ -21,7 +21,7 @@ func TestCompactPathMiddle_DeepPathPreservesFilenameTail(tt *testing.T) {
 	got := compactPathMiddle(path, 20)
 
 	require.Contains(tt, got, pathEllipsis)
-	require.True(tt, strings.HasSuffix(got, "file.go"))
+	require.True(tt, strings.HasSuffix(got, "/file.go"))
 	require.LessOrEqual(tt, ansi.StringWidth(got), 20)
 
 	parts := strings.SplitN(got, pathEllipsis, 2)
@@ -58,7 +58,7 @@ func TestCompactPathMiddle_WindowsPathSeparators(tt *testing.T) {
 	got := compactPathMiddle(path, 18)
 
 	require.Contains(tt, got, pathEllipsis)
-	require.True(tt, strings.HasSuffix(got, "file.txt"))
+	require.True(tt, strings.HasSuffix(got, `\file.txt`))
 	require.LessOrEqual(tt, ansi.StringWidth(got), 18)
 }
 
@@ -74,4 +74,29 @@ func TestViewerPathText_BuildReturnsWrapper(tt *testing.T) {
 	built := widget.Build(ctx)
 	_, ok := built.(viewerPathText)
 	require.True(tt, ok)
+}
+
+func TestCompactPathMiddleSpans_StylesInsertedEllipsis(tt *testing.T) {
+	path := "src/github.com/org/project/internal/very/deep/path/file.go"
+	ellipsisColor := t.RGB(255, 0, 0)
+
+	spans := compactPathMiddleSpans(path, 20, ellipsisColor, true)
+
+	require.NotEmpty(tt, spans)
+
+	var text strings.Builder
+	ellipsisCount := 0
+	for _, span := range spans {
+		text.WriteString(span.Text)
+		if span.Text != pathEllipsis {
+			require.True(tt, span.Style.Bold)
+			continue
+		}
+		ellipsisCount++
+		require.Equal(tt, ellipsisColor.Hex(), span.Style.Foreground.Hex())
+		require.True(tt, span.Style.Bold)
+	}
+
+	require.Equal(tt, compactPathMiddle(path, 20), text.String())
+	require.Equal(tt, 1, ellipsisCount)
 }

@@ -13,7 +13,8 @@ const pathEllipsis = "…"
 // the final allocated render width.
 type viewerPathText struct {
 	t.Text
-	FullPath string
+	FullPath      string
+	EllipsisColor t.Color
 }
 
 func (v viewerPathText) Build(ctx t.BuildContext) t.Widget {
@@ -27,41 +28,75 @@ func (v viewerPathText) Render(ctx *t.RenderContext) {
 	}
 
 	text := v.Text
-	text.Content = compactPathMiddle(path, ctx.Width)
-	text.Spans = nil
+	text.Content = ""
+	text.Spans = compactPathMiddleSpans(path, ctx.Width, v.EllipsisColor, text.Style.Bold)
 	text.Render(ctx)
 }
 
 func compactPathMiddle(path string, maxWidth int) string {
+	head, tail, truncated := compactPathMiddleParts(path, maxWidth)
+	if !truncated {
+		return head
+	}
+	return head + pathEllipsis + tail
+}
+
+func compactPathMiddleSpans(path string, maxWidth int, ellipsisColor t.Color, bold bool) []t.Span {
+	head, tail, truncated := compactPathMiddleParts(path, maxWidth)
+	if head == "" && tail == "" && !truncated {
+		return nil
+	}
+
+	baseStyle := t.SpanStyle{Bold: bold}
+	spans := make([]t.Span, 0, 3)
+	if head != "" {
+		spans = append(spans, t.StyledSpan(head, baseStyle))
+	}
+	if truncated {
+		if ellipsisColor.IsSet() {
+			ellipsisStyle := baseStyle
+			ellipsisStyle.Foreground = ellipsisColor
+			spans = append(spans, t.StyledSpan(pathEllipsis, ellipsisStyle))
+		} else {
+			spans = append(spans, t.StyledSpan(pathEllipsis, baseStyle))
+		}
+	}
+	if tail != "" {
+		spans = append(spans, t.StyledSpan(tail, baseStyle))
+	}
+	return spans
+}
+
+func compactPathMiddleParts(path string, maxWidth int) (head string, tail string, truncated bool) {
 	if maxWidth <= 0 {
-		return ""
+		return "", "", false
 	}
 	if ansi.StringWidth(path) <= maxWidth {
-		return path
+		return path, "", false
 	}
 
 	if maxWidth == 1 {
-		return pathEllipsis
+		return "", "", true
 	}
 	if maxWidth == 2 {
-		head := ansi.Truncate(path, 1, "")
+		head = ansi.Truncate(path, 1, "")
 		if head != "" {
-			return head + pathEllipsis
+			return head, "", true
 		}
-		tail := ansi.TruncateLeft(path, 1, "")
-		return pathEllipsis + tail
+		tail = ansi.TruncateLeft(path, 1, "")
+		return "", tail, true
 	}
 
 	ellipsisWidth := ansi.StringWidth(pathEllipsis)
 	tailBudget := maxWidth - ellipsisWidth
 	if tailBudget <= 0 {
-		return pathEllipsis
+		return "", "", true
 	}
 
 	filename := path
 	if sep := strings.LastIndexAny(path, `/\`); sep >= 0 {
-		if sep+1 < len(path) {
-			filename = path[sep+1:]
+		if sep < len(path)-1 {
+			filename = path[sep:]
 		} else {
 			filename = ""
 		}
@@ -71,7 +106,7 @@ func compactPathMiddle(path string, maxWidth int) string {
 	if tailSource == "" {
 		tailSource = path
 	}
-	tail := pathTailByWidth(tailSource, tailBudget)
+	tail = pathTailByWidth(tailSource, tailBudget)
 	tailTruncated := ansi.StringWidth(tailSource) > tailBudget
 
 	headBudget := maxWidth - ellipsisWidth - ansi.StringWidth(tail)
@@ -84,13 +119,13 @@ func compactPathMiddle(path string, maxWidth int) string {
 		tail = pathTailByWidth(tailSource, maxWidth-ellipsisWidth-headBudget)
 	}
 
-	head := ansi.Truncate(path, headBudget, "")
+	head = ansi.Truncate(path, headBudget, "")
 
 	result := head + pathEllipsis + tail
 	if ansi.StringWidth(result) > maxWidth {
-		return ansi.Truncate(result, maxWidth, "")
+		return ansi.Truncate(result, maxWidth, ""), "", false
 	}
-	return result
+	return head, tail, true
 }
 
 func pathTailByWidth(value string, width int) string {
