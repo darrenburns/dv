@@ -659,6 +659,7 @@ type sideDividerMetrics struct {
 
 const sideEmptyHatchRune = "╱"
 const sideDividerRune = "▏"
+const emptyLineSelectionRune = "▌"
 
 func (d DiffView) layoutSideBySide(constraints t.Constraints, widthDim t.Dimension, heightDim t.Dimension, sideBySide *SideBySideRenderedFile) t.Size {
 	contentWidth := sideBySideNaturalWidth(sideBySide, d.HideChangeSigns)
@@ -1510,6 +1511,7 @@ func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visi
 
 	contentCol := 0
 	graphemeIdx := 0
+	hasContentGrapheme := false
 	for _, segment := range segments {
 		if segment.Text == "" {
 			continue
@@ -1527,6 +1529,7 @@ func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visi
 			if width <= 0 {
 				width = 1
 			}
+			hasContentGrapheme = true
 
 			nextCol := contentCol + width
 			if nextCol <= scrollX {
@@ -1555,6 +1558,15 @@ func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visi
 			graphemeIdx++
 		}
 	}
+
+	if hasContentGrapheme || !selectionCrossesEmptyLine(selectionStart, selectionEnd) {
+		return
+	}
+
+	indicatorStyle := d.styleForRole(TokenRoleSyntaxPlain)
+	indicatorStyle.ForegroundColor = d.Palette.SelectionBackground()
+	indicatorStyle.BackgroundColor = nil
+	ctx.DrawStyledText(startX, row, emptyLineSelectionRune, indicatorStyle)
 }
 
 func (d DiffView) styleForSegment(segment RenderedSegment) t.Style {
@@ -1933,6 +1945,13 @@ func selectionContainsGrapheme(graphemeIdx int, selectionStart int, selectionEnd
 		return graphemeIdx >= selectionStart && graphemeIdx < selectionEnd
 	}
 	return graphemeIdx >= selectionStart
+}
+
+func selectionCrossesEmptyLine(selectionStart int, selectionEnd int) bool {
+	if selectionStart != 0 {
+		return false
+	}
+	return selectionEnd != 0
 }
 
 func laneForSideCell(isLeft bool) DiffSelectionLane {

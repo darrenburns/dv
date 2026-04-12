@@ -757,6 +757,43 @@ func TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark(tt *testing.T) {
 	require.Equal(tt, base, style)
 }
 
+func TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	view := DiffView{
+		Palette: NewThemePalette(theme),
+	}
+	buffer := uv.NewBuffer(4, 1)
+	ctx := t.NewRenderContext(buffer, 4, 1, nil, nil, t.BuildContext{}, nil)
+
+	view.renderSegments(ctx, 0, 0, 4, nil, 0, 0, -1, true)
+
+	cell := buffer.CellAt(0, 0)
+	require.NotNil(tt, cell)
+	require.Equal(tt, emptyLineSelectionRune, cell.Content)
+	require.NotNil(tt, cell.Style.Fg)
+	require.Nil(tt, cell.Style.Bg)
+}
+
+func TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary(tt *testing.T) {
+	theme, ok := t.GetTheme(t.CurrentThemeName())
+	require.True(tt, ok)
+
+	view := DiffView{
+		Palette: NewThemePalette(theme),
+	}
+	buffer := uv.NewBuffer(4, 1)
+	ctx := t.NewRenderContext(buffer, 4, 1, nil, nil, t.BuildContext{}, nil)
+
+	view.renderSegments(ctx, 0, 0, 4, nil, 0, 0, 0, true)
+
+	cell := buffer.CellAt(0, 0)
+	require.NotNil(tt, cell)
+	require.NotEqual(tt, emptyLineSelectionRune, cell.Content)
+	require.Nil(tt, cell.Style.Bg)
+}
+
 func TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground(tt *testing.T) {
 	base := t.Style{ForegroundColor: t.RGB(120, 130, 140)}
 	overlay := t.SpanStyle{Background: t.RGB(122, 132, 138)}
