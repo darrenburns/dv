@@ -1,13 +1,44 @@
 package main
 
 import (
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/charmbracelet/x/ansi"
 	t "github.com/darrenburns/terma"
 )
 
-const sideDividerOverlayHoldDuration = 1 * time.Second
+const (
+	sideDividerOverlayHoldDuration = 1 * time.Second
+	selectionAutoScrollInterval    = 50 * time.Millisecond
+)
+
+type DiffSelectionTrack int
+
+const (
+	DiffSelectionTrackNone DiffSelectionTrack = iota
+	DiffSelectionTrackUnified
+	DiffSelectionTrackLeft
+	DiffSelectionTrackRight
+	DiffSelectionTrackShared
+)
+
+type DiffSelectionLane int
+
+const (
+	DiffSelectionLaneNone DiffSelectionLane = iota
+	DiffSelectionLaneUnified
+	DiffSelectionLaneShared
+	DiffSelectionLaneLeft
+	DiffSelectionLaneRight
+)
+
+type DiffSelectionPoint struct {
+	Row      int
+	Grapheme int
+	Lane     DiffSelectionLane
+}
 
 // DiffViewState tracks scroll state and rendered diff content for DiffView.
 type DiffViewState struct {
@@ -19,6 +50,16 @@ type DiffViewState struct {
 
 	viewportWidth  int
 	viewportHeight int
+
+	selectionTrack    t.Signal[DiffSelectionTrack]
+	selectionAnchor   t.AnySignal[*DiffSelectionPoint]
+	selectionCursor   t.AnySignal[*DiffSelectionPoint]
+	selectionDragging t.Signal[bool]
+	selectionPointerX int
+	selectionPointerY int
+
+	selectionAutoScrollMu    sync.Mutex
+	selectionAutoScrollTimer *time.Timer
 
 	sideDividerDragging     t.Signal[bool]
 	sideDividerDragOffset   int
@@ -35,6 +76,10 @@ func NewDiffViewState(rendered *RenderedFile) *DiffViewState {
 		Rendered:               t.NewAnySignal(rendered),
 		SideBySide:             t.NewAnySignal(buildSideBySideFromRendered(rendered)),
 		SplitRatio:             t.NewSignal(0.5),
+		selectionTrack:         t.NewSignal(DiffSelectionTrackNone),
+		selectionAnchor:        t.NewAnySignal((*DiffSelectionPoint)(nil)),
+		selectionCursor:        t.NewAnySignal((*DiffSelectionPoint)(nil)),
+		selectionDragging:      t.NewSignal(false),
 		sideDividerDragging:    t.NewSignal(false),
 		sideDividerLastResize:  t.NewSignal(int64(0)),
 		sideDividerOverlayPing: t.NewSignal(0),
@@ -57,6 +102,7 @@ func (s *DiffViewState) SetRenderedPair(rendered *RenderedFile, sideBySide *Side
 	s.stopSideDividerOverlayTimer()
 	s.ScrollY.Set(0)
 	s.ScrollX.Set(0)
+	s.ClearSelection()
 	s.Clamp(0)
 }
 
@@ -340,6 +386,175 @@ func (s *DiffViewState) ViewportHeight() int {
 	return s.viewportHeight
 }
 
+func (s *DiffViewState) StartSelection(track DiffSelectionTrack, point DiffSelectionPoint) {
+	if s == nil {
+		return
+	}
+	if !selectionPointCompatible(track, point) {
+		s.ClearSelection()
+		return
+	}
+	anchor := point
+	cursor := point
+	s.selectionTrack.Set(track)
+	s.selectionAnchor.Set(&anchor)
+	s.selectionCursor.Set(&cursor)
+	s.selectionDragging.Set(true)
+	s.selectionPointerX = 0
+	s.selectionPointerY = 0
+}
+
+func (s *DiffViewState) UpdateSelection(point DiffSelectionPoint) bool {
+	if s == nil {
+		return false
+	}
+	track := s.selectionTrack.Peek()
+	if !selectionPointCompatible(track, point) {
+		return false
+	}
+	if s.selectionAnchor.Peek() == nil {
+		return false
+	}
+	cursor := point
+	s.selectionCursor.Set(&cursor)
+	return true
+}
+
+func (s *DiffViewState) StopSelectionDrag() {
+	if s == nil {
+		return
+	}
+	s.selectionDragging.Set(false)
+	s.stopSelectionAutoscrollTimer()
+}
+
+func (s *DiffViewState) SelectionDragging() bool {
+	return s != nil && s.selectionDragging.Peek()
+}
+
+func (s *DiffViewState) SetSelectionPointer(localX int, localY int) {
+	if s == nil {
+		return
+	}
+	s.selectionAutoScrollMu.Lock()
+	s.selectionPointerX = localX
+	s.selectionPointerY = localY
+	s.selectionAutoScrollMu.Unlock()
+}
+
+func (s *DiffViewState) SelectionPointer() (localX int, localY int) {
+	if s == nil {
+		return 0, 0
+	}
+	s.selectionAutoScrollMu.Lock()
+	localX = s.selectionPointerX
+	localY = s.selectionPointerY
+	s.selectionAutoScrollMu.Unlock()
+	return localX, localY
+}
+
+func (s *DiffViewState) ScheduleSelectionAutoscrollTick(fn func()) {
+	if s == nil || fn == nil {
+		return
+	}
+	s.selectionAutoScrollMu.Lock()
+	defer s.selectionAutoScrollMu.Unlock()
+	if s.selectionAutoScrollTimer != nil {
+		s.selectionAutoScrollTimer.Stop()
+	}
+	s.selectionAutoScrollTimer = time.AfterFunc(selectionAutoScrollInterval, fn)
+}
+
+func (s *DiffViewState) StopSelectionAutoscrollTimer() {
+	if s == nil {
+		return
+	}
+	s.stopSelectionAutoscrollTimer()
+}
+
+func (s *DiffViewState) stopSelectionAutoscrollTimer() {
+	if s == nil {
+		return
+	}
+	s.selectionAutoScrollMu.Lock()
+	defer s.selectionAutoScrollMu.Unlock()
+	if s.selectionAutoScrollTimer != nil {
+		s.selectionAutoScrollTimer.Stop()
+		s.selectionAutoScrollTimer = nil
+	}
+}
+
+func (s *DiffViewState) ClearSelection() {
+	if s == nil {
+		return
+	}
+	s.selectionTrack.Set(DiffSelectionTrackNone)
+	s.selectionAnchor.Set(nil)
+	s.selectionCursor.Set(nil)
+	s.selectionDragging.Set(false)
+	s.stopSelectionAutoscrollTimer()
+}
+
+func (s *DiffViewState) SelectionTrack() DiffSelectionTrack {
+	if s == nil || !s.selectionTrack.IsValid() {
+		return DiffSelectionTrackNone
+	}
+	return s.selectionTrack.Peek()
+}
+
+func (s *DiffViewState) HasSelection() bool {
+	_, start, end, ok := s.normalizedSelection()
+	return ok && compareDiffSelectionPoints(start, end) != 0
+}
+
+func (s *DiffViewState) SelectedText() string {
+	track, start, end, ok := s.normalizedSelection()
+	if !ok || compareDiffSelectionPoints(start, end) == 0 {
+		return ""
+	}
+
+	switch track {
+	case DiffSelectionTrackUnified:
+		return s.selectedUnifiedText(start, end)
+	case DiffSelectionTrackLeft, DiffSelectionTrackRight, DiffSelectionTrackShared:
+		return s.selectedSideBySideText(track, start, end)
+	default:
+		return ""
+	}
+}
+
+func (s *DiffViewState) SelectionRangeForUnifiedLine(lineIdx int) (start, end int, ok bool) {
+	track, selectionStart, selectionEnd, ok := s.normalizedSelection()
+	if !ok || track != DiffSelectionTrackUnified {
+		return 0, 0, false
+	}
+	start, end = lineSelectionRange(lineIdx, selectionStart, selectionEnd)
+	return start, end, true
+}
+
+func (s *DiffViewState) SelectionRangeForSideRow(rowIdx int, lane DiffSelectionLane) (start, end int, ok bool) {
+	track, selectionStart, selectionEnd, ok := s.normalizedSelection()
+	if !ok || track == DiffSelectionTrackUnified || track == DiffSelectionTrackNone {
+		return 0, 0, false
+	}
+	switch track {
+	case DiffSelectionTrackLeft:
+		if lane != DiffSelectionLaneLeft && lane != DiffSelectionLaneShared {
+			return 0, 0, false
+		}
+	case DiffSelectionTrackRight:
+		if lane != DiffSelectionLaneRight && lane != DiffSelectionLaneShared {
+			return 0, 0, false
+		}
+	case DiffSelectionTrackShared:
+		if lane != DiffSelectionLaneShared {
+			return 0, 0, false
+		}
+	}
+	start, end = lineSelectionRange(rowIdx, selectionStart, selectionEnd)
+	return start, end, true
+}
+
 func (s *DiffViewState) pageStep() int {
 	if s == nil || s.viewportHeight <= 1 {
 		return 1
@@ -356,4 +571,175 @@ func (s *DiffViewState) halfPageStep() int {
 		return 1
 	}
 	return half
+}
+
+func (s *DiffViewState) normalizedSelection() (track DiffSelectionTrack, start DiffSelectionPoint, end DiffSelectionPoint, ok bool) {
+	if s == nil {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, DiffSelectionPoint{}, false
+	}
+	track = s.selectionTrack.Get()
+	anchor := s.selectionAnchor.Get()
+	cursor := s.selectionCursor.Get()
+	if track == DiffSelectionTrackNone || anchor == nil || cursor == nil {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, DiffSelectionPoint{}, false
+	}
+	start = *anchor
+	end = *cursor
+	if compareDiffSelectionPoints(start, end) > 0 {
+		start, end = end, start
+	}
+	return track, start, end, true
+}
+
+func (s *DiffViewState) selectedUnifiedText(start DiffSelectionPoint, end DiffSelectionPoint) string {
+	rendered := s.Rendered.Peek()
+	if rendered == nil || len(rendered.Lines) == 0 {
+		return ""
+	}
+
+	var parts []string
+	lastIdx := min(end.Row, len(rendered.Lines)-1)
+	for idx := max(0, start.Row); idx <= lastIdx; idx++ {
+		text := lineText(rendered.Lines[idx])
+		partStart := 0
+		partEnd := graphemeCount(text)
+		if idx == start.Row {
+			partStart = clampInt(start.Grapheme, 0, partEnd)
+		}
+		if idx == end.Row {
+			partEnd = clampInt(end.Grapheme, 0, partEnd)
+		}
+		if partEnd < partStart {
+			partEnd = partStart
+		}
+		parts = append(parts, sliceTextByGraphemeRange(text, partStart, partEnd))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func (s *DiffViewState) selectedSideBySideText(track DiffSelectionTrack, start DiffSelectionPoint, end DiffSelectionPoint) string {
+	sideBySide := s.SideBySide.Peek()
+	if sideBySide == nil || len(sideBySide.Rows) == 0 {
+		return ""
+	}
+
+	var parts []string
+	lastIdx := min(end.Row, len(sideBySide.Rows)-1)
+	for idx := max(0, start.Row); idx <= lastIdx; idx++ {
+		text := selectedSideRowText(sideBySide.Rows[idx], track)
+		partStart := 0
+		partEnd := graphemeCount(text)
+		if idx == start.Row {
+			partStart = clampInt(start.Grapheme, 0, partEnd)
+		}
+		if idx == end.Row {
+			partEnd = clampInt(end.Grapheme, 0, partEnd)
+		}
+		if partEnd < partStart {
+			partEnd = partStart
+		}
+		parts = append(parts, sliceTextByGraphemeRange(text, partStart, partEnd))
+	}
+	return strings.Join(parts, "\n")
+}
+
+func selectedSideRowText(row SideBySideRenderedRow, track DiffSelectionTrack) string {
+	if row.Shared != nil {
+		return lineText(*row.Shared)
+	}
+	switch track {
+	case DiffSelectionTrackLeft:
+		return diffCellText(row.Left)
+	case DiffSelectionTrackRight:
+		return diffCellText(row.Right)
+	default:
+		return ""
+	}
+}
+
+func lineSelectionRange(rowIdx int, start DiffSelectionPoint, end DiffSelectionPoint) (rangeStart, rangeEnd int) {
+	if rowIdx < start.Row || rowIdx > end.Row {
+		return 0, 0
+	}
+	rangeStart = 0
+	rangeEnd = -1
+	if rowIdx == start.Row {
+		rangeStart = start.Grapheme
+	}
+	if rowIdx == end.Row {
+		rangeEnd = end.Grapheme
+	}
+	return rangeStart, rangeEnd
+}
+
+func selectionPointCompatible(track DiffSelectionTrack, point DiffSelectionPoint) bool {
+	if point.Row < 0 || point.Grapheme < 0 {
+		return false
+	}
+	switch track {
+	case DiffSelectionTrackUnified:
+		return point.Lane == DiffSelectionLaneUnified
+	case DiffSelectionTrackLeft:
+		return point.Lane == DiffSelectionLaneLeft || point.Lane == DiffSelectionLaneShared
+	case DiffSelectionTrackRight:
+		return point.Lane == DiffSelectionLaneRight || point.Lane == DiffSelectionLaneShared
+	case DiffSelectionTrackShared:
+		return point.Lane == DiffSelectionLaneShared
+	default:
+		return false
+	}
+}
+
+func compareDiffSelectionPoints(a DiffSelectionPoint, b DiffSelectionPoint) int {
+	if a.Row < b.Row {
+		return -1
+	}
+	if a.Row > b.Row {
+		return 1
+	}
+	if a.Grapheme < b.Grapheme {
+		return -1
+	}
+	if a.Grapheme > b.Grapheme {
+		return 1
+	}
+	return 0
+}
+
+func graphemeCount(text string) int {
+	count := 0
+	for remaining := text; len(remaining) > 0; count++ {
+		grapheme, _ := ansi.FirstGraphemeCluster(remaining, ansi.GraphemeWidth)
+		if grapheme == "" {
+			break
+		}
+		remaining = remaining[len(grapheme):]
+	}
+	return count
+}
+
+func sliceTextByGraphemeRange(text string, start, end int) string {
+	if start < 0 {
+		start = 0
+	}
+	if end < start {
+		end = start
+	}
+
+	var builder strings.Builder
+	index := 0
+	for remaining := text; len(remaining) > 0; index++ {
+		grapheme, _ := ansi.FirstGraphemeCluster(remaining, ansi.GraphemeWidth)
+		if grapheme == "" {
+			break
+		}
+		if index >= end {
+			break
+		}
+		if index >= start {
+			builder.WriteString(grapheme)
+		}
+		remaining = remaining[len(grapheme):]
+	}
+	return builder.String()
 }

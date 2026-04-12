@@ -27,6 +27,8 @@ type DiffView struct {
 	Style           t.Style
 }
 
+const selectionAutoScrollInset = 1
+
 func (d DiffView) Build(ctx t.BuildContext) t.Widget {
 	d.Palette = NewThemePalette(ctx.Theme())
 	return d
@@ -57,33 +59,80 @@ func (d DiffView) GetStyle() t.Style {
 }
 
 func (d DiffView) OnMouseDown(event t.MouseEvent) {
-	if d.State == nil || d.LayoutMode != DiffLayoutSideBySide || event.Button != uv.MouseLeft {
+	if d.State == nil || event.Button != uv.MouseLeft {
+		return
+	}
+	event = d.viewportSelectionEvent(event)
+
+	if d.LayoutMode == DiffLayoutSideBySide && d.startSideDividerDrag(event) {
 		return
 	}
 
+	track, point, ok := d.selectionStartPoint(event)
+	if !ok {
+		d.State.ClearSelection()
+		return
+	}
+	d.State.StartSelection(track, point)
+	d.State.SetSelectionPointer(event.LocalX, event.LocalY)
+}
+
+func (d DiffView) OnMouseMove(event t.MouseEvent) {
+	if d.State == nil {
+		return
+	}
+	event = d.viewportSelectionEvent(event)
+	if d.State.SideDividerDragging() {
+		d.dragSideDivider(event)
+		return
+	}
+	if !d.State.SelectionDragging() {
+		return
+	}
+	d.State.SetSelectionPointer(event.LocalX, event.LocalY)
+	d.runSelectionAutoscrollTick()
+}
+
+func (d DiffView) OnMouseUp(event t.MouseEvent) {
+	if d.State == nil {
+		return
+	}
+	wasDragging := d.State.SideDividerDragging()
+	d.State.StopSideDividerDrag()
+	if wasDragging {
+		d.State.MarkSideDividerResized()
+	}
+	d.State.StopSelectionDrag()
+}
+
+func (d DiffView) startSideDividerDrag(event t.MouseEvent) bool {
+	if d.State == nil || d.LayoutMode != DiffLayoutSideBySide {
+		return false
+	}
 	sideBySide := d.currentSideBySide()
 	if sideBySide == nil {
-		return
+		return false
 	}
 
 	viewportWidth := d.State.ViewportWidth()
 	if viewportWidth <= 0 {
-		return
+		return false
 	}
 
 	panes := sideBySidePaneLayout(viewportWidth, sideBySide, d.HideChangeSigns, d.sideBySideSplitRatio())
 	if panes.DividerWidth <= 0 {
-		return
+		return false
 	}
 	if event.LocalX < panes.DividerX || event.LocalX >= panes.DividerX+panes.DividerWidth {
-		return
+		return false
 	}
 
 	d.State.StartSideDividerDrag(event.LocalX, panes.DividerX)
+	return true
 }
 
-func (d DiffView) OnMouseMove(event t.MouseEvent) {
-	if d.State == nil || !d.State.SideDividerDragging() {
+func (d DiffView) dragSideDivider(event t.MouseEvent) {
+	if d.State == nil {
 		return
 	}
 	if d.LayoutMode != DiffLayoutSideBySide {
@@ -110,15 +159,391 @@ func (d DiffView) OnMouseMove(event t.MouseEvent) {
 	d.clampSideBySideHorizontalScroll(viewportWidth, sideBySide)
 }
 
-func (d DiffView) OnMouseUp(event t.MouseEvent) {
+func (d DiffView) selectionStartPoint(event t.MouseEvent) (DiffSelectionTrack, DiffSelectionPoint, bool) {
 	if d.State == nil {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+	}
+	if d.LayoutMode == DiffLayoutSideBySide {
+		return d.sideBySideSelectionStartPoint(event)
+	}
+	return d.unifiedSelectionPoint(event, true)
+}
+
+func (d DiffView) selectionDragPoint(event t.MouseEvent) (DiffSelectionPoint, bool) {
+	if d.State == nil {
+		return DiffSelectionPoint{}, false
+	}
+	if d.LayoutMode == DiffLayoutSideBySide {
+		return d.sideBySideSelectionDragPoint(event)
+	}
+	_, point, ok := d.unifiedSelectionPoint(event, false)
+	return point, ok
+}
+
+func (d DiffView) unifiedSelectionPoint(event t.MouseEvent, strict bool) (DiffSelectionTrack, DiffSelectionPoint, bool) {
+	rendered := d.currentRendered()
+	if rendered == nil {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+	}
+
+	gutterWidth := renderedGutterWidth(rendered, d.HideChangeSigns)
+	viewportWidth := max(0, d.State.ViewportWidth())
+	if strict && event.LocalX < gutterWidth {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+	}
+	contentX := event.LocalX - gutterWidth
+	if contentX < 0 {
+		contentX = 0
+	}
+
+	rowIdx, line, wrapRow, ok := d.unifiedLineAtMouseRow(event.LocalY)
+	if !ok {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+	}
+
+	visibleWidth := max(1, viewportWidth-gutterWidth)
+	text := lineText(line)
+	contentOffset := d.currentHorizontalScroll()
+	if d.HardWrap {
+		contentOffset = wrapRow * visibleWidth
+	} else {
+		contentOffset = horizontalScrollXForLine(line.Kind, contentOffset)
+	}
+	grapheme := graphemeIndexForDisplayColumn(text, contentOffset+contentX)
+	return DiffSelectionTrackUnified, DiffSelectionPoint{
+		Row:      rowIdx,
+		Grapheme: grapheme,
+		Lane:     DiffSelectionLaneUnified,
+	}, true
+}
+
+func (d DiffView) sideBySideSelectionStartPoint(event t.MouseEvent) (DiffSelectionTrack, DiffSelectionPoint, bool) {
+	sideBySide := d.currentSideBySide()
+	if sideBySide == nil {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+	}
+
+	panes := sideBySidePaneLayout(d.State.ViewportWidth(), sideBySide, d.HideChangeSigns, d.sideBySideSplitRatio())
+	rowIdx, row, wrapRow, ok := d.sideBySideRowAtMouseRow(event.LocalY, panes)
+	if !ok {
+		return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+	}
+	if row.Shared != nil {
+		point := d.sharedSelectionPoint(rowIdx, *row.Shared, wrapRow, event.LocalX)
+		return DiffSelectionTrackShared, point, true
+	}
+
+	if event.LocalX >= panes.LeftPaneX+panes.LeftGutterWidth && event.LocalX < panes.LeftPaneX+panes.LeftPaneWidth && row.Left != nil {
+		point := d.sideCellSelectionPoint(rowIdx, row.Left, wrapRow, event.LocalX, panes.LeftPaneX+panes.LeftGutterWidth, max(1, panes.LeftPaneWidth-panes.LeftGutterWidth), DiffSelectionLaneLeft)
+		return DiffSelectionTrackLeft, point, true
+	}
+	if event.LocalX >= panes.RightPaneX+panes.RightGutterWidth && event.LocalX < panes.RightPaneX+panes.RightPaneWidth && row.Right != nil {
+		point := d.sideCellSelectionPoint(rowIdx, row.Right, wrapRow, event.LocalX, panes.RightPaneX+panes.RightGutterWidth, max(1, panes.RightPaneWidth-panes.RightGutterWidth), DiffSelectionLaneRight)
+		return DiffSelectionTrackRight, point, true
+	}
+	return DiffSelectionTrackNone, DiffSelectionPoint{}, false
+}
+
+func (d DiffView) sideBySideSelectionDragPoint(event t.MouseEvent) (DiffSelectionPoint, bool) {
+	sideBySide := d.currentSideBySide()
+	if sideBySide == nil {
+		return DiffSelectionPoint{}, false
+	}
+
+	track := d.State.SelectionTrack()
+	panes := sideBySidePaneLayout(d.State.ViewportWidth(), sideBySide, d.HideChangeSigns, d.sideBySideSplitRatio())
+	rowIdx, row, wrapRow, ok := d.sideBySideRowAtMouseRow(event.LocalY, panes)
+	if !ok {
+		return DiffSelectionPoint{}, false
+	}
+	if row.Shared != nil {
+		return d.sharedSelectionPoint(rowIdx, *row.Shared, wrapRow, event.LocalX), true
+	}
+
+	switch track {
+	case DiffSelectionTrackLeft:
+		return d.sideCellSelectionPoint(rowIdx, row.Left, wrapRow, event.LocalX, panes.LeftPaneX+panes.LeftGutterWidth, max(1, panes.LeftPaneWidth-panes.LeftGutterWidth), DiffSelectionLaneLeft), true
+	case DiffSelectionTrackRight:
+		return d.sideCellSelectionPoint(rowIdx, row.Right, wrapRow, event.LocalX, panes.RightPaneX+panes.RightGutterWidth, max(1, panes.RightPaneWidth-panes.RightGutterWidth), DiffSelectionLaneRight), true
+	case DiffSelectionTrackShared:
+		return DiffSelectionPoint{}, false
+	default:
+		return DiffSelectionPoint{}, false
+	}
+}
+
+func (d DiffView) unifiedLineAtMouseRow(localY int) (rowIdx int, line RenderedDiffLine, wrapRow int, ok bool) {
+	rendered := d.currentRendered()
+	if rendered == nil {
+		return 0, RenderedDiffLine{}, 0, false
+	}
+	contentRow := d.mouseContentRow(localY)
+	if d.HardWrap {
+		return wrappedLineAtRowWithIndex(rendered.Lines, max(1, d.State.ViewportWidth()-renderedGutterWidth(rendered, d.HideChangeSigns)), contentRow)
+	}
+	if contentRow < 0 || contentRow >= len(rendered.Lines) {
+		return 0, RenderedDiffLine{}, 0, false
+	}
+	return contentRow, rendered.Lines[contentRow], 0, true
+}
+
+func (d DiffView) sideBySideRowAtMouseRow(localY int, panes sidePaneLayout) (rowIdx int, row SideBySideRenderedRow, wrapRow int, ok bool) {
+	sideBySide := d.currentSideBySide()
+	if sideBySide == nil {
+		return 0, SideBySideRenderedRow{}, 0, false
+	}
+	contentRow := d.mouseContentRow(localY)
+	if d.HardWrap {
+		return wrappedSideRowAtRowWithIndex(sideBySide.Rows, panes, d.State.ViewportWidth(), contentRow)
+	}
+	if contentRow < 0 || contentRow >= len(sideBySide.Rows) {
+		return 0, SideBySideRenderedRow{}, 0, false
+	}
+	return contentRow, sideBySide.Rows[contentRow], 0, true
+}
+
+func (d DiffView) sharedSelectionPoint(rowIdx int, line RenderedDiffLine, wrapRow int, localX int) DiffSelectionPoint {
+	visibleWidth := max(1, d.State.ViewportWidth())
+	contentX := localX
+	if contentX < 0 {
+		contentX = 0
+	}
+	contentOffset := d.currentHorizontalScroll()
+	if d.HardWrap {
+		contentOffset = wrapRow * visibleWidth
+	} else {
+		contentOffset = horizontalScrollXForLine(line.Kind, contentOffset)
+	}
+	return DiffSelectionPoint{
+		Row:      rowIdx,
+		Grapheme: graphemeIndexForDisplayColumn(lineText(line), contentOffset+contentX),
+		Lane:     DiffSelectionLaneShared,
+	}
+}
+
+func (d DiffView) sideCellSelectionPoint(rowIdx int, cell *RenderedSideCell, wrapRow int, localX int, contentStartX int, visibleWidth int, lane DiffSelectionLane) DiffSelectionPoint {
+	contentX := localX - contentStartX
+	if contentX < 0 {
+		contentX = 0
+	}
+	contentOffset := d.currentHorizontalScroll()
+	if d.HardWrap {
+		contentOffset = wrapRow * max(1, visibleWidth)
+	}
+	return DiffSelectionPoint{
+		Row:      rowIdx,
+		Grapheme: graphemeIndexForDisplayColumn(diffCellText(cell), contentOffset+contentX),
+		Lane:     lane,
+	}
+}
+
+func (d DiffView) mouseContentRow(localY int) int {
+	return d.currentVerticalScroll() + localY
+}
+
+func (d DiffView) currentVerticalScroll() int {
+	if d.VerticalScroll != nil {
+		return d.VerticalScroll.Offset.Peek()
+	}
+	if d.State == nil {
+		return 0
+	}
+	return d.State.ScrollY.Peek()
+}
+
+func (d DiffView) currentHorizontalScroll() int {
+	if d.State == nil {
+		return 0
+	}
+	return d.State.ScrollX.Peek()
+}
+
+func (d DiffView) viewportSelectionEvent(event t.MouseEvent) t.MouseEvent {
+	if d.VerticalScroll == nil {
+		return event
+	}
+	event.LocalY -= d.currentVerticalScroll()
+	return event
+}
+
+func (d DiffView) clampSelectionViewportEvent(event t.MouseEvent) t.MouseEvent {
+	if d.State == nil {
+		return event
+	}
+	width := d.State.ViewportWidth()
+	height := d.State.ViewportHeight()
+	if width > 0 {
+		event.LocalX = clampInt(event.LocalX, 0, width-1)
+	}
+	if height > 0 {
+		event.LocalY = clampInt(event.LocalY, 0, height-1)
+	}
+	return event
+}
+
+func (d DiffView) runSelectionAutoscrollTick() {
+	if d.State == nil || !d.State.SelectionDragging() {
 		return
 	}
-	wasDragging := d.State.SideDividerDragging()
-	d.State.StopSideDividerDrag()
-	if wasDragging {
-		d.State.MarkSideDividerResized()
+	localX, localY := d.State.SelectionPointer()
+	event := t.MouseEvent{LocalX: localX, LocalY: localY}
+	deltaX, deltaY := d.selectionAutoscrollDelta(event)
+	if deltaY != 0 {
+		d.scrollSelectionY(deltaY)
 	}
+	if deltaX != 0 {
+		d.scrollSelectionX(deltaX)
+	}
+	clamped := d.clampSelectionViewportEvent(event)
+	if point, ok := d.selectionDragPoint(clamped); ok {
+		d.State.UpdateSelection(point)
+	}
+	if deltaX == 0 && deltaY == 0 {
+		d.State.StopSelectionAutoscrollTimer()
+		return
+	}
+	d.State.ScheduleSelectionAutoscrollTick(func() {
+		t.Dispatch(func() {
+			d.runSelectionAutoscrollTick()
+		})
+	})
+}
+
+func (d DiffView) selectionAutoscrollDelta(event t.MouseEvent) (deltaX int, deltaY int) {
+	if d.State == nil {
+		return 0, 0
+	}
+	deltaY = selectionAutoscrollAxisDelta(event.LocalY, d.State.ViewportHeight())
+	if d.HardWrap {
+		return 0, deltaY
+	}
+	startX, endX, ok := d.selectionHorizontalAutoscrollBounds()
+	if !ok {
+		return 0, deltaY
+	}
+	deltaX = selectionAutoscrollRangeDelta(event.LocalX, startX, endX)
+	return deltaX, deltaY
+}
+
+func selectionAutoscrollAxisDelta(position int, size int) int {
+	if size <= 0 {
+		return 0
+	}
+	return selectionAutoscrollRangeDelta(position, 0, size-1)
+}
+
+func selectionAutoscrollRangeDelta(position int, start int, end int) int {
+	if end < start {
+		return 0
+	}
+	size := end - start + 1
+	inset := selectionAutoScrollInset
+	if inset <= 0 {
+		inset = 1
+	}
+	if size <= inset*2 {
+		inset = max(1, size/2)
+	}
+	leftEdge := start + inset
+	rightEdge := end - inset
+	if position < leftEdge {
+		return position - leftEdge
+	}
+	if position > rightEdge {
+		return position - rightEdge
+	}
+	return 0
+}
+
+func (d DiffView) selectionHorizontalAutoscrollBounds() (startX int, endX int, ok bool) {
+	if d.State == nil {
+		return 0, 0, false
+	}
+	viewportWidth := d.State.ViewportWidth()
+	if viewportWidth <= 0 {
+		return 0, 0, false
+	}
+
+	switch d.State.SelectionTrack() {
+	case DiffSelectionTrackUnified:
+		startX = renderedGutterWidth(d.currentRendered(), d.HideChangeSigns)
+		endX = viewportWidth - 1
+	case DiffSelectionTrackLeft:
+		sideBySide := d.currentSideBySide()
+		if sideBySide == nil {
+			return 0, 0, false
+		}
+		panes := sideBySidePaneLayout(viewportWidth, sideBySide, d.HideChangeSigns, d.sideBySideSplitRatio())
+		startX = panes.LeftPaneX + panes.LeftGutterWidth
+		endX = panes.LeftPaneX + panes.LeftPaneWidth - 1
+	case DiffSelectionTrackRight:
+		sideBySide := d.currentSideBySide()
+		if sideBySide == nil {
+			return 0, 0, false
+		}
+		panes := sideBySidePaneLayout(viewportWidth, sideBySide, d.HideChangeSigns, d.sideBySideSplitRatio())
+		startX = panes.RightPaneX + panes.RightGutterWidth
+		endX = panes.RightPaneX + panes.RightPaneWidth - 1
+	case DiffSelectionTrackShared:
+		startX = 0
+		endX = viewportWidth - 1
+	default:
+		return 0, 0, false
+	}
+	if startX < 0 {
+		startX = 0
+	}
+	if endX >= viewportWidth {
+		endX = viewportWidth - 1
+	}
+	if endX < startX {
+		return 0, 0, false
+	}
+	return startX, endX, true
+}
+
+func (d DiffView) scrollSelectionY(delta int) {
+	if d.State == nil || delta == 0 {
+		return
+	}
+	current := d.currentVerticalScroll()
+	next := clampInt(current+delta, 0, d.State.MaxScrollY())
+	if next == current {
+		return
+	}
+	if d.VerticalScroll != nil {
+		d.VerticalScroll.Offset.Set(next)
+	}
+	d.State.ScrollY.Set(next)
+}
+
+func (d DiffView) scrollSelectionX(delta int) {
+	if d.State == nil || delta == 0 {
+		return
+	}
+	current := d.currentHorizontalScroll()
+	next := clampInt(current+delta, 0, d.State.MaxScrollX(d.currentSelectionGutterWidth()))
+	if next == current {
+		return
+	}
+	d.State.ScrollX.Set(next)
+}
+
+func (d DiffView) currentSelectionGutterWidth() int {
+	if d.State == nil {
+		return 0
+	}
+	rendered := d.currentRendered()
+	if d.LayoutMode == DiffLayoutSideBySide {
+		return sideBySideStateGutterWidth(
+			rendered,
+			d.currentSideBySide(),
+			d.HideChangeSigns,
+			d.State.ViewportWidth(),
+			d.sideBySideSplitRatio(),
+		)
+	}
+	return renderedGutterWidth(rendered, d.HideChangeSigns)
 }
 
 func (d DiffView) BuildLayoutNode(ctx t.BuildContext) layout.LayoutNode {
@@ -446,18 +871,23 @@ func wrappedSideContentHeight(rows []SideBySideRenderedRow, panes sidePaneLayout
 }
 
 func wrappedSideRowAtRow(rows []SideBySideRenderedRow, panes sidePaneLayout, fullWidth int, rowIdx int) (SideBySideRenderedRow, int, bool) {
+	_, row, wrapRow, ok := wrappedSideRowAtRowWithIndex(rows, panes, fullWidth, rowIdx)
+	return row, wrapRow, ok
+}
+
+func wrappedSideRowAtRowWithIndex(rows []SideBySideRenderedRow, panes sidePaneLayout, fullWidth int, rowIdx int) (itemIdx int, row SideBySideRenderedRow, wrapRow int, ok bool) {
 	if rowIdx < 0 {
-		return SideBySideRenderedRow{}, 0, false
+		return 0, SideBySideRenderedRow{}, 0, false
 	}
 	remaining := rowIdx
-	for _, row := range rows {
+	for idx, row := range rows {
 		rowsForItem := wrappedSideRowCount(row, panes, fullWidth)
 		if remaining < rowsForItem {
-			return row, remaining, true
+			return idx, row, remaining, true
 		}
 		remaining -= rowsForItem
 	}
-	return SideBySideRenderedRow{}, 0, false
+	return 0, SideBySideRenderedRow{}, 0, false
 }
 
 func wrappedSideRowCount(row SideBySideRenderedRow, panes sidePaneLayout, fullWidth int) int {
@@ -563,12 +993,13 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 		}
 
 		var line RenderedDiffLine
+		lineIdx := contentRow
 		contentScrollX := scrollX
 		continuation := false
 		if d.HardWrap {
 			var wrapRow int
 			var ok bool
-			line, wrapRow, ok = wrappedLineAtRow(rendered.Lines, wrapWidth, contentRow)
+			lineIdx, line, wrapRow, ok = wrappedLineAtRowWithIndex(rendered.Lines, wrapWidth, contentRow)
 			if !ok {
 				continue
 			}
@@ -603,7 +1034,7 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 			gutterLine.Prefix = " "
 		}
 		d.renderGutterLine(ctx, rendered, row, gutterLine)
-		d.renderContentLine(ctx, row, gutterWidth, line, contentScrollX)
+		d.renderContentLine(ctx, row, lineIdx, gutterWidth, line, contentScrollX)
 	}
 }
 
@@ -621,9 +1052,10 @@ func (d DiffView) renderSideBySide(ctx *t.RenderContext, sideBySide *SideBySideR
 
 		var line SideBySideRenderedRow
 		wrapRow := 0
+		rowIdx := contentRow
 		ok := false
 		if d.HardWrap {
-			line, wrapRow, ok = wrappedSideRowAtRow(sideBySide.Rows, panes, ctx.Width, contentRow)
+			rowIdx, line, wrapRow, ok = wrappedSideRowAtRowWithIndex(sideBySide.Rows, panes, ctx.Width, contentRow)
 		} else if contentRow >= 0 && contentRow < len(sideBySide.Rows) {
 			line = sideBySide.Rows[contentRow]
 			ok = true
@@ -633,11 +1065,11 @@ func (d DiffView) renderSideBySide(ctx *t.RenderContext, sideBySide *SideBySideR
 		}
 
 		if line.Shared != nil {
-			d.renderSideSharedRow(ctx, row, *line.Shared, wrapRow, scrollX)
+			d.renderSideSharedRow(ctx, row, rowIdx, *line.Shared, wrapRow, scrollX)
 			continue
 		}
 
-		d.renderSidePairedRow(ctx, row, panes, sideBySide, line, wrapRow, scrollX)
+		d.renderSidePairedRow(ctx, row, rowIdx, panes, sideBySide, line, wrapRow, scrollX)
 	}
 
 	if d.State != nil && d.State.SideDividerOverlayVisible() {
@@ -748,7 +1180,7 @@ func sideDividerSizeOverlayLayout(panes sidePaneLayout, viewportWidth int) (left
 	return leftText, leftX, rightText, rightX
 }
 
-func (d DiffView) renderSideSharedRow(ctx *t.RenderContext, row int, line RenderedDiffLine, wrapRow int, scrollX int) {
+func (d DiffView) renderSideSharedRow(ctx *t.RenderContext, row int, rowIdx int, line RenderedDiffLine, wrapRow int, scrollX int) {
 	if lineStyle, ok := d.Palette.LineStyleForKind(line.Kind); ok && lineStyle.BackgroundColor != nil && lineStyle.BackgroundColor.IsSet() {
 		bg := lineStyle.BackgroundColor.ColorAt(ctx.Width, 1, 0, 0)
 		ctx.FillRect(0, row, ctx.Width, 1, bg)
@@ -760,13 +1192,15 @@ func (d DiffView) renderSideSharedRow(ctx *t.RenderContext, row int, line Render
 	} else {
 		contentScrollX = horizontalScrollXForLine(line.Kind, contentScrollX)
 	}
-	d.renderSegments(ctx, row, 0, ctx.Width, line.Segments, contentScrollX)
+	selectionStart, selectionEnd, hasSelection := d.State.SelectionRangeForSideRow(rowIdx, DiffSelectionLaneShared)
+	d.renderSegments(ctx, row, 0, ctx.Width, line.Segments, contentScrollX, selectionStart, selectionEnd, hasSelection)
 }
 
-func (d DiffView) renderSidePairedRow(ctx *t.RenderContext, row int, panes sidePaneLayout, sideBySide *SideBySideRenderedFile, line SideBySideRenderedRow, wrapRow int, scrollX int) {
+func (d DiffView) renderSidePairedRow(ctx *t.RenderContext, row int, rowIdx int, panes sidePaneLayout, sideBySide *SideBySideRenderedFile, line SideBySideRenderedRow, wrapRow int, scrollX int) {
 	d.renderSideCell(
 		ctx,
 		row,
+		rowIdx,
 		panes.LeftPaneX,
 		panes.LeftPaneWidth,
 		panes.LeftGutterWidth,
@@ -779,6 +1213,7 @@ func (d DiffView) renderSidePairedRow(ctx *t.RenderContext, row int, panes sideP
 	d.renderSideCell(
 		ctx,
 		row,
+		rowIdx,
 		panes.RightPaneX,
 		panes.RightPaneWidth,
 		panes.RightGutterWidth,
@@ -864,7 +1299,7 @@ func sideDividerLineNumberRole(line SideBySideRenderedRow) (TokenRole, RenderedL
 	return TokenRoleOldLineNumber, RenderedLineContext, false
 }
 
-func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, paneX int, paneWidth int, gutterWidth int, numWidth int, cell *RenderedSideCell, isLeft bool, wrapRow int, scrollX int) {
+func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, rowIdx int, paneX int, paneWidth int, gutterWidth int, numWidth int, cell *RenderedSideCell, isLeft bool, wrapRow int, scrollX int) {
 	if paneWidth <= 0 {
 		return
 	}
@@ -939,7 +1374,8 @@ func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, paneX int, paneW
 	if d.HardWrap {
 		contentScrollX = wrapRow * visibleWidth
 	}
-	d.renderSegments(ctx, row, paneX+gutterWidth, paneWidth-gutterWidth, cell.Segments, contentScrollX)
+	selectionStart, selectionEnd, hasSelection := d.State.SelectionRangeForSideRow(rowIdx, laneForSideCell(isLeft))
+	d.renderSegments(ctx, row, paneX+gutterWidth, paneWidth-gutterWidth, cell.Segments, contentScrollX, selectionStart, selectionEnd, hasSelection)
 }
 
 func (d DiffView) renderSideEmptyCellHatch(ctx *t.RenderContext, row int, startX int, width int) {
@@ -1053,7 +1489,7 @@ func displayLinePrefix(line RenderedDiffLine, hideChangeSigns bool) string {
 	return prefix
 }
 
-func (d DiffView) renderContentLine(ctx *t.RenderContext, row int, gutterWidth int, line RenderedDiffLine, scrollX int) {
+func (d DiffView) renderContentLine(ctx *t.RenderContext, row int, lineIdx int, gutterWidth int, line RenderedDiffLine, scrollX int) {
 	if gutterWidth >= ctx.Width {
 		return
 	}
@@ -1063,15 +1499,17 @@ func (d DiffView) renderContentLine(ctx *t.RenderContext, row int, gutterWidth i
 		return
 	}
 
-	d.renderSegments(ctx, row, gutterWidth, visibleWidth, line.Segments, scrollX)
+	selectionStart, selectionEnd, hasSelection := d.State.SelectionRangeForUnifiedLine(lineIdx)
+	d.renderSegments(ctx, row, gutterWidth, visibleWidth, line.Segments, scrollX, selectionStart, selectionEnd, hasSelection)
 }
 
-func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visibleWidth int, segments []RenderedSegment, scrollX int) {
+func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visibleWidth int, segments []RenderedSegment, scrollX int, selectionStart int, selectionEnd int, hasSelection bool) {
 	if row < 0 || row >= ctx.Height || visibleWidth <= 0 {
 		return
 	}
 
 	contentCol := 0
+	graphemeIdx := 0
 	for _, segment := range segments {
 		if segment.Text == "" {
 			continue
@@ -1094,6 +1532,7 @@ func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visi
 			if nextCol <= scrollX {
 				contentCol = nextCol
 				remaining = remaining[len(grapheme):]
+				graphemeIdx++
 				continue
 			}
 			if contentCol >= scrollX+visibleWidth {
@@ -1102,13 +1541,18 @@ func (d DiffView) renderSegments(ctx *t.RenderContext, row int, startX int, visi
 
 			drawX := startX + (contentCol - scrollX)
 			if drawX >= startX && drawX < startX+visibleWidth {
+				drawStyle := style
+				if hasSelection && selectionContainsGrapheme(graphemeIdx, selectionStart, selectionEnd) {
+					drawStyle.BackgroundColor = d.Palette.SelectionBackground()
+				}
 				if width == 1 || (drawX+width) <= startX+visibleWidth {
-					ctx.DrawStyledText(drawX, row, grapheme, style)
+					ctx.DrawStyledText(drawX, row, grapheme, drawStyle)
 				}
 			}
 
 			contentCol = nextCol
 			remaining = remaining[len(grapheme):]
+			graphemeIdx++
 		}
 	}
 }
@@ -1329,18 +1773,23 @@ func wrappedContentHeight(lines []RenderedDiffLine, wrapWidth int) int {
 }
 
 func wrappedLineAtRow(lines []RenderedDiffLine, wrapWidth int, rowIdx int) (RenderedDiffLine, int, bool) {
+	_, line, wrapRow, ok := wrappedLineAtRowWithIndex(lines, wrapWidth, rowIdx)
+	return line, wrapRow, ok
+}
+
+func wrappedLineAtRowWithIndex(lines []RenderedDiffLine, wrapWidth int, rowIdx int) (lineIdx int, line RenderedDiffLine, wrapRow int, ok bool) {
 	if rowIdx < 0 {
-		return RenderedDiffLine{}, 0, false
+		return 0, RenderedDiffLine{}, 0, false
 	}
 	remaining := rowIdx
-	for _, line := range lines {
+	for idx, line := range lines {
 		rows := wrappedLineRowCount(line, wrapWidth)
 		if remaining < rows {
-			return line, remaining, true
+			return idx, line, remaining, true
 		}
 		remaining -= rows
 	}
-	return RenderedDiffLine{}, 0, false
+	return 0, RenderedDiffLine{}, 0, false
 }
 
 func wrappedLineRowCount(line RenderedDiffLine, wrapWidth int) int {
@@ -1432,6 +1881,65 @@ func lineText(line RenderedDiffLine) string {
 		builder.WriteString(segment.Text)
 	}
 	return builder.String()
+}
+
+func diffCellText(cell *RenderedSideCell) string {
+	if cell == nil || len(cell.Segments) == 0 {
+		return ""
+	}
+	var builder strings.Builder
+	for _, segment := range cell.Segments {
+		builder.WriteString(segment.Text)
+	}
+	return builder.String()
+}
+
+func graphemeIndexForDisplayColumn(text string, displayCol int) int {
+	if displayCol <= 0 {
+		return 0
+	}
+
+	graphemeIdx := 0
+	col := 0
+	for remaining := text; len(remaining) > 0; graphemeIdx++ {
+		grapheme, width := ansi.FirstGraphemeCluster(remaining, ansi.GraphemeWidth)
+		if grapheme == "" {
+			break
+		}
+		if width <= 0 {
+			width = ansi.StringWidth(grapheme)
+		}
+		if width <= 0 {
+			width = 1
+		}
+		nextCol := col + width
+		if displayCol < nextCol {
+			if displayCol-col >= width/2 {
+				return graphemeIdx + 1
+			}
+			return graphemeIdx
+		}
+		if displayCol == nextCol {
+			return graphemeIdx + 1
+		}
+		col = nextCol
+		remaining = remaining[len(grapheme):]
+	}
+	return graphemeIdx
+}
+
+func selectionContainsGrapheme(graphemeIdx int, selectionStart int, selectionEnd int) bool {
+	if selectionEnd >= 0 {
+		return graphemeIdx >= selectionStart && graphemeIdx < selectionEnd
+	}
+	return graphemeIdx >= selectionStart
+}
+
+func laneForSideCell(isLeft bool) DiffSelectionLane {
+	if isLeft {
+		return DiffSelectionLaneLeft
+	}
+	return DiffSelectionLaneRight
 }
 
 func clampInt(value int, minValue int, maxValue int) int {

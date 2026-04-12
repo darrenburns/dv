@@ -576,8 +576,8 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
-		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: true},
-		{Key: "y", Name: "Copy path", Action: a.copyActiveFilePath, Hidden: true},
+		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: a.lastMutationSession == nil},
+		{Key: "y", Name: a.copyActionName(), Action: a.copySelectionOrPath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
 		{Key: "ctrl+h", Name: "Shift split left", Action: a.shiftSideBySideSplitLeft, Hidden: true},
@@ -1704,6 +1704,21 @@ func (a *Dv) canCopyActiveFilePath() bool {
 	return a.activeKind == DiffTreeNodeFile || a.activeKind == DiffTreeNodeDirectory
 }
 
+func (a *Dv) hasCopyableDiffSelection() bool {
+	return a.diffViewState != nil && a.diffViewState.HasSelection()
+}
+
+func (a *Dv) canCopySelectionOrPath() bool {
+	return a.hasCopyableDiffSelection() || a.canCopyActiveFilePath()
+}
+
+func (a *Dv) copyActionName() string {
+	if a.hasCopyableDiffSelection() {
+		return "Copy selection"
+	}
+	return "Copy path"
+}
+
 func (a *Dv) activeFileIsStaged() bool {
 	return a.activeKind == DiffTreeNodeFile && a.activeFileSection == DiffSectionStaged
 }
@@ -2048,11 +2063,21 @@ func mutationFailureDetail(step mutationStepResult) string {
 	return "unknown error"
 }
 
-func (a *Dv) copyActiveFilePath() {
-	if !a.canCopyActiveFilePath() {
+func (a *Dv) copySelectionOrPath() {
+	if a.copyPathToClipboard == nil {
 		return
 	}
-	if a.copyPathToClipboard == nil {
+	if a.hasCopyableDiffSelection() {
+		if text := a.diffViewState.SelectedText(); text != "" {
+			_ = a.copyPathToClipboard(text)
+			return
+		}
+	}
+	a.copyActiveFilePath()
+}
+
+func (a *Dv) copyActiveFilePath() {
+	if !a.canCopyActiveFilePath() || a.copyPathToClipboard == nil {
 		return
 	}
 	_ = a.copyPathToClipboard(a.activePath)
@@ -2524,6 +2549,7 @@ func (a *Dv) toggleDiffWrap() {
 	a.diffHardWrap.Update(func(v bool) bool { return !v })
 	if a.diffViewState != nil {
 		a.diffViewState.ScrollX.Set(0)
+		a.diffViewState.ClearSelection()
 	}
 }
 
@@ -2546,6 +2572,9 @@ func (a *Dv) toggleDiffLayoutMode() {
 	a.diffLayoutMode.Set(targetMode)
 	a.clampDiffHorizontalScroll()
 	a.setDiffVerticalOffset(targetOffset)
+	if a.diffViewState != nil {
+		a.diffViewState.ClearSelection()
+	}
 }
 
 func (a *Dv) resetSideBySideSplit() {
@@ -3933,12 +3962,12 @@ func (a *Dv) commandPaletteItems() []t.CommandPaletteItem {
 			Action:     a.paletteAction(a.toggleMutationOutputViewer),
 		})
 	}
-	if a.canCopyActiveFilePath() {
+	if a.canCopySelectionOrPath() {
 		items = append(items, t.CommandPaletteItem{
-			Label:      "Copy path",
-			FilterText: "Copy path clipboard file directory",
-			Hint:       a.paletteHint("Copy path"),
-			Action:     a.paletteAction(a.copyActiveFilePath),
+			Label:      a.copyActionName(),
+			FilterText: "Copy path clipboard file directory selection text diff",
+			Hint:       a.paletteHint(a.copyActionName()),
+			Action:     a.paletteAction(a.copySelectionOrPath),
 		})
 	}
 	items = append(items,

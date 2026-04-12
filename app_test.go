@@ -1120,6 +1120,41 @@ func TestDv_CopyFilePathPaletteActionCopiesActiveFilePath(tt *testing.T) {
 	require.Equal(tt, app.activePath, copied)
 }
 
+func TestDv_CopySelectionKeybindCopiesSelectedDiffText(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	rendered := &RenderedFile{
+		Title: "selection-copy",
+		Lines: []RenderedDiffLine{
+			newRenderedLine(RenderedLineContext, 1, 1, " ", []RenderedSegment{{Text: "hello world", Role: TokenRoleSyntaxPlain}}),
+		},
+		OldNumWidth:     1,
+		NewNumWidth:     1,
+		MaxContentWidth: 11,
+	}
+	app.diffViewState.SetRendered(rendered)
+	app.diffViewState.StartSelection(DiffSelectionTrackUnified, DiffSelectionPoint{Row: 0, Grapheme: 6, Lane: DiffSelectionLaneUnified})
+	app.diffViewState.UpdateSelection(DiffSelectionPoint{Row: 0, Grapheme: 11, Lane: DiffSelectionLaneUnified})
+
+	copied := ""
+	copyCalls := 0
+	app.copyPathToClipboard = func(path string) error {
+		copyCalls++
+		copied = path
+		return nil
+	}
+
+	keybind, ok := findKeybindByKey(app.Keybinds(), "y")
+	require.True(tt, ok)
+	require.Equal(tt, "Copy selection", keybind.Name)
+	require.NotNil(tt, keybind.Action)
+
+	keybind.Action()
+
+	require.Equal(tt, 1, copyCalls)
+	require.Equal(tt, "world", copied)
+}
+
 func TestDv_CopyFilePathKeybindCopiesActiveDirectoryPath(tt *testing.T) {
 	app := newTestDv(&scriptedDiffProvider{
 		repoRoot: "/tmp/repo",
@@ -1149,6 +1184,18 @@ func TestDv_CopyFilePathKeybindCopiesActiveDirectoryPath(tt *testing.T) {
 
 	require.Equal(tt, 1, copyCalls)
 	require.Equal(tt, "pkg", copied)
+}
+
+func TestDv_ToggleDiffWrapClearsDiffSelection(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+
+	app.diffViewState.StartSelection(DiffSelectionTrackUnified, DiffSelectionPoint{Row: 0, Grapheme: 0, Lane: DiffSelectionLaneUnified})
+	app.diffViewState.UpdateSelection(DiffSelectionPoint{Row: 0, Grapheme: 1, Lane: DiffSelectionLaneUnified})
+	require.True(tt, app.diffViewState.HasSelection())
+
+	app.toggleDiffWrap()
+
+	require.False(tt, app.diffViewState.HasSelection())
 }
 
 func TestDv_CopyFilePathNoopWhenSelectionNotFile(tt *testing.T) {

@@ -335,6 +335,218 @@ func TestDiffView_OnMouseDownStartsDragOnlyOnDivider(tt *testing.T) {
 	require.Equal(tt, 0, state.SideDividerDragOffset())
 }
 
+func TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll(tt *testing.T) {
+	rendered := &RenderedFile{
+		Title: "selection-test",
+		Lines: []RenderedDiffLine{
+			newRenderedLine(RenderedLineContext, 1, 1, " ", []RenderedSegment{{Text: "abcdefghi", Role: TokenRoleSyntaxPlain}}),
+		},
+		OldNumWidth:     2,
+		NewNumWidth:     2,
+		MaxContentWidth: 9,
+	}
+	state := NewDiffViewState(rendered)
+	gutterWidth := renderedGutterWidth(rendered, false)
+	state.SetViewport(20, 4, gutterWidth)
+	state.ScrollX.Set(2)
+
+	view := DiffView{
+		State:           state,
+		LayoutMode:      DiffLayoutUnified,
+		HideChangeSigns: false,
+	}
+
+	_, _, ok := view.unifiedSelectionPoint(t.MouseEvent{LocalX: gutterWidth - 1, LocalY: 0}, true)
+	require.False(tt, ok)
+
+	track, point, ok := view.unifiedSelectionPoint(t.MouseEvent{LocalX: gutterWidth, LocalY: 0}, true)
+	require.True(tt, ok)
+	require.Equal(tt, DiffSelectionTrackUnified, track)
+	require.Equal(tt, DiffSelectionLaneUnified, point.Lane)
+	require.Equal(tt, 2, point.Grapheme)
+}
+
+func TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting(tt *testing.T) {
+	rendered := &RenderedFile{
+		Title: "selection-scroll-test",
+		Lines: []RenderedDiffLine{
+			newRenderedLine(RenderedLineContext, 1, 1, " ", []RenderedSegment{{Text: "abcdefghij", Role: TokenRoleSyntaxPlain}}),
+		},
+		OldNumWidth:     2,
+		NewNumWidth:     2,
+		MaxContentWidth: 10,
+	}
+	state := NewDiffViewState(rendered)
+	gutterWidth := renderedGutterWidth(rendered, false)
+	state.SetViewport(20, 4, gutterWidth)
+	state.ScrollX.Set(3)
+	scroll := t.NewScrollState()
+	scroll.Offset.Set(0)
+
+	view := DiffView{
+		State:           state,
+		VerticalScroll:  scroll,
+		LayoutMode:      DiffLayoutUnified,
+		HideChangeSigns: false,
+	}
+
+	normalized := view.viewportSelectionEvent(t.MouseEvent{LocalX: gutterWidth + 1, LocalY: 0})
+	track, point, ok := view.unifiedSelectionPoint(normalized, true)
+	require.True(tt, ok)
+	require.Equal(tt, DiffSelectionTrackUnified, track)
+	require.Equal(tt, 4, point.Grapheme)
+}
+
+func TestDiffView_SideBySideSelectionDragClampsToOriginPane(tt *testing.T) {
+	sideBySide := &SideBySideRenderedFile{
+		Title: "selection-pane-test",
+		Rows: []SideBySideRenderedRow{
+			{
+				Left:  &RenderedSideCell{Kind: RenderedLineContext, LineNumber: 1, Prefix: " ", Segments: []RenderedSegment{{Text: "hello", Role: TokenRoleSyntaxPlain}}, ContentWidth: 5},
+				Right: &RenderedSideCell{Kind: RenderedLineContext, LineNumber: 1, Prefix: " ", Segments: []RenderedSegment{{Text: "world", Role: TokenRoleSyntaxPlain}}, ContentWidth: 5},
+			},
+		},
+		LeftNumWidth:         1,
+		RightNumWidth:        1,
+		LeftMaxContentWidth:  5,
+		RightMaxContentWidth: 5,
+	}
+	rendered := buildTestRenderedFile(1, 5)
+	state := NewDiffViewState(rendered)
+	state.SetRenderedPair(rendered, sideBySide)
+	gutterWidth := sideBySideStateGutterWidth(rendered, sideBySide, false, 40, state.SideBySideSplitRatio())
+	state.SetViewport(40, 4, gutterWidth)
+
+	view := DiffView{
+		State:           state,
+		LayoutMode:      DiffLayoutSideBySide,
+		HideChangeSigns: false,
+	}
+	panes := sideBySidePaneLayout(40, sideBySide, false, state.SideBySideSplitRatio())
+
+	track, point, ok := view.selectionStartPoint(t.MouseEvent{
+		LocalX: panes.LeftPaneX + panes.LeftGutterWidth + 1,
+		LocalY: 0,
+	})
+	require.True(tt, ok)
+	require.Equal(tt, DiffSelectionTrackLeft, track)
+	state.StartSelection(track, point)
+
+	dragPoint, ok := view.selectionDragPoint(t.MouseEvent{
+		LocalX: panes.RightPaneX + panes.RightPaneWidth - 1,
+		LocalY: 0,
+	})
+	require.True(tt, ok)
+	require.Equal(tt, DiffSelectionLaneLeft, dragPoint.Lane)
+	require.Equal(tt, 5, dragPoint.Grapheme)
+}
+
+func TestDiffView_OnMouseMoveAutoscrollsWhileSelecting(tt *testing.T) {
+	rendered := &RenderedFile{
+		Title: "autoscroll-selection",
+		Lines: []RenderedDiffLine{
+			newRenderedLine(RenderedLineContext, 1, 1, " ", []RenderedSegment{{Text: "a", Role: TokenRoleSyntaxPlain}}),
+			newRenderedLine(RenderedLineContext, 2, 2, " ", []RenderedSegment{{Text: "b", Role: TokenRoleSyntaxPlain}}),
+			newRenderedLine(RenderedLineContext, 3, 3, " ", []RenderedSegment{{Text: "c", Role: TokenRoleSyntaxPlain}}),
+			newRenderedLine(RenderedLineContext, 4, 4, " ", []RenderedSegment{{Text: "d", Role: TokenRoleSyntaxPlain}}),
+			newRenderedLine(RenderedLineContext, 5, 5, " ", []RenderedSegment{{Text: "e", Role: TokenRoleSyntaxPlain}}),
+		},
+		OldNumWidth:     1,
+		NewNumWidth:     1,
+		MaxContentWidth: 1,
+	}
+	state := NewDiffViewState(rendered)
+	gutterWidth := renderedGutterWidth(rendered, false)
+	state.SetViewport(12, 3, gutterWidth)
+	scroll := t.NewScrollState()
+
+	view := DiffView{
+		State:           state,
+		VerticalScroll:  scroll,
+		LayoutMode:      DiffLayoutUnified,
+		HideChangeSigns: false,
+	}
+
+	view.OnMouseDown(t.MouseEvent{LocalX: gutterWidth, LocalY: 0, Button: uv.MouseLeft})
+	require.True(tt, state.SelectionDragging())
+
+	view.OnMouseMove(t.MouseEvent{LocalX: gutterWidth + 1, LocalY: 2, Button: uv.MouseLeft})
+
+	require.Equal(tt, 1, scroll.Offset.Peek())
+	require.Equal(tt, 1, state.ScrollY.Peek())
+	require.Contains(tt, state.SelectedText(), "d")
+	start, end, ok := state.SelectionRangeForUnifiedLine(3)
+	require.True(tt, ok)
+	require.Equal(tt, 0, start)
+	require.Equal(tt, 1, end)
+
+	view.runSelectionAutoscrollTick()
+
+	require.Equal(tt, 2, scroll.Offset.Peek())
+	require.Equal(tt, 2, state.ScrollY.Peek())
+	start, end, ok = state.SelectionRangeForUnifiedLine(4)
+	require.True(tt, ok)
+	require.Equal(tt, 0, start)
+	require.Equal(tt, 1, end)
+	state.StopSelectionAutoscrollTimer()
+}
+
+func TestSelectionAutoscrollAxisDelta_UsesInnerRing(tt *testing.T) {
+	require.Equal(tt, -1, selectionAutoscrollAxisDelta(0, 10))
+	require.Equal(tt, 0, selectionAutoscrollAxisDelta(1, 10))
+	require.Equal(tt, 1, selectionAutoscrollAxisDelta(9, 10))
+	require.Equal(tt, 0, selectionAutoscrollAxisDelta(8, 10))
+	require.Equal(tt, 2, selectionAutoscrollAxisDelta(10, 10))
+}
+
+func TestSelectionAutoscrollRangeDelta_UsesContentBounds(tt *testing.T) {
+	require.Equal(tt, -2, selectionAutoscrollRangeDelta(4, 5, 14))
+	require.Equal(tt, -1, selectionAutoscrollRangeDelta(5, 5, 14))
+	require.Equal(tt, 0, selectionAutoscrollRangeDelta(13, 5, 14))
+	require.Equal(tt, 1, selectionAutoscrollRangeDelta(14, 5, 14))
+}
+
+func TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent(tt *testing.T) {
+	sideBySide := &SideBySideRenderedFile{
+		Title: "bounds-test",
+		Rows: []SideBySideRenderedRow{
+			{
+				Left:  &RenderedSideCell{Kind: RenderedLineContext, LineNumber: 1, Prefix: " ", Segments: []RenderedSegment{{Text: "left", Role: TokenRoleSyntaxPlain}}, ContentWidth: 4},
+				Right: &RenderedSideCell{Kind: RenderedLineContext, LineNumber: 1, Prefix: " ", Segments: []RenderedSegment{{Text: "right", Role: TokenRoleSyntaxPlain}}, ContentWidth: 5},
+			},
+		},
+		LeftNumWidth:         3,
+		RightNumWidth:        2,
+		LeftMaxContentWidth:  20,
+		RightMaxContentWidth: 20,
+	}
+	rendered := buildTestRenderedFile(1, 20)
+	state := NewDiffViewState(rendered)
+	state.SetRenderedPair(rendered, sideBySide)
+	gutterWidth := sideBySideStateGutterWidth(rendered, sideBySide, false, 40, state.SideBySideSplitRatio())
+	state.SetViewport(40, 4, gutterWidth)
+	view := DiffView{
+		State:           state,
+		LayoutMode:      DiffLayoutSideBySide,
+		HideChangeSigns: false,
+	}
+	panes := sideBySidePaneLayout(40, sideBySide, false, state.SideBySideSplitRatio())
+
+	state.StartSelection(DiffSelectionTrackLeft, DiffSelectionPoint{Row: 0, Grapheme: 0, Lane: DiffSelectionLaneLeft})
+	startX, endX, ok := view.selectionHorizontalAutoscrollBounds()
+	require.True(tt, ok)
+	require.Equal(tt, panes.LeftPaneX+panes.LeftGutterWidth, startX)
+	require.Equal(tt, panes.LeftPaneX+panes.LeftPaneWidth-1, endX)
+	deltaX, _ := view.selectionAutoscrollDelta(t.MouseEvent{LocalX: endX, LocalY: 1})
+	require.Equal(tt, 1, deltaX)
+
+	state.StartSelection(DiffSelectionTrackRight, DiffSelectionPoint{Row: 0, Grapheme: 0, Lane: DiffSelectionLaneRight})
+	startX, endX, ok = view.selectionHorizontalAutoscrollBounds()
+	require.True(tt, ok)
+	require.Equal(tt, panes.RightPaneX+panes.RightGutterWidth, startX)
+	require.Equal(tt, panes.RightPaneX+panes.RightPaneWidth-1, endX)
+}
+
 func TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll(tt *testing.T) {
 	view, state, rendered, sideBySide := newSideBySideDragTestView(80)
 	panes := sideBySidePaneLayout(80, sideBySide, view.HideChangeSigns, state.SideBySideSplitRatio())

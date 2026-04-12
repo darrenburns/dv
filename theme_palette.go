@@ -16,6 +16,7 @@ type ThemePalette struct {
 	lineStyles      map[RenderedLineKind]t.Style
 	gutterStyles    map[RenderedLineKind]t.Style
 	intralineStyles map[intralineStyleKey]t.SpanStyle
+	selectionBg     t.Color
 }
 
 type intralineStyleKey struct {
@@ -95,6 +96,7 @@ func NewThemePalette(theme t.ThemeData) ThemePalette {
 				UnderlineColor: theme.Error,
 			},
 		},
+		selectionBg: theme.Selection,
 	}
 }
 
@@ -119,4 +121,8 @@ func (p ThemePalette) IntralineOverlayStyle(mark IntralineMarkKind, mode Intrali
 	}
 	style, ok := p.intralineStyles[intralineStyleKey{mark: mark, mode: mode}]
 	return style, ok
+}
+
+func (p ThemePalette) SelectionBackground() t.Color {
+	return p.selectionBg
 }
