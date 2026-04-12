@@ -245,6 +245,7 @@ type Dv struct {
 	showMutationOutput      t.Signal[bool]
 	lastMutationSession     *mutationSessionResult
 	mutationStatusHideDelay time.Duration
+	mutationSpinner         *t.SpinnerState
 
 	dividerFocused        bool
 	dividerHovered        t.Signal[bool]
@@ -321,6 +322,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		diffIgnoreWhitespace:    t.NewSignal(initialState.IgnoreWhitespace),
 		manualRefreshEnabled:    manualRefreshEnabled,
 		mutationStatusHideDelay: 2 * time.Second,
+		mutationSpinner:         t.NewSpinnerState(t.SpinnerDots),
 		dividerHovered:          t.NewSignal(false),
 		dividerFocusRequested:   t.NewSignal(false),
 		lastNonDividerFocus:     diffViewerScrollID,
@@ -1765,6 +1767,7 @@ func (a *Dv) runIndexCommandQueue() {
 			}
 			if result.ClearCommitMessage && a.commitMessageInput != nil {
 				a.commitMessageInput.SetText("")
+				a.returnFocusToTreeAfterCommit()
 			}
 			if result.Refresh {
 				a.refreshDiff()
@@ -3287,6 +3290,13 @@ func (a *Dv) closeMutationOutputViewer() {
 func (a *Dv) setMutationSession(session *mutationSessionResult) {
 	a.lastMutationSession = cloneMutationSession(session)
 	a.showMutationStatus.Set(session != nil)
+	if a.mutationSpinner != nil {
+		if session != nil && session.State == mutationStateRunning {
+			a.mutationSpinner.Start()
+		} else {
+			a.mutationSpinner.Stop()
+		}
+	}
 	nonce := a.mutationStatusNonce.Add(1)
 	if session != nil && session.State == mutationStateSuccess {
 		delay := a.mutationStatusHideDelay
@@ -3388,15 +3398,35 @@ func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 			Padding:         t.EdgeInsetsXY(1, 0),
 			BackgroundColor: background,
 		},
-		Children: []t.Widget{
-			t.Text{
+		Children: func() []t.Widget {
+			children := []t.Widget{}
+			if session.State == mutationStateRunning && a.mutationSpinner != nil {
+				children = append(children,
+					t.Spinner{
+						ID:    diffMutationStatusID,
+						State: a.mutationSpinner,
+						Style: t.Style{
+							ForegroundColor: foreground,
+						},
+					},
+					t.Spacer{Width: t.Cells(1)},
+				)
+			}
+			children = append(children, t.Text{
 				Content: message,
 				Style: t.Style{
 					ForegroundColor: foreground,
 				},
-			},
-		},
+			})
+			return children
+		}(),
 	}, true
+}
+
+func (a *Dv) returnFocusToTreeAfterCommit() {
+	a.focusReturnID = diffFilesTreeID
+	a.focusedWidgetID = diffFilesTreeID
+	t.RequestFocus(diffFilesTreeID)
 }
 
 func (a *Dv) handleEscape() {

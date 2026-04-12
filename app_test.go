@@ -2456,6 +2456,7 @@ func TestDv_FocusCommitMessageRemembersPreviousFocus(tt *testing.T) {
 func TestDv_CommitMessageSubmitRunsCommitAndClearsInput(tt *testing.T) {
 	provider := &scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt"), ""}}
 	app := newTestDv(provider, false)
+	app.focusedWidgetID = diffCommitMessageID
 	app.commitMessageInput.SetText("feat: add sidebar commit box\n\nBody")
 
 	area := findCommitMessageInput(tt, app)
@@ -2467,6 +2468,7 @@ func TestDv_CommitMessageSubmitRunsCommitAndClearsInput(tt *testing.T) {
 
 	require.Equal(tt, []string{"feat: add sidebar commit box\n\nBody"}, provider.commitMessages)
 	require.Equal(tt, "", app.commitMessageInput.GetText())
+	require.Equal(tt, diffFilesTreeID, app.focusedWidgetID)
 }
 
 func TestDv_CommitMessageSubmitFailureKeepsInputAndShowsErrorStatus(tt *testing.T) {
@@ -2514,6 +2516,21 @@ func TestDv_MutationStatusBarAppearsAboveCommitComposer(tt *testing.T) {
 	statusIndex := findMutationStatusBarIndex(tt, app, children)
 	composerIndex := findCommitComposerIndex(tt, children)
 	require.Less(tt, statusIndex, composerIndex)
+}
+
+func TestDv_RunningMutationStatusBarShowsSpinner(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	app.setMutationSession(&mutationSessionResult{
+		Action:  "commit",
+		State:   mutationStateRunning,
+		Summary: "Committing...",
+	})
+
+	statusBar := findMutationStatusBar(tt, app)
+	_, ok := statusBar.Children[0].(t.Spinner)
+	require.True(tt, ok)
+	statusText := findTextWidget(tt, statusBar.Children)
+	require.Equal(tt, "Committing...", statusText.Content)
 }
 
 func TestDv_SuccessMutationStatusAutoHides(tt *testing.T) {
@@ -3873,7 +3890,7 @@ func findMutationStatusBar(tt *testing.T, app *Dv) t.Row {
 		if !ok || len(row.Children) == 0 {
 			continue
 		}
-		text, ok := row.Children[0].(t.Text)
+		text, ok := findTextWidgetMaybe(row.Children)
 		if ok && app.lastMutationSession != nil && strings.Contains(text.Content, app.lastMutationSession.Summary) {
 			return row
 		}
@@ -3901,13 +3918,30 @@ func findMutationStatusBarIndex(tt testing.TB, app *Dv, children []t.Widget) int
 		if !ok || len(row.Children) == 0 {
 			continue
 		}
-		text, ok := row.Children[0].(t.Text)
+		text, ok := findTextWidgetMaybe(row.Children)
 		if ok && app.lastMutationSession != nil && strings.Contains(text.Content, app.lastMutationSession.Summary) {
 			return idx
 		}
 	}
 	require.FailNow(tt, "expected mutation status bar in left pane")
 	return -1
+}
+
+func findTextWidget(tt testing.TB, widgets []t.Widget) t.Text {
+	tt.Helper()
+	text, ok := findTextWidgetMaybe(widgets)
+	require.True(tt, ok)
+	return text
+}
+
+func findTextWidgetMaybe(widgets []t.Widget) (t.Text, bool) {
+	for _, widget := range widgets {
+		text, ok := widget.(t.Text)
+		if ok {
+			return text, true
+		}
+	}
+	return t.Text{}, false
 }
 
 func findCommitComposerIndex(tt testing.TB, children []t.Widget) int {
