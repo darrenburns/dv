@@ -322,7 +322,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		diffIgnoreWhitespace:    t.NewSignal(initialState.IgnoreWhitespace),
 		manualRefreshEnabled:    manualRefreshEnabled,
 		mutationStatusHideDelay: 2 * time.Second,
-		mutationSpinner:         t.NewSpinnerState(t.SpinnerDots),
+		mutationSpinner:         t.NewSpinnerState(t.SpinnerBraille),
 		dividerHovered:          t.NewSignal(false),
 		dividerFocusRequested:   t.NewSignal(false),
 		lastNonDividerFocus:     diffViewerScrollID,
@@ -3400,8 +3400,15 @@ func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 		},
 		Children: func() []t.Widget {
 			children := []t.Widget{}
+			children = append(children, t.Text{
+				Content: message,
+				Style: t.Style{
+					ForegroundColor: foreground,
+				},
+			})
 			if session.State == mutationStateRunning && a.mutationSpinner != nil {
 				children = append(children,
+					t.Spacer{Width: t.Flex(1)},
 					t.Spinner{
 						ID:    diffMutationStatusID,
 						State: a.mutationSpinner,
@@ -3409,15 +3416,8 @@ func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
 							ForegroundColor: foreground,
 						},
 					},
-					t.Spacer{Width: t.Cells(1)},
 				)
 			}
-			children = append(children, t.Text{
-				Content: message,
-				Style: t.Style{
-					ForegroundColor: foreground,
-				},
-			})
 			return children
 		}(),
 	}, true

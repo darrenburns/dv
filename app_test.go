@@ -2527,10 +2527,10 @@ func TestDv_RunningMutationStatusBarShowsSpinner(tt *testing.T) {
 	})
 
 	statusBar := findMutationStatusBar(tt, app)
-	_, ok := statusBar.Children[0].(t.Spinner)
-	require.True(tt, ok)
 	statusText := findTextWidget(tt, statusBar.Children)
 	require.Equal(tt, "Committing...", statusText.Content)
+	spinnerIndex := findSpinnerWidgetIndex(tt, statusBar.Children)
+	require.Equal(tt, len(statusBar.Children)-1, spinnerIndex)
 }
 
 func TestDv_SuccessMutationStatusAutoHides(tt *testing.T) {
@@ -3942,6 +3942,17 @@ func findTextWidgetMaybe(widgets []t.Widget) (t.Text, bool) {
 		}
 	}
 	return t.Text{}, false
+}
+
+func findSpinnerWidgetIndex(tt testing.TB, widgets []t.Widget) int {
+	tt.Helper()
+	for idx, widget := range widgets {
+		if _, ok := widget.(t.Spinner); ok {
+			return idx
+		}
+	}
+	require.FailNow(tt, "expected spinner widget")
+	return -1
 }
 
 func findCommitComposerIndex(tt testing.TB, children []t.Widget) int {
