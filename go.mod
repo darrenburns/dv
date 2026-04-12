@@ -2,14 +2,12 @@ module github.com/darrenburns/dv
 
 go 1.25.5
 
-replace github.com/darrenburns/terma => ../terma
-
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/alecthomas/chroma/v2 v2.23.1
 	github.com/charmbracelet/ultraviolet v0.0.0-20251217160852-6b0c0e26fad9
 	github.com/charmbracelet/x/ansi v0.11.3
-	github.com/darrenburns/terma v0.4.0
+	github.com/darrenburns/terma v0.5.0
 	github.com/stretchr/testify v1.11.1
 	gopkg.in/yaml.v3 v3.0.1
 )
