@@ -551,6 +551,29 @@ func TestDv_StageAllPaletteActionStagesAllFilesAndRefreshes(tt *testing.T) {
 	require.Equal(tt, "a.txt", app.activePath)
 }
 
+func TestDv_StageAllAndFocusCommitKeybindStagesAllFilesAndFocusesCommit(tt *testing.T) {
+	provider := &scriptedDiffProvider{
+		repoRoot:      "/tmp/repo",
+		unstagedDiffs: []string{diffForPaths("a.txt", "b.txt"), ""},
+		stagedDiffs:   []string{"", diffForPaths("a.txt", "b.txt")},
+	}
+	app := newTestDv(provider, false)
+	app.focusedWidgetID = diffFilesTreeID
+
+	stageAllAndCommit, ok := findKeybindByKey(app.Keybinds(), "C")
+	require.True(tt, ok)
+	require.NotNil(tt, stageAllAndCommit.Action)
+
+	stageAllAndCommit.Action()
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, 1, provider.stageAllCalls)
+	require.Equal(tt, DiffSectionStaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
+	require.Equal(tt, diffCommitMessageID, app.focusedWidgetID)
+	require.Equal(tt, diffFilesTreeID, app.focusReturnID)
+}
+
 func TestDv_ToggleStageKeybindUnstagesActiveFileAndRefreshes(tt *testing.T) {
 	provider := &scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
@@ -995,6 +1018,11 @@ func TestDv_KeybindsIncludeStageShortcuts(tt *testing.T) {
 	require.True(tt, ok)
 	require.Equal(tt, "Stage all files", stageAll.Name)
 	require.True(tt, stageAll.Hidden)
+
+	stageAllAndCommit, ok := findKeybindByKey(app.Keybinds(), "C")
+	require.True(tt, ok)
+	require.Equal(tt, "Stage all & focus commit message", stageAllAndCommit.Name)
+	require.True(tt, stageAllAndCommit.Hidden)
 }
 
 func TestDv_KeybindsUseSameSingleFileShortcutForUnstage(tt *testing.T) {
