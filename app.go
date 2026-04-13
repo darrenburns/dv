@@ -245,7 +245,7 @@ type Dv struct {
 	sidebarVisible          t.Signal[bool]
 	showMutationStatus      t.Signal[bool]
 	showMutationOutput      t.Signal[bool]
-	lastMutationSession     *mutationSessionResult
+	lastMutationSession     t.AnySignal[*mutationSessionResult]
 	mutationStatusHideDelay time.Duration
 	mutationSpinner         *t.SpinnerState
 
@@ -317,6 +317,7 @@ func NewDv(provider DiffProvider, staged bool, initialState DvInitialState) *Dv 
 		sidebarVisible:          t.NewSignal(initialState.SidebarVisible),
 		showMutationStatus:      t.NewSignal(false),
 		showMutationOutput:      t.NewSignal(false),
+		lastMutationSession:     t.NewAnySignal((*mutationSessionResult)(nil)),
 		diffLayoutMode:          t.NewSignal(initialState.LayoutMode),
 		diffHardWrap:            t.NewSignal(false),
 		diffHideChangeSigns:     t.NewSignal(!initialState.ShowChangeSigns),
@@ -1136,7 +1137,7 @@ func (a *Dv) shouldShowDiffEmptyState() bool {
 }
 
 func (a *Dv) buildNonFileInfoCard(theme t.ThemeData) (t.Widget, bool) {
-	if a.showMutationOutput.Get() && a.lastMutationSession != nil {
+	if a.showMutationOutput.Get() && a.currentMutationSession() != nil {
 		return nil, false
 	}
 	if a.loadErr != "" {
@@ -1679,7 +1680,11 @@ func (a *Dv) canCommitAndPush() bool {
 }
 
 func (a *Dv) hasMutationSession() bool {
-	return a.lastMutationSession != nil
+	return a.currentMutationSession() != nil
+}
+
+func (a *Dv) currentMutationSession() *mutationSessionResult {
+	return a.lastMutationSession.Peek()
 }
 
 func (a *Dv) canStageActiveFile() bool {
@@ -2280,7 +2285,7 @@ func (a *Dv) applyRefreshResult(result diffRefreshResult) {
 		a.activeFileSection = ""
 		a.treeState.CursorPath.Set(nil)
 		a.treeFilterNoMatches.Set(false)
-		if a.showMutationOutput.Peek() && a.lastMutationSession != nil {
+		if a.showMutationOutput.Peek() && a.currentMutationSession() != nil {
 			a.renderMutationOutputViewer()
 		} else {
 			a.diffViewState.SetRendered(messageToRendered("Diff", a.emptyMessage()))
@@ -2322,7 +2327,7 @@ func (a *Dv) applyRefreshResult(result diffRefreshResult) {
 	if targetPath != "" {
 		a.selectFilePathWithoutClosingOutput(targetPath)
 	}
-	if a.showMutationOutput.Peek() && a.lastMutationSession != nil {
+	if a.showMutationOutput.Peek() && a.currentMutationSession() != nil {
 		a.renderMutationOutputViewer()
 	}
 	a.syncTreeFilterSelection()
@@ -3361,7 +3366,7 @@ func (a *Dv) closeMutationOutputViewer() {
 }
 
 func (a *Dv) setMutationSession(session *mutationSessionResult) {
-	a.lastMutationSession = cloneMutationSession(session)
+	a.lastMutationSession.Set(cloneMutationSession(session))
 	a.showMutationStatus.Set(session != nil)
 	if a.mutationSpinner != nil {
 		if session != nil && session.State == mutationStateRunning {
@@ -3375,7 +3380,8 @@ func (a *Dv) setMutationSession(session *mutationSessionResult) {
 		delay := a.mutationStatusHideDelay
 		time.AfterFunc(delay, func() {
 			t.Dispatch(func() {
-				if a.mutationStatusNonce.Load() != nonce || a.lastMutationSession == nil || a.lastMutationSession.State != mutationStateSuccess {
+				currentSession := a.currentMutationSession()
+				if a.mutationStatusNonce.Load() != nonce || currentSession == nil || currentSession.State != mutationStateSuccess {
 					return
 				}
 				a.showMutationStatus.Set(false)
@@ -3388,10 +3394,11 @@ func (a *Dv) setMutationSession(session *mutationSessionResult) {
 }
 
 func (a *Dv) renderMutationOutputViewer() {
-	if a.diffViewState == nil || a.lastMutationSession == nil {
+	session := a.currentMutationSession()
+	if a.diffViewState == nil || session == nil {
 		return
 	}
-	a.diffViewState.SetRendered(buildMutationOutputRenderedFile(a.lastMutationSession))
+	a.diffViewState.SetRendered(buildMutationOutputRenderedFile(session))
 	a.diffScrollState.SetOffset(0)
 }
 
@@ -3444,7 +3451,7 @@ func (a *Dv) renderActiveViewerContent() {
 }
 
 func (a *Dv) buildMutationStatusBar(theme t.ThemeData) (t.Widget, bool) {
-	session := a.lastMutationSession
+	session := a.lastMutationSession.Get()
 	if session == nil || !a.showMutationStatus.Get() {
 		return nil, false
 	}
@@ -4266,7 +4273,7 @@ func (a *Dv) sidebarTotalsSpans(theme t.ThemeData) []t.Span {
 }
 
 func (a *Dv) viewerTitle() string {
-	if a.showMutationOutput.Get() && a.lastMutationSession != nil {
+	if a.showMutationOutput.Get() && a.currentMutationSession() != nil {
 		return "Git output"
 	}
 	switch a.activeKind {
