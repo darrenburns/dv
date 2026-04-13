@@ -576,7 +576,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
-		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: a.lastMutationSession == nil},
+		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: true},
 		{Key: "y", Name: a.copyActionName(), Action: a.copySelectionOrPath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
