@@ -1350,6 +1350,31 @@ func TestDv_ThemesMenuSelectsCurrentThemeByDefault(tt *testing.T) {
 	require.Equal(tt, currentTheme, t.CurrentThemeName())
 }
 
+func TestDv_ThemesMenuScrollsCurrentThemeIntoView(tt *testing.T) {
+	originalTheme := t.CurrentThemeName()
+	defer t.SetTheme(originalTheme)
+
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo"}, false)
+	themeNames := paletteThemeNames(app.themeItems())
+	require.GreaterOrEqual(tt, len(themeNames), 2)
+
+	currentTheme := themeNames[len(themeNames)-1]
+	t.SetTheme(currentTheme)
+
+	app.openThemePalette()
+
+	level := app.commandPalette.CurrentLevel()
+	require.NotNil(tt, level)
+	require.Equal(tt, diffThemesPalette, level.Title)
+
+	selectedItem, ok := app.commandPalette.CurrentItem()
+	require.True(tt, ok)
+	selectedTheme, ok := selectedItem.Data.(string)
+	require.True(tt, ok)
+	require.Equal(tt, currentTheme, selectedTheme)
+	require.Greater(tt, level.ScrollState.Offset.Peek(), 0)
+}
+
 func TestDv_ThemePreviewRevertsWhenLeavingThemesMenu(tt *testing.T) {
 	originalTheme := t.CurrentThemeName()
 	defer t.SetTheme(originalTheme)

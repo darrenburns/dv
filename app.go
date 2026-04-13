@@ -4169,6 +4169,7 @@ func selectPaletteTheme(level *t.CommandPaletteLevel, themeName string) bool {
 		if !ok || name != themeName {
 			continue
 		}
+		scrollPaletteItemIntoView(level, idx)
 		if level.ListState.CursorIndex.Peek() == idx {
 			return false
 		}
@@ -4176,6 +4177,13 @@ func selectPaletteTheme(level *t.CommandPaletteLevel, themeName string) bool {
 		return true
 	}
 	return false
+}
+
+func scrollPaletteItemIntoView(level *t.CommandPaletteLevel, index int) {
+	if level == nil || level.ScrollState == nil || index < 0 {
+		return
+	}
+	level.ScrollState.Offset.Set(index)
 }
 
 func themeDisplayName(name string) string {
