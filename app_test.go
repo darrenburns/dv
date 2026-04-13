@@ -2588,9 +2588,10 @@ func TestDv_CommitMessageSubmitFailureKeepsInputAndShowsErrorStatus(tt *testing.
 	flushAsyncIndexWork(tt, app)
 
 	require.Equal(tt, "feat: broken commit", app.commitMessageInput.GetText())
-	require.NotNil(tt, app.lastMutationSession)
-	require.Equal(tt, mutationStateError, app.lastMutationSession.State)
-	require.Equal(tt, "Commit failed: nothing staged", app.lastMutationSession.Summary)
+	session := app.currentMutationSession()
+	require.NotNil(tt, session)
+	require.Equal(tt, mutationStateError, session.State)
+	require.Equal(tt, "Commit failed: nothing staged", session.Summary)
 
 	statusBar := findMutationStatusBar(tt, app)
 	require.Equal(tt, themeColorValue(tt, "error_bg"), statusBar.Style.BackgroundColor)
@@ -2633,6 +2634,24 @@ func TestDv_RunningMutationStatusBarShowsSpinner(tt *testing.T) {
 	require.Equal(tt, len(statusBar.Children)-1, spinnerIndex)
 }
 
+func TestDv_SetMutationSessionReplacesVisibleStatusContent(tt *testing.T) {
+	app := newTestDv(&scriptedDiffProvider{repoRoot: "/tmp/repo", diffs: []string{diffForPaths("a.txt")}}, false)
+	app.setMutationSession(&mutationSessionResult{
+		Action:  "commit",
+		State:   mutationStateRunning,
+		Summary: "Committing...",
+	})
+	app.setMutationSession(&mutationSessionResult{
+		Action:  "push",
+		State:   mutationStateRunning,
+		Summary: "Pushing...",
+	})
+
+	statusBar := findMutationStatusBar(tt, app)
+	statusText := findTextWidget(tt, statusBar.Children)
+	require.Equal(tt, "Pushing...", statusText.Content)
+}
+
 func TestDv_SuccessMutationStatusAutoHides(tt *testing.T) {
 	provider := &scriptedDiffProvider{
 		repoRoot:   "/tmp/repo",
@@ -2650,8 +2669,9 @@ func TestDv_SuccessMutationStatusAutoHides(tt *testing.T) {
 	require.Eventually(tt, func() bool {
 		return !app.showMutationStatus.Peek()
 	}, time.Second, 10*time.Millisecond)
-	require.NotNil(tt, app.lastMutationSession)
-	require.Equal(tt, mutationStateSuccess, app.lastMutationSession.State)
+	session := app.currentMutationSession()
+	require.NotNil(tt, session)
+	require.Equal(tt, mutationStateSuccess, session.State)
 }
 
 func TestDv_KeybindsIncludePushWhenBranchAvailable(tt *testing.T) {
@@ -2697,9 +2717,10 @@ func TestDv_PushCurrentBranchStoresSessionAndOutput(tt *testing.T) {
 	flushAsyncIndexWork(tt, app)
 
 	require.Equal(tt, 1, provider.pushCalls)
-	require.NotNil(tt, app.lastMutationSession)
-	require.Equal(tt, mutationStateSuccess, app.lastMutationSession.State)
-	require.Equal(tt, "Pushed", app.lastMutationSession.Summary)
+	session := app.currentMutationSession()
+	require.NotNil(tt, session)
+	require.Equal(tt, mutationStateSuccess, session.State)
+	require.Equal(tt, "Pushed", session.Summary)
 
 	keybind, ok := findKeybindByKey(app.Keybinds(), "o")
 	require.True(tt, ok)
@@ -2763,9 +2784,10 @@ func TestDv_CommitAndPushRunsBothAndClearsInput(tt *testing.T) {
 	require.Equal(tt, 1, provider.pushCalls)
 	require.Equal(tt, []string{"commit", "push"}, provider.operationOrder)
 	require.Equal(tt, "", app.commitMessageInput.GetText())
-	require.NotNil(tt, app.lastMutationSession)
-	require.Equal(tt, mutationStateSuccess, app.lastMutationSession.State)
-	require.Equal(tt, "Committed and pushed", app.lastMutationSession.Summary)
+	session := app.currentMutationSession()
+	require.NotNil(tt, session)
+	require.Equal(tt, mutationStateSuccess, session.State)
+	require.Equal(tt, "Committed and pushed", session.Summary)
 }
 
 func TestDv_CommitAndPushPushFailurePreservesOutputTranscript(tt *testing.T) {
@@ -2784,10 +2806,11 @@ func TestDv_CommitAndPushPushFailurePreservesOutputTranscript(tt *testing.T) {
 	flushAsyncIndexWork(tt, app)
 
 	require.Equal(tt, "", app.commitMessageInput.GetText())
-	require.NotNil(tt, app.lastMutationSession)
-	require.Equal(tt, mutationStateError, app.lastMutationSession.State)
-	require.Equal(tt, "Committed locally, push failed: no upstream configured", app.lastMutationSession.Summary)
-	require.Len(tt, app.lastMutationSession.Steps, 2)
+	session := app.currentMutationSession()
+	require.NotNil(tt, session)
+	require.Equal(tt, mutationStateError, session.State)
+	require.Equal(tt, "Committed locally, push failed: no upstream configured", session.Summary)
+	require.Len(tt, session.Steps, 2)
 
 	app.toggleMutationOutputViewer()
 	require.True(tt, app.showMutationOutput.Peek())
@@ -3985,13 +4008,14 @@ func findCommitComposer(tt *testing.T, app *Dv) t.Column {
 func findMutationStatusBar(tt *testing.T, app *Dv) t.Row {
 	tt.Helper()
 	children := buildLeftPaneChildren(tt, app)
+	session := app.currentMutationSession()
 	for _, child := range children {
 		row, ok := child.(t.Row)
 		if !ok || len(row.Children) == 0 {
 			continue
 		}
 		text, ok := findTextWidgetMaybe(row.Children)
-		if ok && app.lastMutationSession != nil && strings.Contains(text.Content, app.lastMutationSession.Summary) {
+		if ok && session != nil && strings.Contains(text.Content, session.Summary) {
 			return row
 		}
 	}
@@ -4013,13 +4037,14 @@ func buildLeftPaneChildren(tt testing.TB, app *Dv) []t.Widget {
 
 func findMutationStatusBarIndex(tt testing.TB, app *Dv, children []t.Widget) int {
 	tt.Helper()
+	session := app.currentMutationSession()
 	for idx, child := range children {
 		row, ok := child.(t.Row)
 		if !ok || len(row.Children) == 0 {
 			continue
 		}
 		text, ok := findTextWidgetMaybe(row.Children)
-		if ok && app.lastMutationSession != nil && strings.Contains(text.Content, app.lastMutationSession.Summary) {
+		if ok && session != nil && strings.Contains(text.Content, session.Summary) {
 			return idx
 		}
 	}
