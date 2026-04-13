@@ -2,8 +2,6 @@ module github.com/darrenburns/dv
 
 go 1.25.5
 
-replace github.com/darrenburns/terma => ../terma
-
 require (
 	github.com/adrg/xdg v0.5.3
 	github.com/alecthomas/chroma/v2 v2.23.1
