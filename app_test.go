@@ -551,27 +551,39 @@ func TestDv_StageAllPaletteActionStagesAllFilesAndRefreshes(tt *testing.T) {
 	require.Equal(tt, "a.txt", app.activePath)
 }
 
-func TestDv_StageAllAndFocusCommitKeybindStagesAllFilesAndFocusesCommit(tt *testing.T) {
+func TestDv_StageAllAndFocusCommitKeybindFocusesCommitImmediatelyAndStagesAllFiles(tt *testing.T) {
 	provider := &scriptedDiffProvider{
 		repoRoot:      "/tmp/repo",
 		unstagedDiffs: []string{diffForPaths("a.txt", "b.txt"), ""},
 		stagedDiffs:   []string{"", diffForPaths("a.txt", "b.txt")},
+		stageAllBlock: make(chan struct{}),
+		stageAllStart: make(chan struct{}, 1),
 	}
 	app := newTestDv(provider, false)
 	app.focusedWidgetID = diffFilesTreeID
 
 	stageAllAndCommit, ok := findKeybindByKey(app.Keybinds(), "C")
 	require.True(tt, ok)
+	require.Equal(tt, "Stage all & focus commit message", stageAllAndCommit.Name)
 	require.NotNil(tt, stageAllAndCommit.Action)
 
 	stageAllAndCommit.Action()
-	flushAsyncIndexWork(tt, app)
 
-	require.Equal(tt, 1, provider.stageAllCalls)
-	require.Equal(tt, DiffSectionStaged, app.activeSection)
-	require.Equal(tt, "a.txt", app.activePath)
+	select {
+	case <-provider.stageAllStart:
+	case <-time.After(2 * time.Second):
+		require.FailNow(tt, "expected stage-all command to start")
+	}
+
 	require.Equal(tt, diffCommitMessageID, app.focusedWidgetID)
 	require.Equal(tt, diffFilesTreeID, app.focusReturnID)
+	require.Equal(tt, 1, provider.stageAllCalls)
+
+	close(provider.stageAllBlock)
+	flushAsyncIndexWork(tt, app)
+
+	require.Equal(tt, DiffSectionStaged, app.activeSection)
+	require.Equal(tt, "a.txt", app.activePath)
 }
 
 func TestDv_ToggleStageKeybindUnstagesActiveFileAndRefreshes(tt *testing.T) {
@@ -3621,6 +3633,8 @@ type scriptedDiffProvider struct {
 	pushStderr          string
 	stagePathBlock      chan struct{}
 	stagePathStart      chan struct{}
+	stageAllBlock       chan struct{}
+	stageAllStart       chan struct{}
 	loadDiffBlock       chan struct{}
 	loadDiffStart       chan struct{}
 	operationOrder      []string
@@ -3714,6 +3728,15 @@ func (p *scriptedDiffProvider) StagePath(path string) error {
 func (p *scriptedDiffProvider) StageAll() error {
 	p.stageAllCalls++
 	p.operationOrder = append(p.operationOrder, "stage-all")
+	if p.stageAllStart != nil {
+		select {
+		case p.stageAllStart <- struct{}{}:
+		default:
+		}
+	}
+	if p.stageAllBlock != nil {
+		<-p.stageAllBlock
+	}
 	return p.stageAllErr
 }
 

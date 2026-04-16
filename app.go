@@ -126,7 +126,6 @@ const (
 	indexCommandStagePath indexCommandKind = iota
 	indexCommandUnstagePath
 	indexCommandStageAll
-	indexCommandStageAllAndFocusCommit
 	indexCommandUnstageAll
 	indexCommandCommit
 	indexCommandPush
@@ -165,7 +164,6 @@ type mutationSessionResult struct {
 type indexResult struct {
 	Refresh            bool
 	ClearCommitMessage bool
-	FocusCommitMessage bool
 	Session            *mutationSessionResult
 }
 
@@ -577,7 +575,7 @@ func (a *Dv) Keybinds() []t.Keybind {
 		{Key: "b", Name: "Toggle sidebar", Action: a.toggleSidebar, Hidden: true},
 		{Key: "escape", Name: "Clear filter", Action: a.handleEscape, Hidden: true},
 		{Key: "r", Name: "Refresh", Action: a.manualRefresh, Hidden: true},
-		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: true},
+		{Key: "o", Name: "Show last git output", Action: a.toggleMutationOutputViewer, Hidden: !a.hasMutationSession()},
 		{Key: "y", Name: a.copyActionName(), Action: a.copySelectionOrPath, Hidden: true},
 		{Key: "w", Name: "Toggle line wrap", Action: a.toggleDiffWrap, Hidden: true},
 		{Key: "v", Name: "Toggle split", Action: a.toggleDiffLayoutMode, Hidden: true},
@@ -1757,7 +1755,8 @@ func (a *Dv) stageAllFiles() {
 }
 
 func (a *Dv) stageAllAndFocusCommitMessage() {
-	a.enqueueIndexCommand(indexCommand{Kind: indexCommandStageAllAndFocusCommit})
+	a.focusCommitMessageImmediately()
+	a.enqueueIndexCommand(indexCommand{Kind: indexCommandStageAll})
 }
 
 func (a *Dv) unstageAllFiles() {
@@ -1806,9 +1805,6 @@ func (a *Dv) runIndexCommandQueue() {
 			if result.Refresh {
 				a.refreshDiff()
 			}
-			if result.FocusCommitMessage {
-				a.focusCommitMessageAfterStageAll()
-			}
 			a.indexPendingCount.Update(func(count int) int {
 				if count <= 0 {
 					return 0
@@ -1833,14 +1829,6 @@ func (a *Dv) executeIndexCommand(command indexCommand, report func(mutationSessi
 		report(mutationSessionResult{Action: "stage", State: mutationStateRunning, Summary: "Staging..."})
 		step := a.stageAllMutationStep()
 		return indexResult{Refresh: true, Session: singleStepSession("stage", step, "Staged all files", "Stage failed")}
-	case indexCommandStageAllAndFocusCommit:
-		report(mutationSessionResult{Action: "stage", State: mutationStateRunning, Summary: "Staging..."})
-		step := a.stageAllMutationStep()
-		return indexResult{
-			Refresh:            true,
-			FocusCommitMessage: step.Success,
-			Session:            singleStepSession("stage", step, "Staged all files", "Stage failed"),
-		}
 	case indexCommandUnstageAll:
 		report(mutationSessionResult{Action: "unstage", State: mutationStateRunning, Summary: "Unstaging..."})
 		step := a.unstageAllMutationStep()
@@ -3260,7 +3248,7 @@ func (a *Dv) focusCommitMessage() {
 	t.RequestFocus(diffCommitMessageID)
 }
 
-func (a *Dv) focusCommitMessageAfterStageAll() {
+func (a *Dv) focusCommitMessageImmediately() {
 	if !a.canCommitChanges() {
 		return
 	}
