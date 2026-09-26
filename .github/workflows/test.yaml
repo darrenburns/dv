@@ -1,7 +1,7 @@
 name: Tests
 on:
   push:
-    branches: [main]
+    branches: [main, aside]
   pull_request:
 permissions:
   contents: read
@@ -10,6 +10,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout local Terma dependency
+        uses: actions/checkout@v4
+        with:
+          repository: darrenburns/terma
+          ref: ad4d7cd2de162b98a133bd0e727af279ae9ba254
+          path: .deps/terma
+      - run: ln -s "$GITHUB_WORKSPACE/.deps/terma" ../terma
       - uses: actions/setup-go@v5
         with: { go-version-file: go.mod }
       - run: go test -race ./...

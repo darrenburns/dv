@@ -3,550 +3,202 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
-	"net/url"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"sort"
+	"strconv"
 	"strings"
+	"time"
 )
 
-// DiffProvider abstracts where git diff content comes from.
-type DiffProvider interface {
-	LoadDiff(staged bool, ignoreWhitespace bool) (string, error)
-	RepoRoot() (string, error)
-	CurrentBranch() (string, error)
-}
-
-type ContextDiffProvider interface {
-	LoadDiffContext(ctx context.Context, staged bool, ignoreWhitespace bool) (string, error)
-	RepoRootContext(ctx context.Context) (string, error)
-	CurrentBranchContext(ctx context.Context) (string, error)
-}
-
-// DiffSectionsProvider optionally customizes which sections dv should render.
-type DiffSectionsProvider interface {
-	Sections() []DiffSection
-}
-
-// ManualRefreshCapable optionally controls whether manual refresh is enabled.
-type ManualRefreshCapable interface {
-	ManualRefreshEnabled() bool
-}
-
-// IndexCapable optionally supports staging and unstaging through the provider.
-type IndexCapable interface {
-	StagePath(path string) error
-	StageAll() error
-	UnstagePath(path string) error
-	UnstageAll() error
-}
-
-type ContextIndexCapable interface {
-	StagePathContext(ctx context.Context, path string) error
-	StageAllContext(ctx context.Context) error
-	UnstagePathContext(ctx context.Context, path string) error
-	UnstageAllContext(ctx context.Context) error
-}
-
-type CommitCapable interface {
-	CommitMessage(message string) error
-}
-
-type ContextCommitCapable interface {
-	CommitMessageContext(ctx context.Context, message string) error
-}
-
-type PushCapable interface {
-	PushCurrentBranch() error
-}
-
-type ContextPushCapable interface {
-	PushCurrentBranchContext(ctx context.Context) error
-}
-
-type PullRequestURLCapable interface {
-	PullRequestURL() (string, error)
-}
-
-type ContextPullRequestURLCapable interface {
-	PullRequestURLContext(ctx context.Context) (string, error)
-}
-
-type gitMutationResult struct {
-	Args   []string
-	Stdout string
-	Stderr string
-	Err    error
-}
-
-type mutationOutputProvider interface {
-	stagePathResult(path string) gitMutationResult
-	stageAllResult() gitMutationResult
-	unstagePathResult(path string) gitMutationResult
-	unstageAllResult() gitMutationResult
-	commitMessageResult(message string) gitMutationResult
-	pushCurrentBranchResult() gitMutationResult
-}
-
-type contextMutationOutputProvider interface {
-	stagePathResultContext(ctx context.Context, path string) gitMutationResult
-	stageAllResultContext(ctx context.Context) gitMutationResult
-	unstagePathResultContext(ctx context.Context, path string) gitMutationResult
-	unstageAllResultContext(ctx context.Context) gitMutationResult
-	commitMessageResultContext(ctx context.Context, message string) gitMutationResult
-	pushCurrentBranchResultContext(ctx context.Context) gitMutationResult
-}
-
-// GitDiffProvider loads diff data by shelling out to git.
-type GitDiffProvider struct {
-	WorkDir string
-}
-
-func (p GitDiffProvider) LoadDiff(staged bool, ignoreWhitespace bool) (string, error) {
-	return p.LoadDiffContext(context.Background(), staged, ignoreWhitespace)
-}
-
-func (p GitDiffProvider) LoadDiffContext(ctx context.Context, staged bool, ignoreWhitespace bool) (string, error) {
-	args := buildDiffArgs(staged, ignoreWhitespace)
-	stdout, stderr, err := runGit(ctx, p.WorkDir, args)
+// Repository access is read-only. Review writes go exclusively to ReviewStore.
+func runGit(ctx context.Context, dir string, args ...string) (string, error) {
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), "GIT_OPTIONAL_LOCKS=0", "GIT_PAGER=cat")
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	data, err := cmd.Output()
 	if err != nil {
-		return "", fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
+		return "", fmt.Errorf("git %s: %s: %w", strings.Join(args, " "), strings.TrimSpace(stderr.String()), err)
 	}
-	return stdout, nil
+	return string(data), nil
 }
-
-func (p GitDiffProvider) RepoRoot() (string, error) {
-	return p.RepoRootContext(context.Background())
-}
-
-func (p GitDiffProvider) RepoRootContext(ctx context.Context) (string, error) {
-	stdout, stderr, err := runGit(ctx, p.WorkDir, []string{"rev-parse", "--show-toplevel"})
-	if err != nil {
-		return "", fmt.Errorf("git rev-parse --show-toplevel failed: %w: %s", err, strings.TrimSpace(stderr))
-	}
-	return strings.TrimSpace(stdout), nil
-}
-
-func (p GitDiffProvider) CurrentBranch() (string, error) {
-	return p.CurrentBranchContext(context.Background())
-}
-
-func (p GitDiffProvider) CurrentBranchContext(ctx context.Context) (string, error) {
-	stdout, stderr, err := runGit(ctx, p.WorkDir, []string{"branch", "--show-current"})
-	if err != nil {
-		return "", fmt.Errorf("git branch --show-current failed: %w: %s", err, strings.TrimSpace(stderr))
-	}
-	return strings.TrimSpace(stdout), nil
-}
-
-func (p GitDiffProvider) StagePath(path string) error {
-	return p.StagePathContext(context.Background(), path)
-}
-
-func (p GitDiffProvider) StagePathContext(ctx context.Context, path string) error {
-	return runGitMutation(ctx, p.WorkDir, buildStagePathArgs(path))
-}
-
-func (p GitDiffProvider) stagePathResult(path string) gitMutationResult {
-	return p.stagePathResultContext(context.Background(), path)
-}
-
-func (p GitDiffProvider) stagePathResultContext(ctx context.Context, path string) gitMutationResult {
-	return runGitMutationResult(ctx, p.WorkDir, buildStagePathArgs(path), "")
-}
-
-func (p GitDiffProvider) StageAll() error {
-	return p.StageAllContext(context.Background())
-}
-
-func (p GitDiffProvider) StageAllContext(ctx context.Context) error {
-	return runGitMutation(ctx, p.WorkDir, buildStageAllArgs())
-}
-
-func (p GitDiffProvider) stageAllResult() gitMutationResult {
-	return p.stageAllResultContext(context.Background())
-}
-
-func (p GitDiffProvider) stageAllResultContext(ctx context.Context) gitMutationResult {
-	return runGitMutationResult(ctx, p.WorkDir, buildStageAllArgs(), "")
-}
-
-func (p GitDiffProvider) UnstagePath(path string) error {
-	return p.UnstagePathContext(context.Background(), path)
-}
-
-func (p GitDiffProvider) UnstagePathContext(ctx context.Context, path string) error {
-	if gitHeadExists(p.WorkDir) {
-		return runGitMutation(ctx, p.WorkDir, buildUnstagePathArgs(path))
-	}
-	return runGitMutation(ctx, p.WorkDir, buildUnstagePathArgsWithoutHead(path))
-}
-
-func (p GitDiffProvider) unstagePathResult(path string) gitMutationResult {
-	return p.unstagePathResultContext(context.Background(), path)
-}
-
-func (p GitDiffProvider) unstagePathResultContext(ctx context.Context, path string) gitMutationResult {
-	args := buildUnstagePathArgsWithoutHead(path)
-	if gitHeadExists(p.WorkDir) {
-		args = buildUnstagePathArgs(path)
-	}
-	return runGitMutationResult(ctx, p.WorkDir, args, "")
-}
-
-func (p GitDiffProvider) UnstageAll() error {
-	return p.UnstageAllContext(context.Background())
-}
-
-func (p GitDiffProvider) UnstageAllContext(ctx context.Context) error {
-	if gitHeadExists(p.WorkDir) {
-		return runGitMutation(ctx, p.WorkDir, buildUnstageAllArgs())
-	}
-	return runGitMutation(ctx, p.WorkDir, buildUnstageAllArgsWithoutHead())
-}
-
-func (p GitDiffProvider) unstageAllResult() gitMutationResult {
-	return p.unstageAllResultContext(context.Background())
-}
-
-func (p GitDiffProvider) unstageAllResultContext(ctx context.Context) gitMutationResult {
-	args := buildUnstageAllArgsWithoutHead()
-	if gitHeadExists(p.WorkDir) {
-		args = buildUnstageAllArgs()
-	}
-	return runGitMutationResult(ctx, p.WorkDir, args, "")
-}
-
-func (p GitDiffProvider) CommitMessage(message string) error {
-	return p.CommitMessageContext(context.Background(), message)
-}
-
-func (p GitDiffProvider) CommitMessageContext(ctx context.Context, message string) error {
-	return runGitMutationWithInput(ctx, p.WorkDir, buildCommitMessageArgs(), message)
-}
-
-func (p GitDiffProvider) commitMessageResult(message string) gitMutationResult {
-	return p.commitMessageResultContext(context.Background(), message)
-}
-
-func (p GitDiffProvider) commitMessageResultContext(ctx context.Context, message string) gitMutationResult {
-	return runGitMutationResult(ctx, p.WorkDir, buildCommitMessageArgs(), message)
-}
-
-func (p GitDiffProvider) PushCurrentBranch() error {
-	return p.PushCurrentBranchContext(context.Background())
-}
-
-func (p GitDiffProvider) PushCurrentBranchContext(ctx context.Context) error {
-	result := p.pushCurrentBranchResultContext(ctx)
-	return result.Err
-}
-
-func (p GitDiffProvider) pushCurrentBranchResult() gitMutationResult {
-	return p.pushCurrentBranchResultContext(context.Background())
-}
-
-func (p GitDiffProvider) pushCurrentBranchResultContext(ctx context.Context) gitMutationResult {
-	args, err := p.resolvePushArgs(ctx)
-	if err != nil {
-		return gitMutationResult{
-			Args: buildPushArgs("", false),
-			Err:  err,
-		}
-	}
-	return runGitMutationResult(ctx, p.WorkDir, args, "")
-}
-
-func (p GitDiffProvider) PullRequestURL() (string, error) {
-	return p.PullRequestURLContext(context.Background())
-}
-
-func (p GitDiffProvider) PullRequestURLContext(ctx context.Context) (string, error) {
-	branch, err := p.CurrentBranchContext(ctx)
+func repoRoot(dir string) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	value, err := runGit(ctx, dir, "rev-parse", "--show-toplevel")
 	if err != nil {
 		return "", err
 	}
-	return resolvePullRequestURL(ctx, p.WorkDir, branch)
+	return filepath.EvalSymlinks(strings.TrimSpace(value))
 }
-
-func (p GitDiffProvider) resolvePushArgs(ctx context.Context) ([]string, error) {
-	hasUpstream, err := gitBranchHasUpstream(ctx, p.WorkDir)
+func captureWorkingTree(repo string) (ReviewSnapshot, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	head, err := runGit(ctx, repo, "rev-parse", "--verify", "HEAD")
 	if err != nil {
-		return nil, err
+		// Empty repositories have no HEAD; compare against Git's empty tree.
+		head = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
 	}
-	if hasUpstream {
-		return buildPushArgs("", false), nil
-	}
-
-	remote, err := gitDefaultPushRemote(ctx, p.WorkDir)
+	head = strings.TrimSpace(head)
+	diff, err := runGit(ctx, repo, "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", head, "--")
 	if err != nil {
-		return nil, err
+		return ReviewSnapshot{}, err
 	}
-	return buildPushArgs(remote, true), nil
-}
-
-func runGitMutation(ctx context.Context, workDir string, args []string) error {
-	return runGitMutationResult(ctx, workDir, args, "").Err
-}
-
-func runGitMutationWithInput(ctx context.Context, workDir string, args []string, input string) error {
-	return runGitMutationResult(ctx, workDir, args, input).Err
-}
-
-func runGitMutationResult(ctx context.Context, workDir string, args []string, input string) gitMutationResult {
-	stdout, stderr, err := runGitWithInput(ctx, workDir, args, input)
+	untracked, err := runGit(ctx, repo, "ls-files", "--others", "--exclude-standard", "-z")
 	if err != nil {
-		err = fmt.Errorf("git %s failed: %w: %s", strings.Join(args, " "), err, strings.TrimSpace(stderr))
+		return ReviewSnapshot{}, err
 	}
-	return gitMutationResult{
-		Args:   append([]string(nil), args...),
-		Stdout: stdout,
-		Stderr: stderr,
-		Err:    err,
-	}
-}
-
-func gitHeadExists(workDir string) bool {
-	_, _, err := runGit(context.Background(), workDir, []string{"rev-parse", "--verify", "HEAD"})
-	return err == nil
-}
-
-func runGit(ctx context.Context, workDir string, args []string) (stdout string, stderr string, err error) {
-	return runGitWithInput(ctx, workDir, args, "")
-}
-
-func runGitWithInput(ctx context.Context, workDir string, args []string, input string) (stdout string, stderr string, err error) {
-	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Dir = workDir
-
-	var outBuf bytes.Buffer
-	var errBuf bytes.Buffer
-	cmd.Stdout = &outBuf
-	cmd.Stderr = &errBuf
-	if input != "" {
-		cmd.Stdin = strings.NewReader(input)
-	}
-
-	err = cmd.Run()
-	return outBuf.String(), errBuf.String(), err
-}
-
-func gitBranchHasUpstream(ctx context.Context, workDir string) (bool, error) {
-	_, stderr, err := runGit(ctx, workDir, []string{"rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"})
-	if err == nil {
-		return true, nil
-	}
-	if strings.Contains(strings.ToLower(stderr), "no upstream configured") || strings.Contains(strings.ToLower(stderr), "no upstream branch") {
-		return false, nil
-	}
-	return false, fmt.Errorf("git rev-parse --abbrev-ref --symbolic-full-name @{upstream} failed: %w: %s", err, strings.TrimSpace(stderr))
-}
-
-func gitDefaultPushRemote(ctx context.Context, workDir string) (string, error) {
-	stdout, stderr, err := runGit(ctx, workDir, []string{"remote"})
-	if err != nil {
-		return "", fmt.Errorf("git remote failed: %w: %s", err, strings.TrimSpace(stderr))
-	}
-
-	remotes := parseGitRemotes(stdout)
-	return selectDefaultPushRemote(remotes)
-}
-
-func parseGitRemotes(stdout string) []string {
-	lines := strings.Split(strings.TrimSpace(stdout), "\n")
-	remotes := make([]string, 0, len(lines))
-	for _, line := range lines {
-		remote := strings.TrimSpace(line)
-		if remote == "" {
+	for _, path := range strings.Split(untracked, "\x00") {
+		if path == "" {
 			continue
 		}
-		remotes = append(remotes, remote)
-	}
-	return remotes
-}
-
-func selectDefaultPushRemote(remotes []string) (string, error) {
-	if len(remotes) == 0 {
-		return "", fmt.Errorf("no git remotes configured")
-	}
-	if len(remotes) == 1 && remotes[0] == "origin" {
-		return "origin", nil
-	}
-	return "", fmt.Errorf("no upstream branch configured and refusing to guess a push remote")
-}
-
-func gitPullRequestRemote(ctx context.Context, workDir string) (string, error) {
-	remote, ok, err := gitBranchUpstreamRemote(ctx, workDir)
-	if err != nil {
-		return "", err
-	}
-	if ok {
-		return remote, nil
-	}
-	return gitDefaultPushRemote(ctx, workDir)
-}
-
-func gitBranchUpstreamRemote(ctx context.Context, workDir string) (string, bool, error) {
-	stdout, stderr, err := runGit(ctx, workDir, []string{"rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"})
-	if err == nil {
-		upstream := strings.TrimSpace(stdout)
-		remote, _, ok := strings.Cut(upstream, "/")
-		if !ok || strings.TrimSpace(remote) == "" {
-			return "", false, fmt.Errorf("unexpected upstream ref %q", upstream)
-		}
-		return remote, true, nil
-	}
-	if strings.Contains(strings.ToLower(stderr), "no upstream configured") || strings.Contains(strings.ToLower(stderr), "no upstream branch") {
-		return "", false, nil
-	}
-	return "", false, fmt.Errorf("git rev-parse --abbrev-ref --symbolic-full-name @{upstream} failed: %w: %s", err, strings.TrimSpace(stderr))
-}
-
-func gitRemoteURL(ctx context.Context, workDir string, remote string) (string, error) {
-	stdout, stderr, err := runGit(ctx, workDir, []string{"remote", "get-url", remote})
-	if err != nil {
-		return "", fmt.Errorf("git remote get-url %s failed: %w: %s", remote, err, strings.TrimSpace(stderr))
-	}
-	return strings.TrimSpace(stdout), nil
-}
-
-func resolvePullRequestURL(ctx context.Context, workDir string, branch string) (string, error) {
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return "", fmt.Errorf("current branch unavailable")
-	}
-	remote, err := gitPullRequestRemote(ctx, workDir)
-	if err != nil {
-		return "", err
-	}
-	remoteURL, err := gitRemoteURL(ctx, workDir, remote)
-	if err != nil {
-		return "", err
-	}
-	return buildPullRequestURL(remoteURL, branch)
-}
-
-func buildPullRequestURL(remoteURL string, branch string) (string, error) {
-	webBase, err := gitRemoteWebURL(remoteURL)
-	if err != nil {
-		return "", err
-	}
-	branch = strings.TrimSpace(branch)
-	if branch == "" {
-		return "", fmt.Errorf("current branch unavailable")
-	}
-	return webBase + "/compare/" + url.PathEscape(branch) + "?expand=1", nil
-}
-
-func gitRemoteWebURL(remoteURL string) (string, error) {
-	remoteURL = strings.TrimSpace(remoteURL)
-	if remoteURL == "" {
-		return "", fmt.Errorf("git remote URL unavailable")
-	}
-
-	if strings.Contains(remoteURL, "@") && strings.Contains(remoteURL, ":") && !strings.Contains(remoteURL, "://") {
-		hostPart, pathPart, ok := strings.Cut(remoteURL, ":")
-		if !ok {
-			return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
-		}
-		_, host, ok := strings.Cut(hostPart, "@")
-		if !ok || strings.TrimSpace(host) == "" {
-			return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
-		}
-		repoPath, err := normalizeGitRemoteRepoPath(pathPart)
+		info, err := os.Lstat(filepath.Join(repo, path))
 		if err != nil {
-			return "", err
+			return ReviewSnapshot{}, err
 		}
-		return "https://" + host + "/" + repoPath, nil
+		if info.IsDir() {
+			continue
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			continue
+		} // Never follow untracked symlinks.
+		if info.Size() > 2*1024*1024 {
+			diff += fmt.Sprintf("diff --git %s %s\nBinary files /dev/null and %s differ\n", strconv.Quote("a/"+path), strconv.Quote("b/"+path), strconv.Quote("b/"+path))
+			continue
+		}
+		cmd := exec.CommandContext(ctx, "git", "-c", "core.quotePath=false", "diff", "--no-index", "--no-ext-diff", "--no-textconv", "--no-color", "--", "/dev/null", path)
+		cmd.Dir = repo
+		out, err := cmd.Output()
+		var exit *exec.ExitError
+		if err != nil && !(errors.As(err, &exit) && exit.ExitCode() == 1) {
+			return ReviewSnapshot{}, err
+		}
+		if len(out) == 0 {
+			out = []byte(fmt.Sprintf("diff --git %s %s\nnew file mode 100644\n", strconv.Quote("a/"+path), strconv.Quote("b/"+path)))
+		}
+		diff += string(out)
 	}
-
-	parsed, err := url.Parse(remoteURL)
+	files, err := runGit(ctx, repo, "ls-files", "--cached", "--others", "--exclude-standard", "-z")
 	if err != nil {
-		return "", fmt.Errorf("unsupported git remote URL %q: %w", remoteURL, err)
+		return ReviewSnapshot{}, err
 	}
-
-	scheme := "https"
-	switch parsed.Scheme {
-	case "http", "https":
-		scheme = parsed.Scheme
-	case "ssh", "git":
-	default:
-		return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
+	unique := map[string]bool{}
+	var paths []string
+	for _, path := range strings.Split(files, "\x00") {
+		if path != "" && !unique[path] {
+			paths = append(paths, path)
+			unique[path] = true
+		}
 	}
-
-	host := parsed.Hostname()
-	if host == "" {
-		return "", fmt.Errorf("unsupported git remote URL %q", remoteURL)
+	sort.Strings(paths)
+	return ReviewSnapshot{Diff: diff, Base: head, Head: "working-tree", Files: paths}, nil
+}
+func captureRange(repo, base, head string) (ReviewSnapshot, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+	resolve := func(ref string) (string, error) {
+		v, e := runGit(ctx, repo, "rev-parse", "--verify", "--end-of-options", ref+"^{commit}")
+		return strings.TrimSpace(v), e
 	}
-	repoPath, err := normalizeGitRemoteRepoPath(parsed.Path)
+	b, err := resolve(base)
 	if err != nil {
-		return "", err
+		return ReviewSnapshot{}, err
 	}
-	return scheme + "://" + host + "/" + repoPath, nil
-}
-
-func normalizeGitRemoteRepoPath(path string) (string, error) {
-	path = strings.TrimSpace(path)
-	path = strings.Trim(path, "/")
-	path = strings.TrimSuffix(path, ".git")
-	if path == "" {
-		return "", fmt.Errorf("git remote repository path unavailable")
+	h, err := resolve(head)
+	if err != nil {
+		return ReviewSnapshot{}, err
 	}
-	if !strings.Contains(path, "/") {
-		return "", fmt.Errorf("unsupported git remote repository path %q", path)
+	b, err = runGit(ctx, repo, "merge-base", b, h)
+	if err != nil {
+		return ReviewSnapshot{}, err
 	}
-	return path, nil
+	b = strings.TrimSpace(b)
+	diff, err := runGit(ctx, repo, "-c", "core.quotePath=false", "diff", "--no-ext-diff", "--no-textconv", "--no-color", "--find-renames", b, h, "--")
+	return ReviewSnapshot{Diff: diff, Base: b, Head: h}, err
 }
-
-func buildDiffArgs(staged bool, ignoreWhitespace bool) []string {
-	args := []string{
-		"-c", "color.ui=never",
-		"diff",
-		"--no-color",
-		"--no-ext-diff",
-		"--patch",
-		"--find-renames",
+func openReview(store ReviewStore, dir, base, head, pr string) (*Review, error) {
+	if pr != "" && base != "" {
+		return nil, errors.New("choose either PR or base, not both")
 	}
-	if ignoreWhitespace {
-		args = append(args, "--ignore-all-space")
+	if base == "" && pr == "" && head != "" && head != "HEAD" {
+		return nil, errors.New("head requires a base ref")
 	}
-	if staged {
-		args = append(args, "--staged")
+	repo, err := repoRoot(dir)
+	if err != nil {
+		return nil, err
 	}
-	return args
-}
-
-func buildStagePathArgs(path string) []string {
-	return []string{"add", "--", path}
-}
-
-func buildStageAllArgs() []string {
-	return []string{"add", "--all"}
-}
-
-func buildUnstagePathArgs(path string) []string {
-	return []string{"restore", "--staged", "--", path}
-}
-
-func buildUnstageAllArgs() []string {
-	return []string{"restore", "--staged", "--", ":/"}
-}
-
-func buildUnstagePathArgsWithoutHead(path string) []string {
-	return []string{"rm", "--cached", "--", path}
-}
-
-func buildUnstageAllArgsWithoutHead() []string {
-	return []string{"rm", "--cached", "-r", "--", ":/"}
-}
-
-func buildCommitMessageArgs() []string {
-	return []string{"commit", "--file", "-"}
-}
-
-func buildPushArgs(remote string, setUpstream bool) []string {
-	args := []string{"push"}
-	if setUpstream {
-		args = append(args, "--set-upstream", remote, "HEAD")
+	if pr != "" {
+		snapshot, title, source, err := capturePR(repo, pr)
+		if err != nil {
+			return nil, err
+		}
+		return store.Open(repo, title, source, snapshot)
 	}
-	return args
+	if base != "" {
+		if head == "" {
+			head = "HEAD"
+		}
+		snapshot, err := captureRange(repo, base, head)
+		if err != nil {
+			return nil, err
+		}
+		return store.Open(repo, base+" → "+head, "range:"+base+"..."+head, snapshot)
+	}
+	snapshot, err := captureWorkingTree(repo)
+	if err != nil {
+		return nil, err
+	}
+	return store.Open(repo, filepath.Base(repo)+" · Working changes", "worktree", snapshot)
+}
+func capturePR(repo, pr string) (ReviewSnapshot, string, string, error) {
+	if strings.HasPrefix(pr, "-") {
+		return ReviewSnapshot{}, "", "", errors.New("invalid PR number or URL")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+	defer cancel()
+	run := func(args ...string) ([]byte, error) {
+		cmd := exec.CommandContext(ctx, "gh", args...)
+		cmd.Dir = repo
+		var stderr bytes.Buffer
+		cmd.Stderr = &stderr
+		data, err := cmd.Output()
+		if err != nil {
+			return nil, fmt.Errorf("gh: %s: %w", strings.TrimSpace(stderr.String()), err)
+		}
+		return data, nil
+	}
+	type metadata struct{ BaseRefOid, HeadRefOid, Title, URL string }
+	read := func() (metadata, error) {
+		var m metadata
+		data, err := run("pr", "view", pr, "--json", "baseRefOid,headRefOid,title,url")
+		if err == nil {
+			err = json.Unmarshal(data, &m)
+		}
+		return m, err
+	}
+	before, err := read()
+	if err != nil {
+		return ReviewSnapshot{}, "", "", err
+	}
+	if before.BaseRefOid == "" || before.HeadRefOid == "" || before.URL == "" {
+		return ReviewSnapshot{}, "", "", errors.New("PR metadata is incomplete")
+	}
+	diff, err := run("pr", "diff", pr, "--color", "never")
+	if err != nil {
+		return ReviewSnapshot{}, "", "", err
+	}
+	after, err := read()
+	if err != nil {
+		return ReviewSnapshot{}, "", "", err
+	}
+	if before.BaseRefOid != after.BaseRefOid || before.HeadRefOid != after.HeadRefOid {
+		return ReviewSnapshot{}, "", "", errors.New("PR changed while reading; retry to capture a consistent review")
+	}
+	return ReviewSnapshot{Diff: string(diff), Base: before.BaseRefOid, Head: before.HeadRefOid}, before.Title, before.URL, nil
 }

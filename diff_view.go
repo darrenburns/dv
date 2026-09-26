@@ -13,18 +13,20 @@ import (
 
 // DiffView is a purpose-built diff renderer with fixed gutter and scroll support.
 type DiffView struct {
-	ID              string
-	DisableFocus    bool
-	State           *DiffViewState
-	VerticalScroll  *t.ScrollState
-	LayoutMode      DiffLayoutMode
-	HardWrap        bool
-	HideChangeSigns bool
-	IntralineStyle  IntralineStyleMode
-	Palette         ThemePalette
-	Width           t.Dimension
-	Height          t.Dimension
-	Style           t.Style
+	Embedded         bool // The parent owns scrolling and positions this code section.
+	OnSelectionStart func()
+	ID               string
+	DisableFocus     bool
+	State            *DiffViewState
+	VerticalScroll   *t.ScrollState
+	LayoutMode       DiffLayoutMode
+	HardWrap         bool
+	HideChangeSigns  bool
+	IntralineStyle   IntralineStyleMode
+	Palette          ThemePalette
+	Width            t.Dimension
+	Height           t.Dimension
+	Style            t.Style
 }
 
 const selectionAutoScrollInset = 1
@@ -73,6 +75,9 @@ func (d DiffView) OnMouseDown(event t.MouseEvent) {
 		d.State.ClearSelection()
 		return
 	}
+	if d.OnSelectionStart != nil {
+		d.OnSelectionStart()
+	}
 	d.State.StartSelection(track, point)
 	d.State.SetSelectionPointer(event.LocalX, event.LocalY)
 }
@@ -87,6 +92,12 @@ func (d DiffView) OnMouseMove(event t.MouseEvent) {
 		return
 	}
 	if !d.State.SelectionDragging() {
+		return
+	}
+	if d.Embedded {
+		if point, ok := d.selectionDragPoint(event); ok {
+			d.State.UpdateSelection(point)
+		}
 		return
 	}
 	d.State.SetSelectionPointer(event.LocalX, event.LocalY)

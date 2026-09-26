@@ -1,16 +1,15 @@
 version: 2
-project_name: dv
+project_name: aside
 
 builds:
   - main: .
-    binary: dv
+    binary: aside
     env: [CGO_ENABLED=0]
     goos: [linux, darwin, windows]
     goarch: [amd64, arm64]
     ldflags:
       - -s -w
       - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
 
 archives:
   - formats: [tar.gz]
@@ -20,13 +19,3 @@ archives:
 
 checksum:
   name_template: checksums.txt
-
-brews:
-  - repository:
-      owner: darrenburns
-      name: homebrew-homebrew
-      token: "{{ .Env.HOMEBREW_TAP_GITHUB_TOKEN }}"
-    homepage: "https://github.com/darrenburns/dv"
-    description: "A beautiful, snappy, and highly interactive tool for exploring diffs without leaving your terminal."
-    install: |
-      bin.install "dv"

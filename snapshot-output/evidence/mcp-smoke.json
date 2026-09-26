@@ -1,0 +1,25 @@
+{
+  "transport": "real aside subprocess over stdio",
+  "protocol": "2025-06-18",
+  "tools": [
+    "aside_feedback",
+    "aside_list",
+    "aside_open",
+    "aside_publish",
+    "aside_read",
+    "aside_reply",
+    "aside_status"
+  ],
+  "review": "43c90ddc9262e35afb7e91f2",
+  "publishedThread": "b533cbc637a4c5927acb363f",
+  "checks": [
+    "initialize handshake",
+    "tools/list: seven tools",
+    "read immutable snapshot",
+    "publish inline explanation",
+    "idempotent repeat without duplicate",
+    "exact original code quote",
+    "read browser-submitted reply"
+  ],
+  "threadCount": 3
+}

@@ -1,0 +1,22 @@
+{
+  "date": "2026-09-26",
+  "platform": "macOS arm64",
+  "passedCasesIncludingSubtests": 181,
+  "failedCases": [],
+  "snapshots": [
+    "TestSnapshotAsideUnified",
+    "TestSnapshotAsideSplitFinding",
+    "TestSnapshotAsideComposer",
+    "TestSnapshotAsideOutdatedNarrow",
+    "TestSnapshotAsideEmpty",
+    "TestSnapshotAsideInlineReply"
+  ],
+  "race": "passed",
+  "vet": "passed, no diagnostics",
+  "builds": {
+    "darwin/arm64": "built and exercised in browser PTY",
+    "linux/amd64": "cross-compiled only",
+    "windows/amd64": "cross-compiled only"
+  },
+  "skillValidation": "valid"
+}

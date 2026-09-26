@@ -83,3 +83,16 @@ func testDiffFile(path string, additions int, deletions int) *DiffFile {
 		Deletions:   deletions,
 	}
 }
+
+func TestFileTreePreservesUnusualNames(t *testing.T) {
+	names := []string{" name.txt ", "tab\tname.txt", "back\\slash.txt", "nested/ space.go "}
+	var files []*DiffFile
+	for _, name := range names {
+		files = append(files, testDiffFile(name, 1, 0))
+	}
+	_, lookup, ordered := buildDiffTree(files)
+	for _, name := range names {
+		require.Contains(t, lookup, name)
+		require.Contains(t, ordered, name)
+	}
+}

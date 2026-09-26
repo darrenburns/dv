@@ -1,0 +1,18 @@
+{
+  "storedThreads": 4,
+  "agentVisibleThreads": 3,
+  "draftAnchor": {
+    "id": "04b64cc1c8f137baaa1e0a50",
+    "snapshot": "d3fb0f62239476ff13c6e147",
+    "path": "obsolete.txt",
+    "side": "old",
+    "start": 1,
+    "end": 1,
+    "quote": "old instructions"
+  },
+  "checks": [
+    "browser-created draft persisted",
+    "hidden from CLI read",
+    "deleted source line preserved exactly"
+  ]
+}

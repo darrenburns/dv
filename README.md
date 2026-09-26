@@ -1,135 +1,80 @@
-# dv
+# Aside
 
-A beautiful, snappy, and highly interactive tool for exploring diffs without leaving your terminal.
+A terminal file and diff browser with inline conversations for humans and coding agents. Based on dv's `dvdev` branch, with staging, committing, pushing, and PR creation removed.
 
-<img width="1746" height="992" alt="image" src="https://github.com/user-attachments/assets/32629381-3c30-4353-a9fe-f368d4330761" />
+Aside reads your repository. Feedback, captured diffs, and agent findings live in a separate local review store. Nothing is posted to GitHub.
 
-Run `dv` with no arguments to see changes currently tracked by git, or pipe a diff directly into it.
+## Build and run
 
-> [!NOTE] 
-> `dv` is currently in beta, but I'd love your early feedback! Feel free to open a Discussion to chat about ideas or an Issue to raise a bug.
-
-## Quick demo
-
-https://github.com/user-attachments/assets/e9beadc9-0e77-47e2-86aa-bb869c657863
-
-## Highlights
-
-- Unified and split diffs
-- Snappy native terminal app
-- Lots of pretty themes
-- Keyboard centric
-- Mouse support
-- Command palette
-- Synchronised scrolling
-- Intraline diff highlighting
-- Supports piped input
-
-## Installation
-
-Install it using Homebrew:
-
-```bash
-brew install darrenburns/homebrew/dv
-```
-
-Alternatively install using Go (ensure `$GOPATH/bin` or `$HOME/go/bin` is in your `PATH`):
-
-```bash
-go install github.com/darrenburns/dv@latest
-```
-
-Then run it like this:
-
-```bash
-dv
-```
-
-`dv` displays your current staged/unstaged files from `git`.
-
-## Piped Input
-
-You can also pipe a diff directly into `dv`:
-
-```bash
-git diff | dv
-gh pr diff <number> | dv
-```
-
-## Things you can do
-
-Most keybinds are documented either in the footer, command palette (`ctrl+p`), or in the UI itself.
-
-Some things that aren't as clear at the moment:
-
-* Press `r` to refresh files tracked by git
-* You can click and drag the sidebar divider to resize it.
-* You can click and drag the central divider when in side-by-side/split view to adjust the ratio.
-  * As a shortcut you can use `ctrl+h`/`ctrl+l` to shift it left/right.
-* Tab and shift-tab move focus
-* Press `/` from the file tree or diff view to filter files (if the sidebar is hidden, this opens it). While the filter input is focused, `up`/`down` move through matching files, `tab` moves focus back to the tree, and `esc` clears the filter.
-* Press `s` to stage or unstage the active file, `S` to stage all files, or `U` to unstage all files (all are also available in the command palette, except in piped mode).
-* Press `O` to open a GitHub pull request for the current branch (also available in the command palette when `dv` can resolve a GitHub remote).
-* Press `y` to copy the active file or directory path to your clipboard (also available via the command palette).
-* Press `m` to toggle seen on the active file, or `M` to clear all seen marks (both are also available in the command palette).
-* Press `ctrl+j`/`ctrl+k` to move to the next/previous file (same as `n`/`p`).
-
-## Startup options
-
-There are a few CLI options available for customising `dv`.
-
-| Flag | Values | Default |
-| --- | --- | --- |
-| `--view` | `unified`, `split` | `unified` |
-| `--sidebar` | `true`, `false` | `true` |
-| `--theme` | any built-in theme name (for example `catppuccin`, `dracula`, `nord`) | `obsidian-tide` |
-| `--intraline-style` | `background`, `underline`, `off` | `background` |
-| `--show-symbols` | `true`, `false` | `false` |
-| `--ignore-whitespace` | `true`, `false` | `false` |
-| `--config` | path to a YAML config file | auto-discover via XDG |
-| `--no-config` | `true`, `false` | `false` |
-
-Example using all options:
-
-```bash
-dv --view split --sidebar=false --theme catppuccin --intraline-style underline --show-symbols
-```
-
-## Config file
-
-`dv` can load startup defaults from a YAML config file.
-
-Default path:
+This development branch uses the sibling Terma checkout through `replace github.com/darrenburns/terma => ../terma`. Use Go 1.25.5 or newer with this layout:
 
 ```text
-$XDG_CONFIG_HOME/dv/config.yaml
+code/
+  aside/     # this branch
+  terma/     # ad4d7cd2de162b98a133bd0e727af279ae9ba254 or compatible
 ```
 
-This path is resolved using `xdg.ConfigHome` via the `github.com/adrg/xdg` package.
-
-Precedence:
-
-1. CLI flags
-2. Config file
-3. Built-in defaults
-
-You can also use:
-
-- `--config /path/to/config.yaml` to load an explicit file path.
-- `--no-config` to disable config loading for a run.
-
-Example config file:
-
-```yaml
-view: split
-sidebar: true
-theme: catppuccin
-intraline-style: underline
-show-symbols: false
-ignore-whitespace: true
+```sh
+go build -o aside .
+./aside --repo /path/to/project
+./aside --repo /path/to/project --base main --head feature
+./aside --repo /path/to/project --pr 123
+./aside --review REVIEW_ID
 ```
 
-Notes:
-- For string flags, both `--flag value` and `--flag=value` work.
-- For booleans, prefer `--flag=false` when disabling.
-- `ignore-whitespace` is unavailable in piped mode (`git diff | dv`); apply whitespace flags before piping.
+PRs require an authenticated `gh`. Aside captures the diff without checking out a branch; it rejects a PR that changes while being read. Branch comparisons use the merge base. Working changes combine staged, unstaged, and untracked changes relative to HEAD.
+
+The sidebar defaults to changed files; `a` includes all tracked and unignored working-tree files. Unchanged files show “No text changes”. PR and branch reviews list their changed files. `/` filters paths; Enter keeps the filter and Escape clears it. `n`/`p` visit visible files. `v` switches unified/split views. Drag the sidebar divider to resize it. `r` captures current working changes; saved branch/PR views stay pinned. Reopen the same source to capture a newer branch/PR snapshot.
+
+## Inline feedback
+
+1. Click or drag across code, then press `c`. The editor opens immediately below the selected lines. In split view, select the old or new side. A selection spanning a unified replacement is rejected as ambiguous.
+2. Save with Ctrl+S or **Save draft**. Escape or **Cancel** closes the editor. Drafts persist locally and remain hidden from the agent interfaces.
+3. Press `f` or **Submit feedback** to submit drafts and copy the open conversations with their exact code references and quoted lines. Paste into your agent, or ask it to read Aside feedback.
+4. Use **Reply**, or `[`/`]` then `e`, to reply inside a thread. Replies to submitted threads are immediately available to the agent. **Resolve** / `x` resolves or reopens a thread.
+
+Native clipboard helpers are used where available. Remote terminals fall back to OSC 52 and report delivery as unconfirmed. You can always export Markdown:
+
+```sh
+./aside review feedback --repo /path/to/project --id REVIEW_ID --format markdown
+```
+
+Comments are attached to a captured snapshot, a repository-relative path, a side, and inclusive line numbers. Refreshing changed code marks earlier comments **OUTDATED** and retains their original code quote. Aside does not silently move comments to different lines. Binary files have no line comments. Select ranges within one uninterrupted code section; existing comment cards divide sections.
+
+## Claude Code and other agents
+
+The clipboard workflow needs no MCP setup. For a shared local review store, register Aside as a stdio MCP server from your target project:
+
+```sh
+claude mcp add --transport stdio aside -- /absolute/path/to/aside mcp --repo /absolute/path/to/project
+```
+
+Copy `skills/aside-review` into the target project's `.claude/skills/aside-review` (or your agent's skill directory). Then ask: “Use aside-review to review PR 123 and publish findings inline.” For feedback: “Read and address the submitted feedback in Aside review REVIEW_ID.” The skill also works through the CLI when MCP is unavailable.
+
+This setup follows Claude Code's [local MCP server documentation](https://code.claude.com/docs/en/mcp#option-3-add-a-local-stdio-server) and [skills documentation](https://code.claude.com/docs/en/skills). The package does not change your global Claude configuration.
+
+Tools: `aside_open`, `aside_list`, `aside_read`, `aside_publish`, `aside_feedback`, `aside_reply`, `aside_status`. The server is bound to one repository. Publishing validates the whole batch and uses stable annotation keys to make retries idempotent. Agents can mark threads **addressed**; MCP reserves **resolved** for the user. The UI notices stored updates automatically, deferring them while you compose or select code. Press Escape to clear a selection and receive pending updates.
+
+This is a pull workflow: ordinary MCP tools do not wake an idle agent. Submit feedback, then prompt the agent to read it. Ordered walkthrough chapters and automatic agent wake-up are future features; inline explanations are supported now.
+
+See [the agent skill](skills/aside-review/SKILL.md) for command examples and the publication schema.
+
+## Storage and configuration
+
+Reviews use the XDG data directory under `aside/reviews` (on macOS, usually `~/Library/Application Support/aside/reviews`). `ASIDE_DATA_DIR` overrides this location. The UI, CLI, and MCP process must use the same data directory. Review JSON is written atomically under an advisory lock; invalid batches and corrupt files are not overwritten. Draft privacy applies to the agent interfaces, not to another program with access to your account's files.
+
+Configuration lives in the XDG config directory under `aside/config.yaml`. Supported keys are `view`, `theme`, and `intraline-style`. Flags override configuration. Use `--no-config` for repeatable tests. Run `./aside --help` for options.
+
+## Verification
+
+Run `go test ./...`, `go test -race ./...`, and `go vet ./...`. Visual goldens are under `testdata/`; intentional changes use `UPDATE_SNAPSHOTS=1 go test ./...` and require visual inspection.
+
+Browser verification runs the real native app through a PTY:
+
+```sh
+(cd ../terma && go build -o /tmp/terma-browser ./cmd/terma-browser)
+go build -o /tmp/aside .
+ASIDE_DATA_DIR=/tmp/aside-test-reviews /tmp/terma-browser -- /tmp/aside --repo /path/to/disposable-fixture --no-config
+```
+
+Read [the verification report](docs/verification.md) for recorded results, screenshots, edge cases, and limits.

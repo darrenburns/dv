@@ -31,4 +31,7 @@ go.work.sum
 # .idea/
 # .vscode/
 .idea/
-dv
+aside
+.deps/
+snapshot-output/*
+!snapshot-output/evidence/

@@ -103,15 +103,44 @@ func normalizeDiffInput(raw string) string {
 }
 
 func parseDiffGitPaths(line string) (oldPath string, newPath string) {
-	parts := strings.Fields(line)
-	if len(parts) >= 4 {
-		return parseDiffPath(parts[2]), parseDiffPath(parts[3])
+	paths := strings.TrimPrefix(line, "diff --git ")
+	if strings.HasPrefix(paths, `"`) {
+		for i := 1; i < len(paths); i++ {
+			if paths[i] == '\\' {
+				i++
+				continue
+			}
+			if paths[i] == '"' {
+				return parseDiffPath(paths[:i+1]), parseDiffPath(strings.TrimPrefix(paths[i+1:], " "))
+			}
+		}
+	}
+	// Ordinary modified/binary/empty files have identical paths. Prefer that
+	// exact split even when a filename itself contains the text " b/".
+	for i := 1; i < len(paths); i++ {
+		if paths[i] == ' ' && parseDiffPath(paths[:i]) == parseDiffPath(paths[i+1:]) {
+			return parseDiffPath(paths[:i]), parseDiffPath(paths[i+1:])
+		}
+	}
+	if i := strings.Index(paths, " b/"); i >= 0 {
+		return parseDiffPath(paths[:i]), parseDiffPath(paths[i+1:])
+	}
+	if i := strings.Index(paths, ` "b/`); i >= 0 {
+		return parseDiffPath(paths[:i]), parseDiffPath(paths[i+1:])
 	}
 	return "", ""
 }
-
+func unquoteGitPath(path string) string {
+	if strings.HasPrefix(path, `"`) {
+		if value, err := strconv.Unquote(path); err == nil {
+			return value
+		}
+	}
+	return path
+}
 func parseDiffPath(path string) string {
-	path = strings.Trim(path, `"`)
+	// Git appends a tab to unquoted ---/+++ paths containing spaces.
+	path = unquoteGitPath(strings.TrimSuffix(path, "\t"))
 	if path == "/dev/null" {
 		return ""
 	}
@@ -184,13 +213,13 @@ func parseHunkLine(line string, oldCursor *int, newCursor *int) DiffLine {
 func applyFileHeaderMetadata(file *DiffFile, line string) {
 	switch {
 	case strings.HasPrefix(line, "--- "):
-		file.OldPath = parseDiffPath(strings.TrimSpace(strings.TrimPrefix(line, "--- ")))
+		file.OldPath = parseDiffPath(strings.TrimPrefix(line, "--- "))
 	case strings.HasPrefix(line, "+++ "):
-		file.NewPath = parseDiffPath(strings.TrimSpace(strings.TrimPrefix(line, "+++ ")))
+		file.NewPath = parseDiffPath(strings.TrimPrefix(line, "+++ "))
 	case strings.HasPrefix(line, "rename from "):
-		file.OldPath = strings.TrimSpace(strings.TrimPrefix(line, "rename from "))
+		file.OldPath = unquoteGitPath(strings.TrimPrefix(line, "rename from "))
 	case strings.HasPrefix(line, "rename to "):
-		file.NewPath = strings.TrimSpace(strings.TrimPrefix(line, "rename to "))
+		file.NewPath = unquoteGitPath(strings.TrimPrefix(line, "rename to "))
 	case strings.HasPrefix(line, "Binary files "), strings.HasPrefix(line, "GIT binary patch"):
 		file.IsBinary = true
 	}

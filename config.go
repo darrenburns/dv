@@ -11,33 +11,24 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const defaultConfigRelPath = "dv/config.yaml"
+const defaultConfigRelPath = "aside/config.yaml"
 
 const (
-	flagNameView             = "view"
-	flagNameSidebar          = "sidebar"
-	flagNameTheme            = "theme"
-	flagNameIntralineStyle   = "intraline-style"
-	flagNameShowSymbols      = "show-symbols"
-	flagNameIgnoreWhitespace = "ignore-whitespace"
+	flagNameView           = "view"
+	flagNameTheme          = "theme"
+	flagNameIntralineStyle = "intraline-style"
 )
 
 type startupConfig struct {
-	View             *string `yaml:"view"`
-	Sidebar          *bool   `yaml:"sidebar"`
-	Theme            *string `yaml:"theme"`
-	IntralineStyle   *string `yaml:"intraline-style"`
-	ShowSymbols      *bool   `yaml:"show-symbols"`
-	IgnoreWhitespace *bool   `yaml:"ignore-whitespace"`
+	View           *string `yaml:"view"`
+	Theme          *string `yaml:"theme"`
+	IntralineStyle *string `yaml:"intraline-style"`
 }
 
 type startupFlagValues struct {
-	ViewMode         string
-	SidebarVisible   bool
-	ThemeName        string
-	IntralineStyle   string
-	ShowSymbols      bool
-	IgnoreWhitespace bool
+	ViewMode       string
+	ThemeName      string
+	IntralineStyle string
 }
 
 type resolvedConfigPath struct {
@@ -125,20 +116,13 @@ func applyStartupConfig(values startupFlagValues, cfg startupConfig, explicitlyS
 	if cfg.View != nil && !explicitlySet[flagNameView] {
 		values.ViewMode = *cfg.View
 	}
-	if cfg.Sidebar != nil && !explicitlySet[flagNameSidebar] {
-		values.SidebarVisible = *cfg.Sidebar
-	}
+
 	if cfg.Theme != nil && !explicitlySet[flagNameTheme] {
 		values.ThemeName = *cfg.Theme
 	}
 	if cfg.IntralineStyle != nil && !explicitlySet[flagNameIntralineStyle] {
 		values.IntralineStyle = *cfg.IntralineStyle
 	}
-	if cfg.ShowSymbols != nil && !explicitlySet[flagNameShowSymbols] {
-		values.ShowSymbols = *cfg.ShowSymbols
-	}
-	if cfg.IgnoreWhitespace != nil && !explicitlySet[flagNameIgnoreWhitespace] {
-		values.IgnoreWhitespace = *cfg.IgnoreWhitespace
-	}
+
 	return values
 }
