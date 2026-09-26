@@ -1,0 +1,772 @@
+{"Time":"2026-09-27T00:41:44.503497+01:00","Action":"start","Package":"github.com/darrenburns/aside"}
+{"Time":"2026-09-27T00:41:44.885629+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideRestoredBrowsingControls"}
+{"Time":"2026-09-27T00:41:44.885691+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideRestoredBrowsingControls","Output":"=== RUN   TestAsideRestoredBrowsingControls\n"}
+{"Time":"2026-09-27T00:41:44.933564+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideRestoredBrowsingControls","Output":"--- PASS: TestAsideRestoredBrowsingControls (0.05s)\n"}
+{"Time":"2026-09-27T00:41:44.933608+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideRestoredBrowsingControls","Elapsed":0.05}
+{"Time":"2026-09-27T00:41:44.933622+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideCopySelectionBeforePath"}
+{"Time":"2026-09-27T00:41:44.933641+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideCopySelectionBeforePath","Output":"=== RUN   TestAsideCopySelectionBeforePath\n"}
+{"Time":"2026-09-27T00:41:44.942758+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideCopySelectionBeforePath","Output":"--- PASS: TestAsideCopySelectionBeforePath (0.01s)\n"}
+{"Time":"2026-09-27T00:41:44.942775+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideCopySelectionBeforePath","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:44.942784+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideThemePreviewCancelAndAccept"}
+{"Time":"2026-09-27T00:41:44.942787+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideThemePreviewCancelAndAccept","Output":"=== RUN   TestAsideThemePreviewCancelAndAccept\n"}
+{"Time":"2026-09-27T00:41:44.951285+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideThemePreviewCancelAndAccept","Output":"--- PASS: TestAsideThemePreviewCancelAndAccept (0.01s)\n"}
+{"Time":"2026-09-27T00:41:44.951316+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideThemePreviewCancelAndAccept","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:44.951326+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsidePaletteHasOnlyReadOnlyRepositoryActions"}
+{"Time":"2026-09-27T00:41:44.95133+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsidePaletteHasOnlyReadOnlyRepositoryActions","Output":"=== RUN   TestAsidePaletteHasOnlyReadOnlyRepositoryActions\n"}
+{"Time":"2026-09-27T00:41:44.960066+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsidePaletteHasOnlyReadOnlyRepositoryActions","Output":"--- PASS: TestAsidePaletteHasOnlyReadOnlyRepositoryActions (0.01s)\n"}
+{"Time":"2026-09-27T00:41:44.960081+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsidePaletteHasOnlyReadOnlyRepositoryActions","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:44.960088+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideCommandPalette"}
+{"Time":"2026-09-27T00:41:44.960091+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideCommandPalette","Output":"=== RUN   TestSnapshotAsideCommandPalette\n"}
+{"Time":"2026-09-27T00:41:44.979018+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideCommandPalette","Output":"--- PASS: TestSnapshotAsideCommandPalette (0.02s)\n"}
+{"Time":"2026-09-27T00:41:44.979039+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideCommandPalette","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:44.979045+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSeenFiles"}
+{"Time":"2026-09-27T00:41:44.979049+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSeenFiles","Output":"=== RUN   TestSnapshotAsideSeenFiles\n"}
+{"Time":"2026-09-27T00:41:44.990958+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSeenFiles","Output":"--- PASS: TestSnapshotAsideSeenFiles (0.01s)\n"}
+{"Time":"2026-09-27T00:41:44.990984+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSeenFiles","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:44.990989+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideThemeMenuDoesNotInterruptComposition"}
+{"Time":"2026-09-27T00:41:44.990992+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideThemeMenuDoesNotInterruptComposition","Output":"=== RUN   TestAsideThemeMenuDoesNotInterruptComposition\n"}
+{"Time":"2026-09-27T00:41:45.001264+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideThemeMenuDoesNotInterruptComposition","Output":"--- PASS: TestAsideThemeMenuDoesNotInterruptComposition (0.01s)\n"}
+{"Time":"2026-09-27T00:41:45.001282+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideThemeMenuDoesNotInterruptComposition","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:45.001288+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideDraftNarrow"}
+{"Time":"2026-09-27T00:41:45.001291+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideDraftNarrow","Output":"=== RUN   TestSnapshotAsideDraftNarrow\n"}
+{"Time":"2026-09-27T00:41:45.02352+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideDraftNarrow","Output":"--- PASS: TestSnapshotAsideDraftNarrow (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.023536+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideDraftNarrow","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.023542+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideHorizontalScrollWithLongLines"}
+{"Time":"2026-09-27T00:41:45.023545+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideHorizontalScrollWithLongLines","Output":"=== RUN   TestAsideHorizontalScrollWithLongLines\n"}
+{"Time":"2026-09-27T00:41:45.041169+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideHorizontalScrollWithLongLines","Output":"--- PASS: TestAsideHorizontalScrollWithLongLines (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.041191+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideHorizontalScrollWithLongLines","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.041198+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentSubmissionAndReply"}
+{"Time":"2026-09-27T00:41:45.041201+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentSubmissionAndReply","Output":"=== RUN   TestAsideCommentSubmissionAndReply\n"}
+{"Time":"2026-09-27T00:41:45.096426+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentSubmissionAndReply","Output":"--- PASS: TestAsideCommentSubmissionAndReply (0.06s)\n"}
+{"Time":"2026-09-27T00:41:45.096453+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentSubmissionAndReply","Elapsed":0.06}
+{"Time":"2026-09-27T00:41:45.096459+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectionCoordinates"}
+{"Time":"2026-09-27T00:41:45.096462+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectionCoordinates","Output":"=== RUN   TestAsideSelectionCoordinates\n"}
+{"Time":"2026-09-27T00:41:45.107204+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectionCoordinates","Output":"--- PASS: TestAsideSelectionCoordinates (0.01s)\n"}
+{"Time":"2026-09-27T00:41:45.107212+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectionCoordinates","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:45.107216+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideFilterKeepsNavigationInVisibleFiles"}
+{"Time":"2026-09-27T00:41:45.107224+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideFilterKeepsNavigationInVisibleFiles","Output":"=== RUN   TestAsideFilterKeepsNavigationInVisibleFiles\n"}
+{"Time":"2026-09-27T00:41:45.115926+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideFilterKeepsNavigationInVisibleFiles","Output":"--- PASS: TestAsideFilterKeepsNavigationInVisibleFiles (0.01s)\n"}
+{"Time":"2026-09-27T00:41:45.11594+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideFilterKeepsNavigationInVisibleFiles","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:45.115944+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideNoRepositoryMutationActions"}
+{"Time":"2026-09-27T00:41:45.115947+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideNoRepositoryMutationActions","Output":"=== RUN   TestAsideNoRepositoryMutationActions\n"}
+{"Time":"2026-09-27T00:41:45.123747+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideNoRepositoryMutationActions","Output":"--- PASS: TestAsideNoRepositoryMutationActions (0.01s)\n"}
+{"Time":"2026-09-27T00:41:45.123755+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideNoRepositoryMutationActions","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:45.12376+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideInlineBlocksPreserveCodeCoordinates"}
+{"Time":"2026-09-27T00:41:45.123762+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideInlineBlocksPreserveCodeCoordinates","Output":"=== RUN   TestAsideInlineBlocksPreserveCodeCoordinates\n"}
+{"Time":"2026-09-27T00:41:45.14033+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideInlineBlocksPreserveCodeCoordinates","Output":"--- PASS: TestAsideInlineBlocksPreserveCodeCoordinates (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.140343+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideInlineBlocksPreserveCodeCoordinates","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.140348+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideUnified"}
+{"Time":"2026-09-27T00:41:45.140351+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideUnified","Output":"=== RUN   TestSnapshotAsideUnified\n"}
+{"Time":"2026-09-27T00:41:45.153244+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideUnified","Output":"--- PASS: TestSnapshotAsideUnified (0.01s)\n"}
+{"Time":"2026-09-27T00:41:45.153266+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideUnified","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:45.153272+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSplitFinding"}
+{"Time":"2026-09-27T00:41:45.153276+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSplitFinding","Output":"=== RUN   TestSnapshotAsideSplitFinding\n"}
+{"Time":"2026-09-27T00:41:45.179594+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSplitFinding","Output":"--- PASS: TestSnapshotAsideSplitFinding (0.03s)\n"}
+{"Time":"2026-09-27T00:41:45.179612+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideSplitFinding","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:45.179617+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideComposer"}
+{"Time":"2026-09-27T00:41:45.17962+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideComposer","Output":"=== RUN   TestSnapshotAsideComposer\n"}
+{"Time":"2026-09-27T00:41:45.195484+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideComposer","Output":"--- PASS: TestSnapshotAsideComposer (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.1955+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideComposer","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.195511+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideOutdatedNarrow"}
+{"Time":"2026-09-27T00:41:45.195514+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideOutdatedNarrow","Output":"=== RUN   TestSnapshotAsideOutdatedNarrow\n"}
+{"Time":"2026-09-27T00:41:45.215973+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideOutdatedNarrow","Output":"--- PASS: TestSnapshotAsideOutdatedNarrow (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.215982+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideOutdatedNarrow","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.21599+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideEmpty"}
+{"Time":"2026-09-27T00:41:45.215993+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideEmpty","Output":"=== RUN   TestSnapshotAsideEmpty\n"}
+{"Time":"2026-09-27T00:41:45.232265+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideEmpty","Output":"--- PASS: TestSnapshotAsideEmpty (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.232277+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideEmpty","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.232282+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideIncomingReviewPreservesSelectionAndDraft"}
+{"Time":"2026-09-27T00:41:45.232284+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideIncomingReviewPreservesSelectionAndDraft","Output":"=== RUN   TestAsideIncomingReviewPreservesSelectionAndDraft\n"}
+{"Time":"2026-09-27T00:41:45.257171+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideIncomingReviewPreservesSelectionAndDraft","Output":"--- PASS: TestAsideIncomingReviewPreservesSelectionAndDraft (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.257192+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideIncomingReviewPreservesSelectionAndDraft","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.257198+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentNavigationRevealsFilteredFile"}
+{"Time":"2026-09-27T00:41:45.257202+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentNavigationRevealsFilteredFile","Output":"=== RUN   TestAsideCommentNavigationRevealsFilteredFile\n"}
+{"Time":"2026-09-27T00:41:45.280886+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentNavigationRevealsFilteredFile","Output":"--- PASS: TestAsideCommentNavigationRevealsFilteredFile (0.02s)\n"}
+{"Time":"2026-09-27T00:41:45.280897+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideCommentNavigationRevealsFilteredFile","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:45.280902+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath"}
+{"Time":"2026-09-27T00:41:45.280905+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath","Output":"=== RUN   TestResolveStartupConfigPath\n"}
+{"Time":"2026-09-27T00:41:45.280909+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/defaultPath"}
+{"Time":"2026-09-27T00:41:45.280912+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/defaultPath","Output":"=== RUN   TestResolveStartupConfigPath/defaultPath\n"}
+{"Time":"2026-09-27T00:41:45.280914+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/defaultPath","Output":"--- PASS: TestResolveStartupConfigPath/defaultPath (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.280917+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/defaultPath","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.280924+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/explicitPath"}
+{"Time":"2026-09-27T00:41:45.280927+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/explicitPath","Output":"=== RUN   TestResolveStartupConfigPath/explicitPath\n"}
+{"Time":"2026-09-27T00:41:45.280929+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/explicitPath","Output":"--- PASS: TestResolveStartupConfigPath/explicitPath (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.280932+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/explicitPath","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.280934+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/noConfigWins"}
+{"Time":"2026-09-27T00:41:45.280936+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/noConfigWins","Output":"=== RUN   TestResolveStartupConfigPath/noConfigWins\n"}
+{"Time":"2026-09-27T00:41:45.280939+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/noConfigWins","Output":"--- PASS: TestResolveStartupConfigPath/noConfigWins (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.280941+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath/noConfigWins","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.280946+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath","Output":"--- PASS: TestResolveStartupConfigPath (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.280949+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestResolveStartupConfigPath","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.280951+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_DefaultMissingFileIsOptional"}
+{"Time":"2026-09-27T00:41:45.280952+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_DefaultMissingFileIsOptional","Output":"=== RUN   TestLoadStartupConfig_DefaultMissingFileIsOptional\n"}
+{"Time":"2026-09-27T00:41:45.28113+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_DefaultMissingFileIsOptional","Output":"--- PASS: TestLoadStartupConfig_DefaultMissingFileIsOptional (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.281135+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_DefaultMissingFileIsOptional","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.281138+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ExplicitMissingFileErrors"}
+{"Time":"2026-09-27T00:41:45.281141+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ExplicitMissingFileErrors","Output":"=== RUN   TestLoadStartupConfig_ExplicitMissingFileErrors\n"}
+{"Time":"2026-09-27T00:41:45.281338+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ExplicitMissingFileErrors","Output":"--- PASS: TestLoadStartupConfig_ExplicitMissingFileErrors (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.281343+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ExplicitMissingFileErrors","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.281346+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_NoConfigSkipsLoading"}
+{"Time":"2026-09-27T00:41:45.281348+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_NoConfigSkipsLoading","Output":"=== RUN   TestLoadStartupConfig_NoConfigSkipsLoading\n"}
+{"Time":"2026-09-27T00:41:45.281651+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_NoConfigSkipsLoading","Output":"--- PASS: TestLoadStartupConfig_NoConfigSkipsLoading (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.281659+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_NoConfigSkipsLoading","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.281661+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesValidYAML"}
+{"Time":"2026-09-27T00:41:45.281663+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesValidYAML","Output":"=== RUN   TestLoadStartupConfig_ParsesValidYAML\n"}
+{"Time":"2026-09-27T00:41:45.282067+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesValidYAML","Output":"--- PASS: TestLoadStartupConfig_ParsesValidYAML (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.282077+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesValidYAML","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.282081+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesIntralineStyleOff"}
+{"Time":"2026-09-27T00:41:45.282084+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesIntralineStyleOff","Output":"=== RUN   TestLoadStartupConfig_ParsesIntralineStyleOff\n"}
+{"Time":"2026-09-27T00:41:45.282367+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesIntralineStyleOff","Output":"--- PASS: TestLoadStartupConfig_ParsesIntralineStyleOff (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.282377+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_ParsesIntralineStyleOff","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.282381+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_UnknownKeyErrors"}
+{"Time":"2026-09-27T00:41:45.282388+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_UnknownKeyErrors","Output":"=== RUN   TestLoadStartupConfig_UnknownKeyErrors\n"}
+{"Time":"2026-09-27T00:41:45.282758+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_UnknownKeyErrors","Output":"--- PASS: TestLoadStartupConfig_UnknownKeyErrors (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.282763+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_UnknownKeyErrors","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.282768+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidYAMLErrors"}
+{"Time":"2026-09-27T00:41:45.28277+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidYAMLErrors","Output":"=== RUN   TestLoadStartupConfig_InvalidYAMLErrors\n"}
+{"Time":"2026-09-27T00:41:45.283079+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidYAMLErrors","Output":"--- PASS: TestLoadStartupConfig_InvalidYAMLErrors (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.283084+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidYAMLErrors","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.283086+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext"}
+{"Time":"2026-09-27T00:41:45.283088+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext","Output":"=== RUN   TestLoadStartupConfig_InvalidValuesIncludeKeyContext\n"}
+{"Time":"2026-09-27T00:41:45.283091+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/view"}
+{"Time":"2026-09-27T00:41:45.283093+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/view","Output":"=== RUN   TestLoadStartupConfig_InvalidValuesIncludeKeyContext/view\n"}
+{"Time":"2026-09-27T00:41:45.283432+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/view","Output":"--- PASS: TestLoadStartupConfig_InvalidValuesIncludeKeyContext/view (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.283453+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/view","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.283456+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/theme"}
+{"Time":"2026-09-27T00:41:45.283462+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/theme","Output":"=== RUN   TestLoadStartupConfig_InvalidValuesIncludeKeyContext/theme\n"}
+{"Time":"2026-09-27T00:41:45.283732+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/theme","Output":"--- PASS: TestLoadStartupConfig_InvalidValuesIncludeKeyContext/theme (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.283736+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/theme","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.283739+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/intralineStyle"}
+{"Time":"2026-09-27T00:41:45.283749+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/intralineStyle","Output":"=== RUN   TestLoadStartupConfig_InvalidValuesIncludeKeyContext/intralineStyle\n"}
+{"Time":"2026-09-27T00:41:45.284072+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/intralineStyle","Output":"--- PASS: TestLoadStartupConfig_InvalidValuesIncludeKeyContext/intralineStyle (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284076+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/intralineStyle","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284079+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/stagedScopeIsRejected"}
+{"Time":"2026-09-27T00:41:45.284082+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/stagedScopeIsRejected","Output":"=== RUN   TestLoadStartupConfig_InvalidValuesIncludeKeyContext/stagedScopeIsRejected\n"}
+{"Time":"2026-09-27T00:41:45.284389+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/stagedScopeIsRejected","Output":"--- PASS: TestLoadStartupConfig_InvalidValuesIncludeKeyContext/stagedScopeIsRejected (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284394+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext/stagedScopeIsRejected","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284397+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext","Output":"--- PASS: TestLoadStartupConfig_InvalidValuesIncludeKeyContext (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.2844+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLoadStartupConfig_InvalidValuesIncludeKeyContext","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284402+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_AppliesWhenFlagNotSet"}
+{"Time":"2026-09-27T00:41:45.284404+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_AppliesWhenFlagNotSet","Output":"=== RUN   TestApplyStartupConfig_AppliesWhenFlagNotSet\n"}
+{"Time":"2026-09-27T00:41:45.284407+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_AppliesWhenFlagNotSet","Output":"--- PASS: TestApplyStartupConfig_AppliesWhenFlagNotSet (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284413+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_AppliesWhenFlagNotSet","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284415+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_FlagsOverrideConfig"}
+{"Time":"2026-09-27T00:41:45.284417+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_FlagsOverrideConfig","Output":"=== RUN   TestApplyStartupConfig_FlagsOverrideConfig\n"}
+{"Time":"2026-09-27T00:41:45.284419+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_FlagsOverrideConfig","Output":"--- PASS: TestApplyStartupConfig_FlagsOverrideConfig (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284421+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestApplyStartupConfig_FlagsOverrideConfig","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284422+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBrowsingAppearanceConfigAndOverrides"}
+{"Time":"2026-09-27T00:41:45.284431+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBrowsingAppearanceConfigAndOverrides","Output":"=== RUN   TestBrowsingAppearanceConfigAndOverrides\n"}
+{"Time":"2026-09-27T00:41:45.284724+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBrowsingAppearanceConfigAndOverrides","Output":"--- PASS: TestBrowsingAppearanceConfigAndOverrides (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284727+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBrowsingAppearanceConfigAndOverrides","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.28473+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_ClampScrollXAndY"}
+{"Time":"2026-09-27T00:41:45.284733+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_ClampScrollXAndY","Output":"=== RUN   TestDiffViewState_ClampScrollXAndY\n"}
+{"Time":"2026-09-27T00:41:45.284735+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_ClampScrollXAndY","Output":"--- PASS: TestDiffViewState_ClampScrollXAndY (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284738+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_ClampScrollXAndY","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284746+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_PageAndHalfPageSteps"}
+{"Time":"2026-09-27T00:41:45.284748+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_PageAndHalfPageSteps","Output":"=== RUN   TestDiffViewState_PageAndHalfPageSteps\n"}
+{"Time":"2026-09-27T00:41:45.284751+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_PageAndHalfPageSteps","Output":"--- PASS: TestDiffViewState_PageAndHalfPageSteps (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284753+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_PageAndHalfPageSteps","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284756+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_GoTopAndGoBottom"}
+{"Time":"2026-09-27T00:41:45.284765+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_GoTopAndGoBottom","Output":"=== RUN   TestDiffViewState_GoTopAndGoBottom\n"}
+{"Time":"2026-09-27T00:41:45.284768+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_GoTopAndGoBottom","Output":"--- PASS: TestDiffViewState_GoTopAndGoBottom (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284769+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_GoTopAndGoBottom","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284771+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SetRenderedPairResetsScrollAndStoresBothModels"}
+{"Time":"2026-09-27T00:41:45.284777+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SetRenderedPairResetsScrollAndStoresBothModels","Output":"=== RUN   TestDiffViewState_SetRenderedPairResetsScrollAndStoresBothModels\n"}
+{"Time":"2026-09-27T00:41:45.28478+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SetRenderedPairResetsScrollAndStoresBothModels","Output":"--- PASS: TestDiffViewState_SetRenderedPairResetsScrollAndStoresBothModels (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284782+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SetRenderedPairResetsScrollAndStoresBothModels","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284784+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextUnified"}
+{"Time":"2026-09-27T00:41:45.284791+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextUnified","Output":"=== RUN   TestDiffViewState_SelectedTextUnified\n"}
+{"Time":"2026-09-27T00:41:45.284793+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextUnified","Output":"--- PASS: TestDiffViewState_SelectedTextUnified (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284795+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextUnified","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284797+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextSideBySideLeftUsesSharedRows"}
+{"Time":"2026-09-27T00:41:45.284799+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextSideBySideLeftUsesSharedRows","Output":"=== RUN   TestDiffViewState_SelectedTextSideBySideLeftUsesSharedRows\n"}
+{"Time":"2026-09-27T00:41:45.284801+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextSideBySideLeftUsesSharedRows","Output":"--- PASS: TestDiffViewState_SelectedTextSideBySideLeftUsesSharedRows (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284803+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SelectedTextSideBySideLeftUsesSharedRows","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284805+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideBySideSplitRatioClampsToRange"}
+{"Time":"2026-09-27T00:41:45.284807+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideBySideSplitRatioClampsToRange","Output":"=== RUN   TestDiffViewState_SideBySideSplitRatioClampsToRange\n"}
+{"Time":"2026-09-27T00:41:45.284809+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideBySideSplitRatioClampsToRange","Output":"--- PASS: TestDiffViewState_SideBySideSplitRatioClampsToRange (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284811+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideBySideSplitRatioClampsToRange","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284813+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleForOneSecondAfterResize"}
+{"Time":"2026-09-27T00:41:45.284815+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleForOneSecondAfterResize","Output":"=== RUN   TestDiffViewState_SideDividerOverlayVisibleForOneSecondAfterResize\n"}
+{"Time":"2026-09-27T00:41:45.284817+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleForOneSecondAfterResize","Output":"--- PASS: TestDiffViewState_SideDividerOverlayVisibleForOneSecondAfterResize (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284819+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleForOneSecondAfterResize","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284821+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleWhileDragging"}
+{"Time":"2026-09-27T00:41:45.284824+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleWhileDragging","Output":"=== RUN   TestDiffViewState_SideDividerOverlayVisibleWhileDragging\n"}
+{"Time":"2026-09-27T00:41:45.284831+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleWhileDragging","Output":"--- PASS: TestDiffViewState_SideDividerOverlayVisibleWhileDragging (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284833+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffViewState_SideDividerOverlayVisibleWhileDragging","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284835+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestLineNumberRolesForLine"}
+{"Time":"2026-09-27T00:41:45.284837+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLineNumberRolesForLine","Output":"=== RUN   TestLineNumberRolesForLine\n"}
+{"Time":"2026-09-27T00:41:45.284839+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestLineNumberRolesForLine","Output":"--- PASS: TestLineNumberRolesForLine (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284841+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestLineNumberRolesForLine","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284843+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestHorizontalScrollXForLine"}
+{"Time":"2026-09-27T00:41:45.284845+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestHorizontalScrollXForLine","Output":"=== RUN   TestHorizontalScrollXForLine\n"}
+{"Time":"2026-09-27T00:41:45.284847+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestHorizontalScrollXForLine","Output":"--- PASS: TestHorizontalScrollXForLine (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284849+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestHorizontalScrollXForLine","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284851+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDisplayLinePrefix"}
+{"Time":"2026-09-27T00:41:45.284853+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDisplayLinePrefix","Output":"=== RUN   TestDisplayLinePrefix\n"}
+{"Time":"2026-09-27T00:41:45.284855+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDisplayLinePrefix","Output":"--- PASS: TestDisplayLinePrefix (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284857+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDisplayLinePrefix","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284859+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestRenderedGutterWidth"}
+{"Time":"2026-09-27T00:41:45.28486+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestRenderedGutterWidth","Output":"=== RUN   TestRenderedGutterWidth\n"}
+{"Time":"2026-09-27T00:41:45.284862+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestRenderedGutterWidth","Output":"--- PASS: TestRenderedGutterWidth (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284866+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestRenderedGutterWidth","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.28487+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineRowCount"}
+{"Time":"2026-09-27T00:41:45.284872+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineRowCount","Output":"=== RUN   TestWrappedLineRowCount\n"}
+{"Time":"2026-09-27T00:41:45.284874+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineRowCount","Output":"--- PASS: TestWrappedLineRowCount (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284878+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineRowCount","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284883+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineAtRow"}
+{"Time":"2026-09-27T00:41:45.284885+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineAtRow","Output":"=== RUN   TestWrappedLineAtRow\n"}
+{"Time":"2026-09-27T00:41:45.284887+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineAtRow","Output":"--- PASS: TestWrappedLineAtRow (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284888+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestWrappedLineAtRow","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.28489+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestWrappedContentHeight"}
+{"Time":"2026-09-27T00:41:45.284892+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedContentHeight","Output":"=== RUN   TestWrappedContentHeight\n"}
+{"Time":"2026-09-27T00:41:45.284894+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedContentHeight","Output":"--- PASS: TestWrappedContentHeight (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284896+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestWrappedContentHeight","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284898+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout"}
+{"Time":"2026-09-27T00:41:45.2849+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout","Output":"=== RUN   TestSideBySidePaneLayout\n"}
+{"Time":"2026-09-27T00:41:45.284903+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout","Output":"--- PASS: TestSideBySidePaneLayout (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284905+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284907+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_ClampsToDynamicMinima"}
+{"Time":"2026-09-27T00:41:45.284908+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_ClampsToDynamicMinima","Output":"=== RUN   TestSideBySidePaneLayout_ClampsToDynamicMinima\n"}
+{"Time":"2026-09-27T00:41:45.284915+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_ClampsToDynamicMinima","Output":"--- PASS: TestSideBySidePaneLayout_ClampsToDynamicMinima (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284918+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_ClampsToDynamicMinima","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284921+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_NarrowViewLocksDividerToCenter"}
+{"Time":"2026-09-27T00:41:45.284923+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_NarrowViewLocksDividerToCenter","Output":"=== RUN   TestSideBySidePaneLayout_NarrowViewLocksDividerToCenter\n"}
+{"Time":"2026-09-27T00:41:45.284925+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_NarrowViewLocksDividerToCenter","Output":"--- PASS: TestSideBySidePaneLayout_NarrowViewLocksDividerToCenter (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284928+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_NarrowViewLocksDividerToCenter","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284933+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_RatioRoundTripPreservesOffsets"}
+{"Time":"2026-09-27T00:41:45.284935+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_RatioRoundTripPreservesOffsets","Output":"=== RUN   TestSideBySidePaneLayout_RatioRoundTripPreservesOffsets\n"}
+{"Time":"2026-09-27T00:41:45.284942+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_RatioRoundTripPreservesOffsets","Output":"--- PASS: TestSideBySidePaneLayout_RatioRoundTripPreservesOffsets (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284947+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideBySidePaneLayout_RatioRoundTripPreservesOffsets","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284949+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideDividerLineNumberRole"}
+{"Time":"2026-09-27T00:41:45.284951+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerLineNumberRole","Output":"=== RUN   TestSideDividerLineNumberRole\n"}
+{"Time":"2026-09-27T00:41:45.284953+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerLineNumberRole","Output":"--- PASS: TestSideDividerLineNumberRole (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284955+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideDividerLineNumberRole","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284957+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestShouldRenderSideDivider"}
+{"Time":"2026-09-27T00:41:45.284958+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestShouldRenderSideDivider","Output":"=== RUN   TestShouldRenderSideDivider\n"}
+{"Time":"2026-09-27T00:41:45.284966+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestShouldRenderSideDivider","Output":"--- PASS: TestShouldRenderSideDivider (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284968+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestShouldRenderSideDivider","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.28497+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_UsesHatchStyleWhenRightIsEmpty"}
+{"Time":"2026-09-27T00:41:45.284973+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_UsesHatchStyleWhenRightIsEmpty","Output":"=== RUN   TestSideDividerStyle_UsesHatchStyleWhenRightIsEmpty\n"}
+{"Time":"2026-09-27T00:41:45.284987+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_UsesHatchStyleWhenRightIsEmpty","Output":"--- PASS: TestSideDividerStyle_UsesHatchStyleWhenRightIsEmpty (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.284991+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_UsesHatchStyleWhenRightIsEmpty","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.284993+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_DraggingEmphasizesDividerColumn"}
+{"Time":"2026-09-27T00:41:45.284994+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_DraggingEmphasizesDividerColumn","Output":"=== RUN   TestSideDividerStyle_DraggingEmphasizesDividerColumn\n"}
+{"Time":"2026-09-27T00:41:45.285011+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_DraggingEmphasizesDividerColumn","Output":"--- PASS: TestSideDividerStyle_DraggingEmphasizesDividerColumn (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285013+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideDividerStyle_DraggingEmphasizesDividerColumn","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285015+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestWrappedSideContentHeight_UsesMaxWrappedRowsPerPair"}
+{"Time":"2026-09-27T00:41:45.285017+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedSideContentHeight_UsesMaxWrappedRowsPerPair","Output":"=== RUN   TestWrappedSideContentHeight_UsesMaxWrappedRowsPerPair\n"}
+{"Time":"2026-09-27T00:41:45.285019+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestWrappedSideContentHeight_UsesMaxWrappedRowsPerPair","Output":"--- PASS: TestWrappedSideContentHeight_UsesMaxWrappedRowsPerPair (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285021+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestWrappedSideContentHeight_UsesMaxWrappedRowsPerPair","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285027+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideBySideMaxScrollX"}
+{"Time":"2026-09-27T00:41:45.285028+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySideMaxScrollX","Output":"=== RUN   TestSideBySideMaxScrollX\n"}
+{"Time":"2026-09-27T00:41:45.28503+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideBySideMaxScrollX","Output":"--- PASS: TestSideBySideMaxScrollX (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285032+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideBySideMaxScrollX","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285034+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseDownStartsDragOnlyOnDivider"}
+{"Time":"2026-09-27T00:41:45.285036+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseDownStartsDragOnlyOnDivider","Output":"=== RUN   TestDiffView_OnMouseDownStartsDragOnlyOnDivider\n"}
+{"Time":"2026-09-27T00:41:45.285045+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseDownStartsDragOnlyOnDivider","Output":"--- PASS: TestDiffView_OnMouseDownStartsDragOnlyOnDivider (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285047+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseDownStartsDragOnlyOnDivider","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285049+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll"}
+{"Time":"2026-09-27T00:41:45.285051+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll","Output":"=== RUN   TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll\n"}
+{"Time":"2026-09-27T00:41:45.285054+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll","Output":"--- PASS: TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285062+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointRejectsGutterAndUsesHorizontalScroll","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285065+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting"}
+{"Time":"2026-09-27T00:41:45.285067+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting","Output":"=== RUN   TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting\n"}
+{"Time":"2026-09-27T00:41:45.285069+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting","Output":"--- PASS: TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285072+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_UnifiedSelectionPointWithScrollableKeepsHorizontalScrollInHitTesting","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285073+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideBySideSelectionDragClampsToOriginPane"}
+{"Time":"2026-09-27T00:41:45.285086+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideBySideSelectionDragClampsToOriginPane","Output":"=== RUN   TestDiffView_SideBySideSelectionDragClampsToOriginPane\n"}
+{"Time":"2026-09-27T00:41:45.285088+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideBySideSelectionDragClampsToOriginPane","Output":"--- PASS: TestDiffView_SideBySideSelectionDragClampsToOriginPane (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285092+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideBySideSelectionDragClampsToOriginPane","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285094+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveAutoscrollsWhileSelecting"}
+{"Time":"2026-09-27T00:41:45.285095+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveAutoscrollsWhileSelecting","Output":"=== RUN   TestDiffView_OnMouseMoveAutoscrollsWhileSelecting\n"}
+{"Time":"2026-09-27T00:41:45.285098+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveAutoscrollsWhileSelecting","Output":"--- PASS: TestDiffView_OnMouseMoveAutoscrollsWhileSelecting (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.2851+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveAutoscrollsWhileSelecting","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285102+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollAxisDelta_UsesInnerRing"}
+{"Time":"2026-09-27T00:41:45.285104+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollAxisDelta_UsesInnerRing","Output":"=== RUN   TestSelectionAutoscrollAxisDelta_UsesInnerRing\n"}
+{"Time":"2026-09-27T00:41:45.285106+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollAxisDelta_UsesInnerRing","Output":"--- PASS: TestSelectionAutoscrollAxisDelta_UsesInnerRing (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285108+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollAxisDelta_UsesInnerRing","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.28511+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollRangeDelta_UsesContentBounds"}
+{"Time":"2026-09-27T00:41:45.285112+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollRangeDelta_UsesContentBounds","Output":"=== RUN   TestSelectionAutoscrollRangeDelta_UsesContentBounds\n"}
+{"Time":"2026-09-27T00:41:45.285117+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollRangeDelta_UsesContentBounds","Output":"--- PASS: TestSelectionAutoscrollRangeDelta_UsesContentBounds (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285119+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSelectionAutoscrollRangeDelta_UsesContentBounds","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285121+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent"}
+{"Time":"2026-09-27T00:41:45.285123+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent","Output":"=== RUN   TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent\n"}
+{"Time":"2026-09-27T00:41:45.285125+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent","Output":"--- PASS: TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285127+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SelectionAutoscrollBoundsUseActivePaneContent","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285129+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll"}
+{"Time":"2026-09-27T00:41:45.285131+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll","Output":"=== RUN   TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll\n"}
+{"Time":"2026-09-27T00:41:45.285138+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll","Output":"--- PASS: TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285142+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseMoveUpdatesSplitAndClampsScroll","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285144+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseUpStopsDrag"}
+{"Time":"2026-09-27T00:41:45.285146+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseUpStopsDrag","Output":"=== RUN   TestDiffView_OnMouseUpStopsDrag\n"}
+{"Time":"2026-09-27T00:41:45.285151+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseUpStopsDrag","Output":"--- PASS: TestDiffView_OnMouseUpStopsDrag (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285153+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_OnMouseUpStopsDrag","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285156+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_DraggingIsNoopOutsideSideBySideMode"}
+{"Time":"2026-09-27T00:41:45.285157+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_DraggingIsNoopOutsideSideBySideMode","Output":"=== RUN   TestDiffView_DraggingIsNoopOutsideSideBySideMode\n"}
+{"Time":"2026-09-27T00:41:45.285159+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_DraggingIsNoopOutsideSideBySideMode","Output":"--- PASS: TestDiffView_DraggingIsNoopOutsideSideBySideMode (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285162+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_DraggingIsNoopOutsideSideBySideMode","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285164+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout"}
+{"Time":"2026-09-27T00:41:45.285165+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout","Output":"=== RUN   TestSideDividerSizeOverlayLayout\n"}
+{"Time":"2026-09-27T00:41:45.285168+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout","Output":"--- PASS: TestSideDividerSizeOverlayLayout (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285169+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285171+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout_HandlesNarrowViewport"}
+{"Time":"2026-09-27T00:41:45.285173+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout_HandlesNarrowViewport","Output":"=== RUN   TestSideDividerSizeOverlayLayout_HandlesNarrowViewport\n"}
+{"Time":"2026-09-27T00:41:45.285175+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout_HandlesNarrowViewport","Output":"--- PASS: TestSideDividerSizeOverlayLayout_HandlesNarrowViewport (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285177+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSideDividerSizeOverlayLayout_HandlesNarrowViewport","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285179+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerOverlayRowIsOneThirdFromTop"}
+{"Time":"2026-09-27T00:41:45.285181+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerOverlayRowIsOneThirdFromTop","Output":"=== RUN   TestDiffView_SideDividerOverlayRowIsOneThirdFromTop\n"}
+{"Time":"2026-09-27T00:41:45.28519+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerOverlayRowIsOneThirdFromTop","Output":"--- PASS: TestDiffView_SideDividerOverlayRowIsOneThirdFromTop (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285192+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerOverlayRowIsOneThirdFromTop","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285196+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors"}
+{"Time":"2026-09-27T00:41:45.285198+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors","Output":"=== RUN   TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors\n"}
+{"Time":"2026-09-27T00:41:45.2852+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors","Output":"--- PASS: TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285201+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestDiffView_SideDividerSizeOverlayStyle_UsesSecondaryLabelColors","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285204+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesBackgroundIntralineOverlay"}
+{"Time":"2026-09-27T00:41:45.285205+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesBackgroundIntralineOverlay","Output":"=== RUN   TestStyleForSegment_AppliesBackgroundIntralineOverlay\n"}
+{"Time":"2026-09-27T00:41:45.285215+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesBackgroundIntralineOverlay","Output":"--- PASS: TestStyleForSegment_AppliesBackgroundIntralineOverlay (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285218+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesBackgroundIntralineOverlay","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285221+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground"}
+{"Time":"2026-09-27T00:41:45.285222+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground","Output":"=== RUN   TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground\n"}
+{"Time":"2026-09-27T00:41:45.285224+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground","Output":"--- PASS: TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285226+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_AppliesUnderlineIntralineOverlayWithoutChangingForeground","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285228+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff"}
+{"Time":"2026-09-27T00:41:45.28523+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff","Output":"=== RUN   TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff\n"}
+{"Time":"2026-09-27T00:41:45.285239+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff","Output":"--- PASS: TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285241+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenIntralineStyleIsOff","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285243+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark"}
+{"Time":"2026-09-27T00:41:45.285245+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark","Output":"=== RUN   TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark\n"}
+{"Time":"2026-09-27T00:41:45.285247+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark","Output":"--- PASS: TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285253+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestStyleForSegment_LeavesBaseStyleWhenNoIntralineMark","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285255+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine"}
+{"Time":"2026-09-27T00:41:45.285256+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine","Output":"=== RUN   TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine\n"}
+{"Time":"2026-09-27T00:41:45.28526+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine","Output":"--- PASS: TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285263+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_ShowsSelectionIndicatorOnTraversedEmptyLine","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285272+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary"}
+{"Time":"2026-09-27T00:41:45.285274+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary","Output":"=== RUN   TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary\n"}
+{"Time":"2026-09-27T00:41:45.285276+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary","Output":"--- PASS: TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285278+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestRenderSegments_DoesNotShowSelectionIndicatorWhenEmptyLineIsOnlyBoundary","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.28528+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground"}
+{"Time":"2026-09-27T00:41:45.285282+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground","Output":"=== RUN   TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground\n"}
+{"Time":"2026-09-27T00:41:45.285284+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground","Output":"--- PASS: TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285286+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterShiftsLowContrastForeground","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.285288+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground"}
+{"Time":"2026-09-27T00:41:45.28529+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground","Output":"=== RUN   TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground\n"}
+{"Time":"2026-09-27T00:41:45.285296+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground","Output":"--- PASS: TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground (0.00s)\n"}
+{"Time":"2026-09-27T00:41:45.285298+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestApplyIntralineOverlay_ReadabilityFilterPreservesReadableForeground","Elapsed":0}
+{"Time":"2026-09-27T00:41:45.2853+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCaptureWorkingTreeReadOnlyAndUntracked"}
+{"Time":"2026-09-27T00:41:45.285305+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureWorkingTreeReadOnlyAndUntracked","Output":"=== RUN   TestCaptureWorkingTreeReadOnlyAndUntracked\n"}
+{"Time":"2026-09-27T00:41:45.390144+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureWorkingTreeReadOnlyAndUntracked","Output":"--- PASS: TestCaptureWorkingTreeReadOnlyAndUntracked (0.10s)\n"}
+{"Time":"2026-09-27T00:41:45.390165+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCaptureWorkingTreeReadOnlyAndUntracked","Elapsed":0.1}
+{"Time":"2026-09-27T00:41:45.390173+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnbornAndDeleted"}
+{"Time":"2026-09-27T00:41:45.390176+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnbornAndDeleted","Output":"=== RUN   TestCaptureUnbornAndDeleted\n"}
+{"Time":"2026-09-27T00:41:45.475021+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnbornAndDeleted","Output":"--- PASS: TestCaptureUnbornAndDeleted (0.08s)\n"}
+{"Time":"2026-09-27T00:41:45.475063+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnbornAndDeleted","Elapsed":0.08}
+{"Time":"2026-09-27T00:41:45.47507+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCaptureRangeIsPinnedWithoutCheckout"}
+{"Time":"2026-09-27T00:41:45.475073+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureRangeIsPinnedWithoutCheckout","Output":"=== RUN   TestCaptureRangeIsPinnedWithoutCheckout\n"}
+{"Time":"2026-09-27T00:41:45.571211+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureRangeIsPinnedWithoutCheckout","Output":"--- PASS: TestCaptureRangeIsPinnedWithoutCheckout (0.10s)\n"}
+{"Time":"2026-09-27T00:41:45.571234+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCaptureRangeIsPinnedWithoutCheckout","Elapsed":0.1}
+{"Time":"2026-09-27T00:41:45.57124+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnusualPaths"}
+{"Time":"2026-09-27T00:41:45.571247+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnusualPaths","Output":"=== RUN   TestCaptureUnusualPaths\n"}
+{"Time":"2026-09-27T00:41:45.654177+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnusualPaths","Output":"--- PASS: TestCaptureUnusualPaths (0.08s)\n"}
+{"Time":"2026-09-27T00:41:45.654204+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCaptureUnusualPaths","Elapsed":0.08}
+{"Time":"2026-09-27T00:41:45.654214+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency"}
+{"Time":"2026-09-27T00:41:45.654219+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency","Output":"=== RUN   TestCapturePRConsistency\n"}
+{"Time":"2026-09-27T00:41:45.654222+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/false"}
+{"Time":"2026-09-27T00:41:45.654224+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/false","Output":"=== RUN   TestCapturePRConsistency/false\n"}
+{"Time":"2026-09-27T00:41:45.918443+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/false","Output":"--- PASS: TestCapturePRConsistency/false (0.26s)\n"}
+{"Time":"2026-09-27T00:41:45.91847+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/false","Elapsed":0.26}
+{"Time":"2026-09-27T00:41:45.918481+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/true"}
+{"Time":"2026-09-27T00:41:45.918486+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/true","Output":"=== RUN   TestCapturePRConsistency/true\n"}
+{"Time":"2026-09-27T00:41:46.043336+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/true","Output":"--- PASS: TestCapturePRConsistency/true (0.12s)\n"}
+{"Time":"2026-09-27T00:41:46.043366+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency/true","Elapsed":0.12}
+{"Time":"2026-09-27T00:41:46.043389+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency","Output":"--- PASS: TestCapturePRConsistency (0.39s)\n"}
+{"Time":"2026-09-27T00:41:46.043401+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCapturePRConsistency","Elapsed":0.39}
+{"Time":"2026-09-27T00:41:46.043408+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCaptureRenameAndSymlink"}
+{"Time":"2026-09-27T00:41:46.043413+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureRenameAndSymlink","Output":"=== RUN   TestCaptureRenameAndSymlink\n"}
+{"Time":"2026-09-27T00:41:46.133698+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCaptureRenameAndSymlink","Output":"--- PASS: TestCaptureRenameAndSymlink (0.09s)\n"}
+{"Time":"2026-09-27T00:41:46.133718+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCaptureRenameAndSymlink","Elapsed":0.09}
+{"Time":"2026-09-27T00:41:46.133728+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_TreatsBracketsAsStandaloneChunks"}
+{"Time":"2026-09-27T00:41:46.133735+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_TreatsBracketsAsStandaloneChunks","Output":"=== RUN   TestSplitIntralineChunks_TreatsBracketsAsStandaloneChunks\n"}
+{"Time":"2026-09-27T00:41:46.133743+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_TreatsBracketsAsStandaloneChunks","Output":"--- PASS: TestSplitIntralineChunks_TreatsBracketsAsStandaloneChunks (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.133752+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_TreatsBracketsAsStandaloneChunks","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133755+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_DoesNotMergeConsecutiveBrackets"}
+{"Time":"2026-09-27T00:41:46.133758+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_DoesNotMergeConsecutiveBrackets","Output":"=== RUN   TestSplitIntralineChunks_DoesNotMergeConsecutiveBrackets\n"}
+{"Time":"2026-09-27T00:41:46.133761+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_DoesNotMergeConsecutiveBrackets","Output":"--- PASS: TestSplitIntralineChunks_DoesNotMergeConsecutiveBrackets (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.133769+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSplitIntralineChunks_DoesNotMergeConsecutiveBrackets","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133772+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_BridgesInnerSpacesBetweenChangedWords"}
+{"Time":"2026-09-27T00:41:46.133774+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_BridgesInnerSpacesBetweenChangedWords","Output":"=== RUN   TestIntralineChangeMasks_BridgesInnerSpacesBetweenChangedWords\n"}
+{"Time":"2026-09-27T00:41:46.133777+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_BridgesInnerSpacesBetweenChangedWords","Output":"--- PASS: TestIntralineChangeMasks_BridgesInnerSpacesBetweenChangedWords (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.13378+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_BridgesInnerSpacesBetweenChangedWords","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133782+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_DoesNotBridgeEdgeSpacesAroundChangedRegion"}
+{"Time":"2026-09-27T00:41:46.133789+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_DoesNotBridgeEdgeSpacesAroundChangedRegion","Output":"=== RUN   TestIntralineChangeMasks_DoesNotBridgeEdgeSpacesAroundChangedRegion\n"}
+{"Time":"2026-09-27T00:41:46.133792+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_DoesNotBridgeEdgeSpacesAroundChangedRegion","Output":"--- PASS: TestIntralineChangeMasks_DoesNotBridgeEdgeSpacesAroundChangedRegion (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.133795+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestIntralineChangeMasks_DoesNotBridgeEdgeSpacesAroundChangedRegion","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133797+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_MultiFile"}
+{"Time":"2026-09-27T00:41:46.133799+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_MultiFile","Output":"=== RUN   TestParseUnifiedDiff_MultiFile\n"}
+{"Time":"2026-09-27T00:41:46.133817+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_MultiFile","Output":"--- PASS: TestParseUnifiedDiff_MultiFile (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.13382+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_MultiFile","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133823+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_RenameAndBinary"}
+{"Time":"2026-09-27T00:41:46.133825+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_RenameAndBinary","Output":"=== RUN   TestParseUnifiedDiff_RenameAndBinary\n"}
+{"Time":"2026-09-27T00:41:46.133833+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_RenameAndBinary","Output":"--- PASS: TestParseUnifiedDiff_RenameAndBinary (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.133835+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_RenameAndBinary","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133837+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIAroundStructuralLines"}
+{"Time":"2026-09-27T00:41:46.133839+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIAroundStructuralLines","Output":"=== RUN   TestParseUnifiedDiff_StripsANSIAroundStructuralLines\n"}
+{"Time":"2026-09-27T00:41:46.133845+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIAroundStructuralLines","Output":"--- PASS: TestParseUnifiedDiff_StripsANSIAroundStructuralLines (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.133848+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIAroundStructuralLines","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133854+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIFromInlineHunkContent"}
+{"Time":"2026-09-27T00:41:46.133857+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIFromInlineHunkContent","Output":"=== RUN   TestParseUnifiedDiff_StripsANSIFromInlineHunkContent\n"}
+{"Time":"2026-09-27T00:41:46.133866+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIFromInlineHunkContent","Output":"--- PASS: TestParseUnifiedDiff_StripsANSIFromInlineHunkContent (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.133869+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseUnifiedDiff_StripsANSIFromInlineHunkContent","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.133875+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StructuredLinesAndGutters"}
+{"Time":"2026-09-27T00:41:46.133878+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StructuredLinesAndGutters","Output":"=== RUN   TestBuildRenderedFile_StructuredLinesAndGutters\n"}
+{"Time":"2026-09-27T00:41:46.135503+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StructuredLinesAndGutters","Output":"--- PASS: TestBuildRenderedFile_StructuredLinesAndGutters (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.135507+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StructuredLinesAndGutters","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.13551+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_ExpandsTabsWithTabStops"}
+{"Time":"2026-09-27T00:41:46.135512+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_ExpandsTabsWithTabStops","Output":"=== RUN   TestBuildRenderedFile_ExpandsTabsWithTabStops\n"}
+{"Time":"2026-09-27T00:41:46.136798+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_ExpandsTabsWithTabStops","Output":"--- PASS: TestBuildRenderedFile_ExpandsTabsWithTabStops (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.136801+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_ExpandsTabsWithTabStops","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.136804+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens"}
+{"Time":"2026-09-27T00:41:46.136806+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens","Output":"=== RUN   TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens\n"}
+{"Time":"2026-09-27T00:41:46.139614+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens","Output":"--- PASS: TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139618+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_StripsLexerInjectedNewlinesFromCommentTokens","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.13962+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildMetaRenderedFile_ProducesMetaLines"}
+{"Time":"2026-09-27T00:41:46.139626+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildMetaRenderedFile_ProducesMetaLines","Output":"=== RUN   TestBuildMetaRenderedFile_ProducesMetaLines\n"}
+{"Time":"2026-09-27T00:41:46.139629+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildMetaRenderedFile_ProducesMetaLines","Output":"--- PASS: TestBuildMetaRenderedFile_ProducesMetaLines (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139632+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildMetaRenderedFile_ProducesMetaLines","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139634+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_RunPairingAndSharedRows"}
+{"Time":"2026-09-27T00:41:46.139636+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_RunPairingAndSharedRows","Output":"=== RUN   TestBuildSideBySideRenderedFile_RunPairingAndSharedRows\n"}
+{"Time":"2026-09-27T00:41:46.139672+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_RunPairingAndSharedRows","Output":"--- PASS: TestBuildSideBySideRenderedFile_RunPairingAndSharedRows (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139682+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_RunPairingAndSharedRows","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139689+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideFromRendered_UsesSharedRows"}
+{"Time":"2026-09-27T00:41:46.139693+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideFromRendered_UsesSharedRows","Output":"=== RUN   TestBuildSideBySideFromRendered_UsesSharedRows\n"}
+{"Time":"2026-09-27T00:41:46.139697+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideFromRendered_UsesSharedRows","Output":"--- PASS: TestBuildSideBySideFromRendered_UsesSharedRows (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139701+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideFromRendered_UsesSharedRows","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139704+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksChangedWordChunks"}
+{"Time":"2026-09-27T00:41:46.139707+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksChangedWordChunks","Output":"=== RUN   TestBuildRenderedFile_IntralineMarksChangedWordChunks\n"}
+{"Time":"2026-09-27T00:41:46.139717+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksChangedWordChunks","Output":"--- PASS: TestBuildRenderedFile_IntralineMarksChangedWordChunks (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139721+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksChangedWordChunks","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139724+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments"}
+{"Time":"2026-09-27T00:41:46.139726+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments","Output":"=== RUN   TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments\n"}
+{"Time":"2026-09-27T00:41:46.139729+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments","Output":"--- PASS: TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139731+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_WithIntralineDisabledDoesNotMarkSegments","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139733+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells"}
+{"Time":"2026-09-27T00:41:46.139735+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells","Output":"=== RUN   TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells\n"}
+{"Time":"2026-09-27T00:41:46.139738+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells","Output":"--- PASS: TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.13974+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildSideBySideRenderedFile_WithIntralineDisabledDoesNotMarkCells","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139742+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges"}
+{"Time":"2026-09-27T00:41:46.139744+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges","Output":"=== RUN   TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges\n"}
+{"Time":"2026-09-27T00:41:46.139747+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges","Output":"--- PASS: TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139749+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksInsertionsAndDeletionsAtEdges","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139751+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksOnlyPairedLinesInUnevenRuns"}
+{"Time":"2026-09-27T00:41:46.139753+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksOnlyPairedLinesInUnevenRuns","Output":"=== RUN   TestBuildRenderedFile_IntralineMarksOnlyPairedLinesInUnevenRuns\n"}
+{"Time":"2026-09-27T00:41:46.139768+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksOnlyPairedLinesInUnevenRuns","Output":"--- PASS: TestBuildRenderedFile_IntralineMarksOnlyPairedLinesInUnevenRuns (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139771+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksOnlyPairedLinesInUnevenRuns","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.139773+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksSimilarPrefixBeforeDivergence"}
+{"Time":"2026-09-27T00:41:46.139775+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksSimilarPrefixBeforeDivergence","Output":"=== RUN   TestBuildRenderedFile_IntralineMarksSimilarPrefixBeforeDivergence\n"}
+{"Time":"2026-09-27T00:41:46.139842+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksSimilarPrefixBeforeDivergence","Output":"--- PASS: TestBuildRenderedFile_IntralineMarksSimilarPrefixBeforeDivergence (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.139847+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineMarksSimilarPrefixBeforeDivergence","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.13985+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineDPFallbackKeepsWholeLineHighlighting"}
+{"Time":"2026-09-27T00:41:46.139852+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineDPFallbackKeepsWholeLineHighlighting","Output":"=== RUN   TestBuildRenderedFile_IntralineDPFallbackKeepsWholeLineHighlighting\n"}
+{"Time":"2026-09-27T00:41:46.140126+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineDPFallbackKeepsWholeLineHighlighting","Output":"--- PASS: TestBuildRenderedFile_IntralineDPFallbackKeepsWholeLineHighlighting (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.14013+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineDPFallbackKeepsWholeLineHighlighting","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140132+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked"}
+{"Time":"2026-09-27T00:41:46.140134+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked","Output":"=== RUN   TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked\n"}
+{"Time":"2026-09-27T00:41:46.140142+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked","Output":"--- PASS: TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.140147+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenMostOfBothLinesWouldBeMarked","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.14015+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch"}
+{"Time":"2026-09-27T00:41:46.140152+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch","Output":"=== RUN   TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch\n"}
+{"Time":"2026-09-27T00:41:46.140235+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch","Output":"--- PASS: TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.140247+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyScaffoldingWordsMatch","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140253+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations"}
+{"Time":"2026-09-27T00:41:46.140257+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations","Output":"=== RUN   TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations\n"}
+{"Time":"2026-09-27T00:41:46.140271+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations","Output":"--- PASS: TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.140276+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesForDifferentFunctionDeclarations","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140279+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine"}
+{"Time":"2026-09-27T00:41:46.140281+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine","Output":"=== RUN   TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine\n"}
+{"Time":"2026-09-27T00:41:46.140293+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine","Output":"--- PASS: TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.1403+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineSuppressesWhenOnlyFewWordsMatchOnLongLine","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140304+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair"}
+{"Time":"2026-09-27T00:41:46.140306+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair","Output":"=== RUN   TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair\n"}
+{"Time":"2026-09-27T00:41:46.140321+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair","Output":"--- PASS: TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.140324+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsAfterWeakSimilarityPair","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140327+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair"}
+{"Time":"2026-09-27T00:41:46.140329+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair","Output":"=== RUN   TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair\n"}
+{"Time":"2026-09-27T00:41:46.140347+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair","Output":"--- PASS: TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.140349+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildRenderedFile_IntralineStopsOnEmptyVsNonEmptyPair","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140353+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation"}
+{"Time":"2026-09-27T00:41:46.140355+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation","Output":"=== RUN   TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation\n"}
+{"Time":"2026-09-27T00:41:46.140359+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation","Output":"--- PASS: TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.140361+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestTokenRoleFromChroma_SeparatesOperatorsFromPunctuation","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.140366+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewRoundTrip"}
+{"Time":"2026-09-27T00:41:46.14037+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewRoundTrip","Output":"=== RUN   TestReviewRoundTrip\n"}
+{"Time":"2026-09-27T00:41:46.168967+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewRoundTrip","Output":"--- PASS: TestReviewRoundTrip (0.03s)\n"}
+{"Time":"2026-09-27T00:41:46.168979+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewRoundTrip","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:46.16899+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewAtomicValidationAndIdempotency"}
+{"Time":"2026-09-27T00:41:46.168993+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewAtomicValidationAndIdempotency","Output":"=== RUN   TestReviewAtomicValidationAndIdempotency\n"}
+{"Time":"2026-09-27T00:41:46.183312+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewAtomicValidationAndIdempotency","Output":"--- PASS: TestReviewAtomicValidationAndIdempotency (0.01s)\n"}
+{"Time":"2026-09-27T00:41:46.183345+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewAtomicValidationAndIdempotency","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:46.183357+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewSnapshotsPreserveOldCoordinates"}
+{"Time":"2026-09-27T00:41:46.183361+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewSnapshotsPreserveOldCoordinates","Output":"=== RUN   TestReviewSnapshotsPreserveOldCoordinates\n"}
+{"Time":"2026-09-27T00:41:46.201987+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewSnapshotsPreserveOldCoordinates","Output":"--- PASS: TestReviewSnapshotsPreserveOldCoordinates (0.02s)\n"}
+{"Time":"2026-09-27T00:41:46.202004+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewSnapshotsPreserveOldCoordinates","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:46.202009+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewConcurrentWriters"}
+{"Time":"2026-09-27T00:41:46.202013+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewConcurrentWriters","Output":"=== RUN   TestReviewConcurrentWriters\n"}
+{"Time":"2026-09-27T00:41:46.434752+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewConcurrentWriters","Output":"--- PASS: TestReviewConcurrentWriters (0.23s)\n"}
+{"Time":"2026-09-27T00:41:46.434798+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewConcurrentWriters","Elapsed":0.23}
+{"Time":"2026-09-27T00:41:46.434815+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewCorruptionAndTraversal"}
+{"Time":"2026-09-27T00:41:46.434823+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewCorruptionAndTraversal","Output":"=== RUN   TestReviewCorruptionAndTraversal\n"}
+{"Time":"2026-09-27T00:41:46.440533+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewCorruptionAndTraversal","Output":"--- PASS: TestReviewCorruptionAndTraversal (0.01s)\n"}
+{"Time":"2026-09-27T00:41:46.440552+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewCorruptionAndTraversal","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:46.440561+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAnchorOldSideAndMissingLines"}
+{"Time":"2026-09-27T00:41:46.440567+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAnchorOldSideAndMissingLines","Output":"=== RUN   TestAnchorOldSideAndMissingLines\n"}
+{"Time":"2026-09-27T00:41:46.446395+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAnchorOldSideAndMissingLines","Output":"--- PASS: TestAnchorOldSideAndMissingLines (0.01s)\n"}
+{"Time":"2026-09-27T00:41:46.446414+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAnchorOldSideAndMissingLines","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:46.446424+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestMCPReviewExchange"}
+{"Time":"2026-09-27T00:41:46.44643+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestMCPReviewExchange","Output":"=== RUN   TestMCPReviewExchange\n"}
+{"Time":"2026-09-27T00:41:46.461768+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestMCPReviewExchange","Output":"--- PASS: TestMCPReviewExchange (0.02s)\n"}
+{"Time":"2026-09-27T00:41:46.461792+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestMCPReviewExchange","Elapsed":0.02}
+{"Time":"2026-09-27T00:41:46.461799+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewCLI"}
+{"Time":"2026-09-27T00:41:46.461804+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewCLI","Output":"=== RUN   TestReviewCLI\n"}
+{"Time":"2026-09-27T00:41:46.599935+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewCLI","Output":"--- PASS: TestReviewCLI (0.14s)\n"}
+{"Time":"2026-09-27T00:41:46.600004+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewCLI","Elapsed":0.14}
+{"Time":"2026-09-27T00:41:46.600012+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAgentInterfacesExcludeDrafts"}
+{"Time":"2026-09-27T00:41:46.600015+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAgentInterfacesExcludeDrafts","Output":"=== RUN   TestAgentInterfacesExcludeDrafts\n"}
+{"Time":"2026-09-27T00:41:46.609076+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAgentInterfacesExcludeDrafts","Output":"--- PASS: TestAgentInterfacesExcludeDrafts (0.01s)\n"}
+{"Time":"2026-09-27T00:41:46.609094+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAgentInterfacesExcludeDrafts","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:46.6091+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAgentCannotModifyDraft"}
+{"Time":"2026-09-27T00:41:46.609107+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAgentCannotModifyDraft","Output":"=== RUN   TestAgentCannotModifyDraft\n"}
+{"Time":"2026-09-27T00:41:46.619+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAgentCannotModifyDraft","Output":"--- PASS: TestAgentCannotModifyDraft (0.01s)\n"}
+{"Time":"2026-09-27T00:41:46.619011+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAgentCannotModifyDraft","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:46.619015+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewRejectsMalformedThread"}
+{"Time":"2026-09-27T00:41:46.619018+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewRejectsMalformedThread","Output":"=== RUN   TestReviewRejectsMalformedThread\n"}
+{"Time":"2026-09-27T00:41:46.623969+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewRejectsMalformedThread","Output":"--- PASS: TestReviewRejectsMalformedThread (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.623975+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewRejectsMalformedThread","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.623979+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestReviewCardMouseActions"}
+{"Time":"2026-09-27T00:41:46.623982+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewCardMouseActions","Output":"=== RUN   TestReviewCardMouseActions\n"}
+{"Time":"2026-09-27T00:41:46.651957+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestReviewCardMouseActions","Output":"--- PASS: TestReviewCardMouseActions (0.03s)\n"}
+{"Time":"2026-09-27T00:41:46.651976+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestReviewCardMouseActions","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:46.651981+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestInlineComposerStaysWithItsContext"}
+{"Time":"2026-09-27T00:41:46.651985+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestInlineComposerStaysWithItsContext","Output":"=== RUN   TestInlineComposerStaysWithItsContext\n"}
+{"Time":"2026-09-27T00:41:46.66658+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestInlineComposerStaysWithItsContext","Output":"--- PASS: TestInlineComposerStaysWithItsContext (0.01s)\n"}
+{"Time":"2026-09-27T00:41:46.6666+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestInlineComposerStaysWithItsContext","Elapsed":0.01}
+{"Time":"2026-09-27T00:41:46.666606+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideInlineReply"}
+{"Time":"2026-09-27T00:41:46.666609+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideInlineReply","Output":"=== RUN   TestSnapshotAsideInlineReply\n"}
+{"Time":"2026-09-27T00:41:46.693824+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideInlineReply","Output":"--- PASS: TestSnapshotAsideInlineReply (0.03s)\n"}
+{"Time":"2026-09-27T00:41:46.693842+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestSnapshotAsideInlineReply","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:46.693847+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard"}
+{"Time":"2026-09-27T00:41:46.69385+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard","Output":"=== RUN   TestAsideSelectCodeAfterCommentCard\n"}
+{"Time":"2026-09-27T00:41:46.693854+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/unified"}
+{"Time":"2026-09-27T00:41:46.693856+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/unified","Output":"=== RUN   TestAsideSelectCodeAfterCommentCard/unified\n"}
+{"Time":"2026-09-27T00:41:46.725729+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/unified","Output":"--- PASS: TestAsideSelectCodeAfterCommentCard/unified (0.03s)\n"}
+{"Time":"2026-09-27T00:41:46.725744+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/unified","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:46.725749+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/split"}
+{"Time":"2026-09-27T00:41:46.725752+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/split","Output":"=== RUN   TestAsideSelectCodeAfterCommentCard/split\n"}
+{"Time":"2026-09-27T00:41:46.756057+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/split","Output":"--- PASS: TestAsideSelectCodeAfterCommentCard/split (0.03s)\n"}
+{"Time":"2026-09-27T00:41:46.756068+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard/split","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:46.756073+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard","Output":"--- PASS: TestAsideSelectCodeAfterCommentCard (0.06s)\n"}
+{"Time":"2026-09-27T00:41:46.756075+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestAsideSelectCodeAfterCommentCard","Elapsed":0.06}
+{"Time":"2026-09-27T00:41:46.756079+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThreadShortcutsFollowFocusedCard"}
+{"Time":"2026-09-27T00:41:46.756081+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThreadShortcutsFollowFocusedCard","Output":"=== RUN   TestThreadShortcutsFollowFocusedCard\n"}
+{"Time":"2026-09-27T00:41:46.782166+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThreadShortcutsFollowFocusedCard","Output":"--- PASS: TestThreadShortcutsFollowFocusedCard (0.03s)\n"}
+{"Time":"2026-09-27T00:41:46.782179+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThreadShortcutsFollowFocusedCard","Elapsed":0.03}
+{"Time":"2026-09-27T00:41:46.782184+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestFocusAwareSplitPane_KeybindNamesUseSidebarTerminology"}
+{"Time":"2026-09-27T00:41:46.782186+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestFocusAwareSplitPane_KeybindNamesUseSidebarTerminology","Output":"=== RUN   TestFocusAwareSplitPane_KeybindNamesUseSidebarTerminology\n"}
+{"Time":"2026-09-27T00:41:46.78219+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestFocusAwareSplitPane_KeybindNamesUseSidebarTerminology","Output":"--- PASS: TestFocusAwareSplitPane_KeybindNamesUseSidebarTerminology (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782193+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestFocusAwareSplitPane_KeybindNamesUseSidebarTerminology","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782196+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestStartupInitialStateFromFlags_ParsesValues"}
+{"Time":"2026-09-27T00:41:46.782198+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStartupInitialStateFromFlags_ParsesValues","Output":"=== RUN   TestStartupInitialStateFromFlags_ParsesValues\n"}
+{"Time":"2026-09-27T00:41:46.7822+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestStartupInitialStateFromFlags_ParsesValues","Output":"--- PASS: TestStartupInitialStateFromFlags_ParsesValues (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782202+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestStartupInitialStateFromFlags_ParsesValues","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782204+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode"}
+{"Time":"2026-09-27T00:41:46.782207+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode","Output":"=== RUN   TestParseDiffLayoutMode\n"}
+{"Time":"2026-09-27T00:41:46.782209+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/unified"}
+{"Time":"2026-09-27T00:41:46.78221+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/unified","Output":"=== RUN   TestParseDiffLayoutMode/unified\n"}
+{"Time":"2026-09-27T00:41:46.782294+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/unified","Output":"--- PASS: TestParseDiffLayoutMode/unified (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782297+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/unified","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782299+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/split"}
+{"Time":"2026-09-27T00:41:46.782303+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/split","Output":"=== RUN   TestParseDiffLayoutMode/split\n"}
+{"Time":"2026-09-27T00:41:46.782305+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/split","Output":"--- PASS: TestParseDiffLayoutMode/split (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782307+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/split","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782309+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/sideBySideAlias"}
+{"Time":"2026-09-27T00:41:46.782311+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/sideBySideAlias","Output":"=== RUN   TestParseDiffLayoutMode/sideBySideAlias\n"}
+{"Time":"2026-09-27T00:41:46.782313+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/sideBySideAlias","Output":"--- PASS: TestParseDiffLayoutMode/sideBySideAlias (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782315+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/sideBySideAlias","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782316+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/invalid"}
+{"Time":"2026-09-27T00:41:46.782318+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/invalid","Output":"=== RUN   TestParseDiffLayoutMode/invalid\n"}
+{"Time":"2026-09-27T00:41:46.78232+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/invalid","Output":"--- PASS: TestParseDiffLayoutMode/invalid (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782322+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode/invalid","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782324+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode","Output":"--- PASS: TestParseDiffLayoutMode (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782326+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseDiffLayoutMode","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782327+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode"}
+{"Time":"2026-09-27T00:41:46.782329+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode","Output":"=== RUN   TestParseIntralineStyleMode\n"}
+{"Time":"2026-09-27T00:41:46.782331+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/background"}
+{"Time":"2026-09-27T00:41:46.782333+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/background","Output":"=== RUN   TestParseIntralineStyleMode/background\n"}
+{"Time":"2026-09-27T00:41:46.782334+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/background","Output":"--- PASS: TestParseIntralineStyleMode/background (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782336+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/background","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782338+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/bgAlias"}
+{"Time":"2026-09-27T00:41:46.78234+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/bgAlias","Output":"=== RUN   TestParseIntralineStyleMode/bgAlias\n"}
+{"Time":"2026-09-27T00:41:46.782342+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/bgAlias","Output":"--- PASS: TestParseIntralineStyleMode/bgAlias (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782344+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/bgAlias","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782345+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/underline"}
+{"Time":"2026-09-27T00:41:46.782347+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/underline","Output":"=== RUN   TestParseIntralineStyleMode/underline\n"}
+{"Time":"2026-09-27T00:41:46.782352+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/underline","Output":"--- PASS: TestParseIntralineStyleMode/underline (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782354+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/underline","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782356+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/off"}
+{"Time":"2026-09-27T00:41:46.782357+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/off","Output":"=== RUN   TestParseIntralineStyleMode/off\n"}
+{"Time":"2026-09-27T00:41:46.782359+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/off","Output":"--- PASS: TestParseIntralineStyleMode/off (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782361+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/off","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782363+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/invalid"}
+{"Time":"2026-09-27T00:41:46.782365+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/invalid","Output":"=== RUN   TestParseIntralineStyleMode/invalid\n"}
+{"Time":"2026-09-27T00:41:46.782366+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/invalid","Output":"--- PASS: TestParseIntralineStyleMode/invalid (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782368+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode/invalid","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.78237+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode","Output":"--- PASS: TestParseIntralineStyleMode (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782372+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseIntralineStyleMode","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782374+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestParseThemeName"}
+{"Time":"2026-09-27T00:41:46.782375+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseThemeName","Output":"=== RUN   TestParseThemeName\n"}
+{"Time":"2026-09-27T00:41:46.782377+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestParseThemeName","Output":"--- PASS: TestParseThemeName (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782379+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestParseThemeName","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782381+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_GutterTintIsDarkerForAddAndRemove"}
+{"Time":"2026-09-27T00:41:46.782383+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_GutterTintIsDarkerForAddAndRemove","Output":"=== RUN   TestThemePalette_GutterTintIsDarkerForAddAndRemove\n"}
+{"Time":"2026-09-27T00:41:46.782385+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_GutterTintIsDarkerForAddAndRemove","Output":"--- PASS: TestThemePalette_GutterTintIsDarkerForAddAndRemove (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782386+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_GutterTintIsDarkerForAddAndRemove","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782388+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineBackgroundAccentsAreStrongerThanBaseLineTint"}
+{"Time":"2026-09-27T00:41:46.78239+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineBackgroundAccentsAreStrongerThanBaseLineTint","Output":"=== RUN   TestThemePalette_IntralineBackgroundAccentsAreStrongerThanBaseLineTint\n"}
+{"Time":"2026-09-27T00:41:46.782393+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineBackgroundAccentsAreStrongerThanBaseLineTint","Output":"--- PASS: TestThemePalette_IntralineBackgroundAccentsAreStrongerThanBaseLineTint (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782395+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineBackgroundAccentsAreStrongerThanBaseLineTint","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782397+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineUnderlineStylesUseSemanticColors"}
+{"Time":"2026-09-27T00:41:46.782399+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineUnderlineStylesUseSemanticColors","Output":"=== RUN   TestThemePalette_IntralineUnderlineStylesUseSemanticColors\n"}
+{"Time":"2026-09-27T00:41:46.782401+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineUnderlineStylesUseSemanticColors","Output":"--- PASS: TestThemePalette_IntralineUnderlineStylesUseSemanticColors (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782403+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineUnderlineStylesUseSemanticColors","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782404+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_KanagawaPartialOverride"}
+{"Time":"2026-09-27T00:41:46.782406+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_KanagawaPartialOverride","Output":"=== RUN   TestThemePalette_SyntaxOverrides_KanagawaPartialOverride\n"}
+{"Time":"2026-09-27T00:41:46.782408+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_KanagawaPartialOverride","Output":"--- PASS: TestThemePalette_SyntaxOverrides_KanagawaPartialOverride (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.78241+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_KanagawaPartialOverride","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782412+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile"}
+{"Time":"2026-09-27T00:41:46.782413+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile\n"}
+{"Time":"2026-09-27T00:41:46.782415+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/catppuccin-latte"}
+{"Time":"2026-09-27T00:41:46.782421+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/catppuccin-latte","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/catppuccin-latte\n"}
+{"Time":"2026-09-27T00:41:46.782433+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/catppuccin-latte","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/catppuccin-latte (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782435+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/catppuccin-latte","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782437+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/dracula-light"}
+{"Time":"2026-09-27T00:41:46.782439+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/dracula-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/dracula-light\n"}
+{"Time":"2026-09-27T00:41:46.782442+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/dracula-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/dracula-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782444+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/dracula-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782445+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/gruvbox-light"}
+{"Time":"2026-09-27T00:41:46.782447+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/gruvbox-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/gruvbox-light\n"}
+{"Time":"2026-09-27T00:41:46.782464+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/gruvbox-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/gruvbox-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782466+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/gruvbox-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782468+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/monokai-light"}
+{"Time":"2026-09-27T00:41:46.78247+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/monokai-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/monokai-light\n"}
+{"Time":"2026-09-27T00:41:46.782489+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/monokai-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/monokai-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782492+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/monokai-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782494+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/nord-light"}
+{"Time":"2026-09-27T00:41:46.782496+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/nord-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/nord-light\n"}
+{"Time":"2026-09-27T00:41:46.782528+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/nord-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/nord-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782534+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/nord-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782549+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/rose-pine-dawn"}
+{"Time":"2026-09-27T00:41:46.782551+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/rose-pine-dawn","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/rose-pine-dawn\n"}
+{"Time":"2026-09-27T00:41:46.782556+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/rose-pine-dawn","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/rose-pine-dawn (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782558+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/rose-pine-dawn","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782561+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/solarized-light"}
+{"Time":"2026-09-27T00:41:46.782562+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/solarized-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/solarized-light\n"}
+{"Time":"2026-09-27T00:41:46.782581+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/solarized-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/solarized-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782584+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/solarized-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782587+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/tokyo-night-day"}
+{"Time":"2026-09-27T00:41:46.782589+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/tokyo-night-day","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/tokyo-night-day\n"}
+{"Time":"2026-09-27T00:41:46.782606+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/tokyo-night-day","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/tokyo-night-day (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.78261+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile/tokyo-night-day","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782613+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782617+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemesUseReadableProfile","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.78262+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile"}
+{"Time":"2026-09-27T00:41:46.782622+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile","Output":"=== RUN   TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile\n"}
+{"Time":"2026-09-27T00:41:46.782644+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile","Output":"--- PASS: TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782647+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DarkThemeStructuralSyntaxUsesSharedProfile","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782649+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles"}
+{"Time":"2026-09-27T00:41:46.78266+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles","Output":"=== RUN   TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles\n"}
+{"Time":"2026-09-27T00:41:46.782671+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles","Output":"--- PASS: TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782674+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_DoNotAffectNonSyntaxRoles","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782676+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor"}
+{"Time":"2026-09-27T00:41:46.782682+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor\n"}
+{"Time":"2026-09-27T00:41:46.782684+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/catppuccin-latte"}
+{"Time":"2026-09-27T00:41:46.782686+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/catppuccin-latte","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/catppuccin-latte\n"}
+{"Time":"2026-09-27T00:41:46.782722+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/catppuccin-latte","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/catppuccin-latte (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782725+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/catppuccin-latte","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782727+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/dracula-light"}
+{"Time":"2026-09-27T00:41:46.782729+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/dracula-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/dracula-light\n"}
+{"Time":"2026-09-27T00:41:46.782764+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/dracula-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/dracula-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782766+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/dracula-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782769+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/gruvbox-light"}
+{"Time":"2026-09-27T00:41:46.78277+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/gruvbox-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/gruvbox-light\n"}
+{"Time":"2026-09-27T00:41:46.782803+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/gruvbox-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/gruvbox-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782805+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/gruvbox-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782807+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/monokai-light"}
+{"Time":"2026-09-27T00:41:46.782809+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/monokai-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/monokai-light\n"}
+{"Time":"2026-09-27T00:41:46.782844+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/monokai-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/monokai-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782848+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/monokai-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782851+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/nord-light"}
+{"Time":"2026-09-27T00:41:46.782854+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/nord-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/nord-light\n"}
+{"Time":"2026-09-27T00:41:46.7829+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/nord-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/nord-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782904+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/nord-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782906+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/rose-pine-dawn"}
+{"Time":"2026-09-27T00:41:46.782908+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/rose-pine-dawn","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/rose-pine-dawn\n"}
+{"Time":"2026-09-27T00:41:46.782943+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/rose-pine-dawn","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/rose-pine-dawn (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782946+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/rose-pine-dawn","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782948+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/solarized-light"}
+{"Time":"2026-09-27T00:41:46.78295+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/solarized-light","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/solarized-light\n"}
+{"Time":"2026-09-27T00:41:46.782983+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/solarized-light","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/solarized-light (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.782986+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/solarized-light","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.782989+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/tokyo-night-day"}
+{"Time":"2026-09-27T00:41:46.78299+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/tokyo-night-day","Output":"=== RUN   TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/tokyo-night-day\n"}
+{"Time":"2026-09-27T00:41:46.78303+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/tokyo-night-day","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/tokyo-night-day (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783043+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor/tokyo-night-day","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783053+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor","Output":"--- PASS: TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783057+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_SyntaxOverrides_LightThemeSyntaxReadabilityFloor","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783062+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineOffHasNoOverlay"}
+{"Time":"2026-09-27T00:41:46.783065+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineOffHasNoOverlay","Output":"=== RUN   TestThemePalette_IntralineOffHasNoOverlay\n"}
+{"Time":"2026-09-27T00:41:46.783068+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineOffHasNoOverlay","Output":"--- PASS: TestThemePalette_IntralineOffHasNoOverlay (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783071+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestThemePalette_IntralineOffHasNoOverlay","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783074+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_BuildsHierarchyAndAggregatesStats"}
+{"Time":"2026-09-27T00:41:46.783076+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_BuildsHierarchyAndAggregatesStats","Output":"=== RUN   TestBuildDiffTree_BuildsHierarchyAndAggregatesStats\n"}
+{"Time":"2026-09-27T00:41:46.783079+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_BuildsHierarchyAndAggregatesStats","Output":"--- PASS: TestBuildDiffTree_BuildsHierarchyAndAggregatesStats (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783081+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_BuildsHierarchyAndAggregatesStats","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783084+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_SortsDirectoriesBeforeFilesInEachFolder"}
+{"Time":"2026-09-27T00:41:46.783086+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_SortsDirectoriesBeforeFilesInEachFolder","Output":"=== RUN   TestBuildDiffTree_SortsDirectoriesBeforeFilesInEachFolder\n"}
+{"Time":"2026-09-27T00:41:46.783089+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_SortsDirectoriesBeforeFilesInEachFolder","Output":"--- PASS: TestBuildDiffTree_SortsDirectoriesBeforeFilesInEachFolder (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783096+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestBuildDiffTree_SortsDirectoriesBeforeFilesInEachFolder","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783099+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestFileTreePreservesUnusualNames"}
+{"Time":"2026-09-27T00:41:46.783101+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestFileTreePreservesUnusualNames","Output":"=== RUN   TestFileTreePreservesUnusualNames\n"}
+{"Time":"2026-09-27T00:41:46.783105+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestFileTreePreservesUnusualNames","Output":"--- PASS: TestFileTreePreservesUnusualNames (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783107+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestFileTreePreservesUnusualNames","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.78311+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_PathFitsUnchanged"}
+{"Time":"2026-09-27T00:41:46.783112+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_PathFitsUnchanged","Output":"=== RUN   TestCompactPathMiddle_PathFitsUnchanged\n"}
+{"Time":"2026-09-27T00:41:46.783115+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_PathFitsUnchanged","Output":"--- PASS: TestCompactPathMiddle_PathFitsUnchanged (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783117+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_PathFitsUnchanged","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.78312+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_DeepPathPreservesFilenameTail"}
+{"Time":"2026-09-27T00:41:46.783122+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_DeepPathPreservesFilenameTail","Output":"=== RUN   TestCompactPathMiddle_DeepPathPreservesFilenameTail\n"}
+{"Time":"2026-09-27T00:41:46.783124+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_DeepPathPreservesFilenameTail","Output":"--- PASS: TestCompactPathMiddle_DeepPathPreservesFilenameTail (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783126+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_DeepPathPreservesFilenameTail","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783128+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_VeryLongFilenameUsesTail"}
+{"Time":"2026-09-27T00:41:46.78313+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_VeryLongFilenameUsesTail","Output":"=== RUN   TestCompactPathMiddle_VeryLongFilenameUsesTail\n"}
+{"Time":"2026-09-27T00:41:46.783133+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_VeryLongFilenameUsesTail","Output":"--- PASS: TestCompactPathMiddle_VeryLongFilenameUsesTail (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783135+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_VeryLongFilenameUsesTail","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783137+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_EdgeWidths"}
+{"Time":"2026-09-27T00:41:46.783139+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_EdgeWidths","Output":"=== RUN   TestCompactPathMiddle_EdgeWidths\n"}
+{"Time":"2026-09-27T00:41:46.783142+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_EdgeWidths","Output":"--- PASS: TestCompactPathMiddle_EdgeWidths (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783144+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_EdgeWidths","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783147+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_WindowsPathSeparators"}
+{"Time":"2026-09-27T00:41:46.783277+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_WindowsPathSeparators","Output":"=== RUN   TestCompactPathMiddle_WindowsPathSeparators\n"}
+{"Time":"2026-09-27T00:41:46.783281+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_WindowsPathSeparators","Output":"--- PASS: TestCompactPathMiddle_WindowsPathSeparators (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783284+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddle_WindowsPathSeparators","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783286+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestViewerPathText_BuildReturnsWrapper"}
+{"Time":"2026-09-27T00:41:46.783288+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestViewerPathText_BuildReturnsWrapper","Output":"=== RUN   TestViewerPathText_BuildReturnsWrapper\n"}
+{"Time":"2026-09-27T00:41:46.783291+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestViewerPathText_BuildReturnsWrapper","Output":"--- PASS: TestViewerPathText_BuildReturnsWrapper (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783293+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestViewerPathText_BuildReturnsWrapper","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783296+01:00","Action":"run","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddleSpans_StylesInsertedEllipsis"}
+{"Time":"2026-09-27T00:41:46.783298+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddleSpans_StylesInsertedEllipsis","Output":"=== RUN   TestCompactPathMiddleSpans_StylesInsertedEllipsis\n"}
+{"Time":"2026-09-27T00:41:46.7833+01:00","Action":"output","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddleSpans_StylesInsertedEllipsis","Output":"--- PASS: TestCompactPathMiddleSpans_StylesInsertedEllipsis (0.00s)\n"}
+{"Time":"2026-09-27T00:41:46.783303+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Test":"TestCompactPathMiddleSpans_StylesInsertedEllipsis","Elapsed":0}
+{"Time":"2026-09-27T00:41:46.783306+01:00","Action":"output","Package":"github.com/darrenburns/aside","Output":"PASS\n"}
+{"Time":"2026-09-27T00:41:46.78447+01:00","Action":"output","Package":"github.com/darrenburns/aside","Output":"ok  \tgithub.com/darrenburns/aside\t2.280s\n"}
+{"Time":"2026-09-27T00:41:46.805533+01:00","Action":"pass","Package":"github.com/darrenburns/aside","Elapsed":2.302}

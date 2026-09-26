@@ -1,0 +1,20 @@
+{
+  "date": "2026-09-27",
+  "platform": "macOS arm64",
+  "passedCasesIncludingSubtests": 192,
+  "failedCases": [],
+  "snapshots": [
+    "TestSnapshotAsideCommandPalette",
+    "TestSnapshotAsideSeenFiles",
+    "TestSnapshotAsideDraftNarrow",
+    "TestSnapshotAsideUnified",
+    "TestSnapshotAsideSplitFinding",
+    "TestSnapshotAsideComposer",
+    "TestSnapshotAsideOutdatedNarrow",
+    "TestSnapshotAsideEmpty",
+    "TestSnapshotAsideInlineReply"
+  ],
+  "race": "passed",
+  "vet": "passed, no diagnostics",
+  "build": "macOS arm64 built and exercised through browser PTY"
+}

@@ -20,15 +20,19 @@ const (
 )
 
 type startupConfig struct {
+	Sidebar        *bool   `yaml:"sidebar"`
+	ShowSymbols    *bool   `yaml:"show-symbols"`
+	Wrap           *bool   `yaml:"wrap"`
 	View           *string `yaml:"view"`
 	Theme          *string `yaml:"theme"`
 	IntralineStyle *string `yaml:"intraline-style"`
 }
 
 type startupFlagValues struct {
-	ViewMode       string
-	ThemeName      string
-	IntralineStyle string
+	SidebarVisible, ShowSymbols, Wrap bool
+	ViewMode                          string
+	ThemeName                         string
+	IntralineStyle                    string
 }
 
 type resolvedConfigPath struct {
@@ -113,6 +117,15 @@ func validateStartupConfig(path string, cfg startupConfig) error {
 }
 
 func applyStartupConfig(values startupFlagValues, cfg startupConfig, explicitlySet map[string]bool) startupFlagValues {
+	if cfg.Sidebar != nil && !explicitlySet["sidebar"] {
+		values.SidebarVisible = *cfg.Sidebar
+	}
+	if cfg.ShowSymbols != nil && !explicitlySet["show-symbols"] {
+		values.ShowSymbols = *cfg.ShowSymbols
+	}
+	if cfg.Wrap != nil && !explicitlySet["wrap"] {
+		values.Wrap = *cfg.Wrap
+	}
 	if cfg.View != nil && !explicitlySet[flagNameView] {
 		values.ViewMode = *cfg.View
 	}

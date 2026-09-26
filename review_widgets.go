@@ -128,7 +128,7 @@ func (a *Aside) buildReviewContent() t.Widget {
 			continue
 		}
 		state := section.Code
-		children = append(children, DiffView{ID: fmt.Sprintf("%s-%d", viewerID, i), State: state, Embedded: true, OnSelectionStart: func() { a.selectCode(state) }, LayoutMode: a.mode.Get(), HardWrap: true, IntralineStyle: a.intra, Width: t.Flex(1), Height: t.Auto})
+		children = append(children, DiffView{ID: fmt.Sprintf("%s-%d", viewerID, i), State: state, Embedded: true, OnSelectionStart: func() { a.selectCode(state) }, LayoutMode: a.mode.Get(), HardWrap: a.hardWrap.Get(), HideChangeSigns: a.hideSigns.Get(), IntralineStyle: a.intra, Width: t.Flex(1), Height: t.Auto})
 	}
 	return reviewContent{Column: t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto}, Children: children}, app: a}
 }
@@ -217,18 +217,19 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 		resolveLabel = "Reopen"
 	}
 	actions := []t.Widget{
-		t.Button{ID: "reply-" + thread.ID, Label: "Reply", OnPress: reply, Click: func(t.MouseEvent) { reply() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}},
-		t.Button{ID: "resolve-" + thread.ID, Label: resolveLabel, OnPress: resolve, Click: func(t.MouseEvent) { resolve() }, Style: t.Style{ForegroundColor: theme.TextMuted, BackgroundColor: theme.Surface}},
+		shortcutButton{Button: t.Button{ID: "reply-" + thread.ID, Label: "Reply", OnPress: reply, Click: func(t.MouseEvent) { reply() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "e", Key: "e"},
+		shortcutButton{Button: t.Button{ID: "resolve-" + thread.ID, Label: resolveLabel, OnPress: resolve, Click: func(t.MouseEvent) { resolve() }, Style: t.Style{ForegroundColor: theme.TextMuted, BackgroundColor: theme.Surface}}, Shortcut: "x", Key: "x"},
 	}
-	if !thread.Submitted {
-		actions = append(actions, t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}})
-	}
+
 	if c.app.editing.Get() && c.app.replying && c.app.activeThread == thread.ID {
 		children = append(children, t.Spacer{Height: t.Cells(1)}, inlineComposer{app: c.app})
 	} else {
 		children = append(children, t.Spacer{Height: t.Cells(1)}, t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: actions})
+		if !thread.Submitted {
+			children = append(children, t.Spacer{Height: t.Cells(1)}, shortcutButton{Button: t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "f", Key: "f"})
+		}
 	}
-	return t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1)}, Children: []t.Widget{t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children}}}
+	return hatchedFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children})
 }
 
 // inlineComposer is shared by new code comments and replies within a thread.
@@ -250,21 +251,38 @@ func (c inlineComposer) Build(ctx t.BuildContext) t.Widget {
 		t.Text{Content: label, Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: theme.Primary}},
 		t.Spacer{Height: t.Cells(1)},
 		t.TextArea{ID: editorID, State: a.editor, Style: t.Style{Width: t.Flex(1), Height: t.Cells(4), Padding: t.EdgeInsetsXY(1, 0), BackgroundColor: theme.Background, Border: t.RoundedBorder(theme.Border)}, Placeholder: "Write feedback…", ExtraKeybinds: []t.Keybind{
-			{Key: "ctrl+s", Name: saveLabel, Action: a.saveComment},
-			{Key: "escape", Name: "Cancel", Action: a.cancelComment},
+			{Key: "ctrl+s", Name: saveLabel, Hidden: true, Action: a.saveComment},
+			{Key: "escape", Name: "Cancel", Hidden: true, Action: a.cancelComment},
 		}},
 		t.Spacer{Height: t.Cells(1)},
 		t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: []t.Widget{
-			t.Button{ID: "aside-save-comment", Label: saveLabel, OnPress: a.saveComment, Click: func(t.MouseEvent) { a.saveComment() }, Variant: t.ButtonPrimary},
-			t.Button{ID: "aside-cancel-comment", Label: "Cancel", OnPress: a.cancelComment, Click: func(t.MouseEvent) { a.cancelComment() }},
+			shortcutButton{Button: t.Button{ID: "aside-save-comment", Label: saveLabel, OnPress: a.saveComment, Click: func(t.MouseEvent) { a.saveComment() }, Variant: t.ButtonPrimary}, Shortcut: "Ctrl+S", Key: "ctrl+s"},
+			shortcutButton{Button: t.Button{ID: "aside-cancel-comment", Label: "Cancel", OnPress: a.cancelComment, Click: func(t.MouseEvent) { a.cancelComment() }}, Shortcut: "Esc", Key: "escape"},
 		}},
-		t.Text{Content: "Ctrl+S save · Esc cancel", Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), ForegroundColor: theme.TextMuted}},
 	}}
 	var child t.Widget = content
 	if c.standalone {
-		child = t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1)}, Children: []t.Widget{
-			t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), BackgroundColor: theme.Surface, Border: t.RoundedBorder(theme.Primary)}, Children: []t.Widget{content}},
-		}}
+		child = hatchedFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), BackgroundColor: theme.Surface, Border: t.RoundedBorder(theme.Primary)}, Children: []t.Widget{content}})
 	}
 	return t.FocusTrap{ID: "aside-compose-trap", Active: true, Child: child}
+}
+
+func (c inlineComposer) Keybinds() []t.Keybind {
+	return []t.Keybind{
+		{Key: "ctrl+s", Hidden: true, Action: c.app.saveComment},
+		{Key: "escape", Hidden: true, Action: c.app.cancelComment},
+	}
+}
+
+// When focus is anywhere in a thread's action area, shortcuts belong to that
+// thread. During composition, plain letters must remain text input.
+func (c reviewCard) Keybinds() []t.Keybind {
+	if c.app.editing.Get() {
+		return nil
+	}
+	activate := func(action func()) func() { return func() { c.app.activeThread = c.thread.ID; action() } }
+	return []t.Keybind{
+		{Key: "e", Hidden: true, Action: activate(c.app.beginReply)},
+		{Key: "x", Hidden: true, Action: activate(c.app.toggleResolved)},
+	}
 }

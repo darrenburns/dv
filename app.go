@@ -18,9 +18,12 @@ const (
 )
 
 type AsideInitialState struct {
-	LayoutMode     DiffLayoutMode
-	ThemeName      string
-	IntralineStyle IntralineStyleMode
+	LayoutMode      DiffLayoutMode
+	ThemeName       string
+	IntralineStyle  IntralineStyleMode
+	HideSidebar     bool
+	NoWrap          bool
+	HideChangeSigns bool
 }
 
 func DefaultAsideInitialState() AsideInitialState {
@@ -48,38 +51,56 @@ const (
 )
 
 type Aside struct {
-	diffRatio     t.Signal[float64]
-	store         ReviewStore
-	review        *Review
-	tree          *t.TreeState[DiffTreeNodeData]
-	treeScroll    *t.ScrollState
-	scroll        *t.ScrollState
-	view          *DiffViewState
-	split         *t.SplitPaneState
-	editor        *t.TextAreaState
-	filter        *t.TextInputState
-	version       t.Signal[int]
-	mode          t.Signal[DiffLayoutMode]
-	status        t.Signal[string]
-	editing       t.Signal[bool]
-	filtering     t.Signal[bool]
-	allFiles      t.Signal[bool]
-	files         map[string]*DiffFile
-	paths         []string
-	treePaths     map[string][]int
-	active        string
-	activeThread  string
-	pending       ReviewAnchor
-	replying      bool
-	intra         IntralineStyleMode
-	copyFeedback  func(string) error
-	sections      []reviewSection
-	threadBounds  map[string]t.Rect
-	pendingScroll string
+	palette            *t.CommandPaletteState
+	themeBeforePreview string
+	hardWrap           t.Signal[bool]
+	hideSigns          t.Signal[bool]
+	sidebarVisible     t.Signal[bool]
+	dividerActive      t.Signal[bool]
+	dividerHovered     t.Signal[bool]
+	positions          map[browsePositionKey]browsePosition
+	seen               map[string]string
+	diffRatio          t.Signal[float64]
+	store              ReviewStore
+	review             *Review
+	tree               *t.TreeState[DiffTreeNodeData]
+	treeScroll         *t.ScrollState
+	scroll             *t.ScrollState
+	view               *DiffViewState
+	split              *t.SplitPaneState
+	editor             *t.TextAreaState
+	filter             *t.TextInputState
+	version            t.Signal[int]
+	mode               t.Signal[DiffLayoutMode]
+	status             t.Signal[string]
+	editing            t.Signal[bool]
+	filtering          t.Signal[bool]
+	allFiles           t.Signal[bool]
+	files              map[string]*DiffFile
+	paths              []string
+	treePaths          map[string][]int
+	active             string
+	activeThread       string
+	pending            ReviewAnchor
+	replying           bool
+	intra              IntralineStyleMode
+	copyFeedback       func(string) error
+	sections           []reviewSection
+	threadBounds       map[string]t.Rect
+	pendingScroll      string
 }
 
 func NewAside(store ReviewStore, r *Review, initial AsideInitialState) *Aside {
 	a := &Aside{store: store, review: r, tree: t.NewTreeState[DiffTreeNodeData](nil), treeScroll: t.NewScrollState(), scroll: t.NewScrollState(), view: NewDiffViewState(nil), split: t.NewSplitPaneState(.25), editor: t.NewTextAreaState(""), filter: t.NewTextInputState(""), version: t.NewSignal(0), mode: t.NewSignal(initial.LayoutMode), status: t.NewSignal("Select code, then c to comment"), editing: t.NewSignal(false), filtering: t.NewSignal(false), allFiles: t.NewSignal(false), intra: initial.IntralineStyle, copyFeedback: copyToClipboard, diffRatio: t.NewSignal(.5)}
+
+	a.hardWrap = t.NewSignal(!initial.NoWrap)
+	a.hideSigns = t.NewSignal(initial.HideChangeSigns)
+	a.sidebarVisible = t.NewSignal(!initial.HideSidebar)
+	a.dividerActive, a.dividerHovered = t.NewSignal(false), t.NewSignal(false)
+	a.positions, a.seen = map[browsePositionKey]browsePosition{}, map[string]string{}
+	a.palette = t.NewCommandPaletteState("Commands", nil)
+	a.scroll.OnScrollLeft = func(n int) bool { return a.scrollHorizontal(-n) }
+	a.scroll.OnScrollRight = a.scrollHorizontal
 	a.rebuildFiles()
 	return a
 }
@@ -127,7 +148,7 @@ func (a *Aside) rebuildFiles() {
 	var files []*DiffFile
 	query := strings.ToLower(a.filter.GetText())
 	for path, file := range a.files {
-		if query == "" || strings.Contains(strings.ToLower(path), query) {
+		if query == "" || t.MatchString(path, query, t.FilterOptions{Mode: t.FilterFuzzy}).Matched {
 			files = append(files, file)
 		}
 	}
@@ -183,12 +204,14 @@ func (a *Aside) selectFile(path string) {
 	if path == a.active {
 		return
 	}
+	a.rememberPosition()
 	a.active = path
 	a.activeThread = ""
 	if p, ok := a.treePaths[path]; ok {
 		a.tree.CursorPath.Set(p)
 	}
 	a.renderActive(false)
+	a.restorePosition(0)
 	a.version.Update(func(v int) int { return v + 1 })
 }
 func (a *Aside) nextFile(delta int) {
@@ -205,80 +228,25 @@ func (a *Aside) nextFile(delta int) {
 	a.selectFile(a.paths[(i+delta+len(a.paths))%len(a.paths)])
 }
 func (a *Aside) Keybinds() []t.Keybind {
-	if a.editing.Get() || a.filtering.Get() {
+	if a.editing.Get() || a.filtering.Get() || a.palette.Visible.Get() {
 		return nil
 	}
-	return []t.Keybind{
+	return append(a.browseKeybinds(), []t.Keybind{
 		{Key: "q", Name: "Quit", Action: t.Quit},
-		{Key: "escape", Name: "Clear selection", Hidden: true, Action: a.clearSelection},
+		{Key: "escape", Name: "Clear selection", Hidden: true, Action: a.escape},
 		{Key: "c", Name: "Comment", Action: a.beginComment},
 		{Key: "f", Name: "Copy feedback", Action: a.exportFeedback},
 		{Key: "r", Name: "Refresh", Action: a.refresh},
-		{Key: "v", Name: "Split/unified", Action: func() {
-			a.mode.Update(func(v DiffLayoutMode) DiffLayoutMode {
-				if v == DiffLayoutUnified {
-					return DiffLayoutSideBySide
-				}
-				return DiffLayoutUnified
-			})
-			a.renderActive(false)
-			a.version.Update(func(v int) int { return v + 1 })
-		}},
+		{Key: "v", Name: "Split/unified", Hidden: true, Action: a.toggleLayout},
 		{Key: "n", Name: "Next file", Hidden: true, Action: func() { a.nextFile(1) }},
 		{Key: "p", Name: "Previous file", Hidden: true, Action: func() { a.nextFile(-1) }},
-		{Key: "/", Name: "Filter", Action: func() { a.filtering.Set(true); t.RequestFocus(filterID) }},
-		{Key: "a", Name: "All/changed files", Hidden: true, Action: func() {
-			a.allFiles.Update(func(v bool) bool { return !v })
-			a.rebuildFiles()
-			a.version.Update(func(v int) int { return v + 1 })
-		}},
+		{Key: "/", Name: "Filter", Action: a.openFilter},
+		{Key: "a", Name: "All/changed files", Hidden: true, Action: a.toggleAllFiles},
 		{Key: "]", Name: "Next comment", Hidden: true, Action: func() { a.nextThread(1) }},
 		{Key: "[", Name: "Previous comment", Hidden: true, Action: func() { a.nextThread(-1) }},
 		{Key: "e", Name: "Reply", Hidden: true, Action: a.beginReply},
 		{Key: "x", Name: "Resolve/reopen", Hidden: true, Action: a.toggleResolved},
-	}
-}
-func (a *Aside) Build(ctx t.BuildContext) t.Widget {
-	_ = a.version.Get()
-	theme := ctx.Theme()
-	fileTree := t.Tree[DiffTreeNodeData]{ID: filesTreeID, State: a.tree, ScrollState: a.treeScroll, NodeID: func(n DiffTreeNodeData) string { return n.NodeKey }, HasChildren: func(n DiffTreeNodeData) bool { return n.IsDir }, OnCursorChange: func(n DiffTreeNodeData) {
-		if !n.IsDir {
-			a.selectFile(n.Path)
-		}
-	}, Style: t.Style{Width: t.Flex(1)}, RenderNode: func(n DiffTreeNodeData, c t.TreeNodeContext) t.Widget {
-		style := t.Style{Width: t.Flex(1), ForegroundColor: theme.Text}
-		if c.Active {
-			style.BackgroundColor = theme.ActiveCursor
-			style.ForegroundColor = theme.SelectionText
-		}
-		label := singleLine(n.Name)
-		if n.IsDir {
-			label += "/"
-		} else if n.Additions+n.Deletions > 0 {
-			label += fmt.Sprintf("  +%d −%d", n.Additions, n.Deletions)
-		}
-		return t.Text{Content: label, Style: style}
-	}}
-	fileMode := "CHANGED FILES"
-	if a.allFiles.Get() {
-		fileMode = "ALL FILES"
-	}
-	leftTop := []t.Widget{t.Text{Content: fmt.Sprintf(" %s · %d", fileMode, len(a.paths)), Style: t.Style{ForegroundColor: theme.TextMuted, BackgroundColor: theme.Surface}}}
-	if a.filtering.Get() {
-		leftTop = append(leftTop, t.TextInput{ID: filterID, State: a.filter, Placeholder: "Filter files…", Width: t.Flex(1), OnChange: func(string) { a.rebuildFiles(); a.version.Update(func(v int) int { return v + 1 }) }, ExtraKeybinds: []t.Keybind{{Key: "escape", Name: "Clear filter", Action: func() {
-			a.filter.SetText("")
-			a.filtering.Set(false)
-			a.rebuildFiles()
-			a.version.Update(func(v int) int { return v + 1 })
-			t.RequestFocus(filesTreeID)
-		}}, {Key: "enter", Name: "Browse", Action: func() { a.filtering.Set(false); t.RequestFocus(filesTreeID) }}}})
-	}
-	left := t.Dock{Top: leftTop, Body: t.Scrollable{ID: "aside-tree-scroll", State: a.treeScroll, Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Child: fileTree}}
-	right := t.Dock{Top: []t.Widget{t.Text{Content: " " + singleLine(a.active), Style: t.Style{ForegroundColor: theme.Text, BackgroundColor: theme.Surface}}}, Body: t.Scrollable{ID: viewerScrollID, State: a.scroll, Focusable: true, Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Child: a.buildReviewContent()}}
-	bottom := []t.Widget{}
-
-	bottom = append(bottom, t.Text{Content: " " + safeText(a.status.Get()), Style: t.Style{ForegroundColor: theme.Accent}}, t.KeybindBar{})
-	return t.Dock{Style: t.Style{Width: t.Flex(1), Height: t.Flex(1), BackgroundColor: theme.Background}, Top: []t.Widget{t.Row{Style: t.Style{BackgroundColor: theme.Surface}, Children: []t.Widget{t.Text{Content: " ASIDE ", Style: t.Style{Bold: true, ForegroundColor: theme.Primary}}, t.Text{Content: safeText(a.review.Title), Style: t.Style{ForegroundColor: theme.TextMuted}}, t.Spacer{Width: t.Flex(1)}, t.Text{Content: fmt.Sprintf("%d comments ", len(a.review.Threads)), Style: t.Style{ForegroundColor: theme.Secondary}}}}}, Bottom: bottom, Body: FocusAwareSplitPane{SplitPane: t.SplitPane{ID: "aside-split", State: a.split, DisableFocus: true, Orientation: t.SplitHorizontal, MinPaneSize: 12, DividerSize: 1, DividerForeground: theme.Surface, First: left, Second: right, Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}}}}
+	}...)
 }
 func (a *Aside) selectionAnchor() (ReviewAnchor, error) {
 	track, start, end, ok := a.view.normalizedSelection()
@@ -421,7 +389,7 @@ func (a *Aside) nextThread(delta int) {
 	a.activeThread = thread.ID
 	a.renderActive(false)
 	a.version.Update(func(v int) int { return v + 1 })
-	a.status.Set(fmt.Sprintf("Comment %d/%d · e reply · x resolve/reopen", i+1, len(a.review.Threads)))
+	a.status.Set(fmt.Sprintf("Comment %d/%d", i+1, len(a.review.Threads)))
 	a.scrollToThread(thread.ID)
 }
 func (a *Aside) scrollToThread(id string) {

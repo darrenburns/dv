@@ -47,6 +47,9 @@ func run(args []string, in io.Reader, out, errOut io.Writer) error {
 	base := flags.String("base", "", "compare the merge-base of this ref with --head")
 	head := flags.String("head", "HEAD", "head ref for --base")
 	pr := flags.String("pr", "", "load a PR number or URL using gh (no checkout)")
+	sidebar := flags.Bool("sidebar", true, "show the file sidebar")
+	symbols := flags.Bool("show-symbols", true, "show +/- change signs")
+	wrap := flags.Bool("wrap", true, "wrap long code lines")
 	view := flags.String("view", "unified", "unified or split")
 	intraline := flags.String("intraline-style", "background", "background, underline, or off")
 	theme := flags.String("theme", t.ThemeNameObsidianTide, "theme name")
@@ -55,7 +58,7 @@ func run(args []string, in io.Reader, out, errOut io.Writer) error {
 	all := flags.Bool("all-files", false, "show all tracked and unignored files")
 	showVersion := flags.Bool("version", false, "print version")
 	flags.Usage = func() {
-		fmt.Fprintln(errOut, "Aside — a read-only diff browser with inline review feedback.\n\nUsage: aside [options]\n       aside review <open|list|read|publish|feedback|reply|status> [options]\n       aside mcp [--repo path]\n\nKeys: c comment on selection, f submit/copy feedback, [/] comments, e reply,\n      x resolve, v layout, / filter, a all/changed files, r refresh, q quit.")
+		fmt.Fprintln(errOut, "Aside — a read-only diff browser with inline review feedback.\n\nUsage: aside [options]\n       aside review <open|list|read|publish|feedback|reply|status> [options]\n       aside mcp [--repo path]\n\nKeys: ctrl+p commands, t themes, c comment, f submit/copy feedback, [/] comments,\n      e reply, x resolve, v layout, w wrap, b sidebar, i intraline, y copy code/path,\n      m seen, M clear seen, / filter, a all/changed files, r refresh, q quit.")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -77,11 +80,12 @@ func run(args []string, in io.Reader, out, errOut io.Writer) error {
 	}
 	explicit := map[string]bool{}
 	flags.Visit(func(f *flag.Flag) { explicit[f.Name] = true })
-	values := applyStartupConfig(startupFlagValues{ViewMode: *view, ThemeName: *theme, IntralineStyle: *intraline}, cfg, explicit)
+	values := applyStartupConfig(startupFlagValues{ViewMode: *view, ThemeName: *theme, IntralineStyle: *intraline, SidebarVisible: *sidebar, ShowSymbols: *symbols, Wrap: *wrap}, cfg, explicit)
 	initial, err := startupInitialStateFromFlags(values.ViewMode, values.ThemeName, values.IntralineStyle)
 	if err != nil {
 		return err
 	}
+	initial.HideSidebar, initial.HideChangeSigns, initial.NoWrap = !values.SidebarVisible, !values.ShowSymbols, !values.Wrap
 	var review *Review
 	if *reviewID != "" {
 		review, err = store.Read(*reviewID)

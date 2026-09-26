@@ -1,5 +1,7 @@
 # Aside verification report
 
+For the 27 September UI changes and restored dvdev conveniences, see [the follow-up report](polish-verification.md).
+
 Verified on **26 September 2026**, on macOS arm64. This implementation lives on branch `aside`, based on dv's committed `dvdev` state at `a6932e9`, with sibling Terma `ad4d7cd`. The existing dv checkout and its uncommitted changes were preserved.
 
 ## Result

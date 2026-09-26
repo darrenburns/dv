@@ -213,3 +213,16 @@ func writeTestConfig(t *testing.T, path string, content string) {
 	require.NoError(t, os.MkdirAll(filepath.Dir(path), 0o755))
 	require.NoError(t, os.WriteFile(path, []byte(content), 0o644))
 }
+
+func TestBrowsingAppearanceConfigAndOverrides(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "appearance.yaml")
+	writeTestConfig(t, path, "sidebar: false\nshow-symbols: false\nwrap: false\n")
+	cfg, err := readStartupConfig(path, true)
+	require.NoError(t, err)
+	values := startupFlagValues{SidebarVisible: true, ShowSymbols: true, Wrap: true}
+	merged := applyStartupConfig(values, cfg, nil)
+	require.False(t, merged.SidebarVisible)
+	require.False(t, merged.ShowSymbols)
+	require.False(t, merged.Wrap)
+	require.Equal(t, values, applyStartupConfig(values, cfg, map[string]bool{"sidebar": true, "show-symbols": true, "wrap": true}))
+}

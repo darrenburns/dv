@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-27",
+  "replySavedThroughBrowser": "Please cover empty and whitespace-only names in the regression test.",
+  "replyMessageCountAfterCancel": 2,
+  "checks": [
+    "mouse Reply opened editor inside the hatched card",
+    "Ctrl+S persisted the reply through the displayed shortcut",
+    "unsaved second reply cancelled without changing stored messages",
+    "mark seen displayed 1/4 seen and 25%",
+    "command palette filtered to Theme and line wrap",
+    "Catppuccin Latte preview applied; Escape restored Obsidian Tide",
+    "sidebar hide and restore",
+    "unified/split switching",
+    "long-file scroll position restored after next/previous file",
+    "wrapping off and horizontal scrolling; wrapping restored",
+    "80-column reply keeps Send/Cancel visible; e and x remain literal text in the editor"
+  ]
+}

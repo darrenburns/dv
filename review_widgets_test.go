@@ -110,3 +110,30 @@ func TestAsideSelectCodeAfterCommentCard(tt *testing.T) {
 		})
 	}
 }
+
+func TestThreadShortcutsFollowFocusedCard(tt *testing.T) {
+	a := appFixture(tt)
+	r, err := a.store.Publish(a.review.ID, "agent", []AnnotationInput{annotation(a.review, "first"), annotation(a.review, "second")}, true)
+	require.NoError(tt, err)
+	a.apply(r)
+	a.activeThread = r.Threads[0].ID
+	card := reviewCard{app: a, thread: r.Threads[1]}
+	for _, key := range card.Keybinds() {
+		if key.Key == "e" {
+			key.Action()
+			break
+		}
+	}
+	require.Equal(tt, r.Threads[1].ID, a.activeThread)
+	require.True(tt, a.editing.Peek())
+	require.Empty(tt, card.Keybinds())
+	a.cancelComment()
+	for _, key := range card.Keybinds() {
+		if key.Key == "x" {
+			key.Action()
+			break
+		}
+	}
+	require.Equal(tt, "open", a.review.Threads[0].Status)
+	require.Equal(tt, "resolved", a.review.Threads[1].Status)
+}

@@ -26,6 +26,25 @@ PRs require an authenticated `gh`. Aside captures the diff without checking out 
 
 The sidebar defaults to changed files; `a` includes all tracked and unignored working-tree files. Unchanged files show “No text changes”. PR and branch reviews list their changed files. `/` filters paths; Enter keeps the filter and Escape clears it. `n`/`p` visit visible files. `v` switches unified/split views. Drag the sidebar divider to resize it. `r` captures current working changes; saved branch/PR views stay pinned. Reopen the same source to capture a newer branch/PR snapshot.
 
+## Browsing controls
+
+`Ctrl+P` opens the searchable command palette. `t` opens the theme picker with live previews; Escape cancels the preview and Enter accepts it. The palette also exposes the viewing controls and review actions.
+
+| Key | Action |
+| --- | --- |
+| `b` / `d` | Toggle the sidebar / resize its divider with the keyboard |
+| `w` | Toggle line wrapping; left/right scroll horizontally when the diff has focus |
+| `v` / `Ctrl+H` / `Ctrl+L` | Toggle unified/split view / shift the split left or right |
+| `i` | Cycle intraline highlighting: background, underline, off |
+| `y` | Copy selected code, or the active file path when no text is selected |
+| `m` / `M` | Mark a file seen / clear seen marks |
+| `n` / `p` or `Ctrl+J` / `Ctrl+K` | Next / previous file |
+| `J` / `K` | Scroll ten lines down / up |
+
+The sidebar shows coloured change totals and seen-file progress. Seen marks and per-file scroll positions last for the current session. A file's seen mark stops applying when its captured content changes. Scroll positions are remembered separately for unified/split and wrapped/unwrapped views. File filtering is fuzzy and highlights matching filename characters; Escape clears a retained filter.
+
+See the [dvdev comparison and polish verification](docs/polish-verification.md) for what was restored and what still differs.
+
 ## Inline feedback
 
 1. Click or drag across code, then press `c`. The editor opens immediately below the selected lines. In split view, select the old or new side. A selection spanning a unified replacement is rejected as ambiguous.
@@ -63,7 +82,7 @@ See [the agent skill](skills/aside-review/SKILL.md) for command examples and the
 
 Reviews use the XDG data directory under `aside/reviews` (on macOS, usually `~/Library/Application Support/aside/reviews`). `ASIDE_DATA_DIR` overrides this location. The UI, CLI, and MCP process must use the same data directory. Review JSON is written atomically under an advisory lock; invalid batches and corrupt files are not overwritten. Draft privacy applies to the agent interfaces, not to another program with access to your account's files.
 
-Configuration lives in the XDG config directory under `aside/config.yaml`. Supported keys are `view`, `theme`, and `intraline-style`. Flags override configuration. Use `--no-config` for repeatable tests. Run `./aside --help` for options.
+Configuration lives in the XDG config directory under `aside/config.yaml`. Supported keys are `view`, `theme`, `intraline-style`, `sidebar`, `show-symbols`, and `wrap`. The corresponding flags override these values. Use `--no-config` for repeatable tests. Run `./aside --help` for options.
 
 ## Verification
 
