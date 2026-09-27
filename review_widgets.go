@@ -189,13 +189,16 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 	if thread.Kind == "explanation" {
 		kind = "Explanation"
 	}
+	rangeLabel := fmt.Sprintf("· %s %d", strings.ToUpper(a.Side), a.Start)
+	if a.End != a.Start {
+		rangeLabel += fmt.Sprintf("–%d", a.End)
+	}
 	children := []t.Widget{
 		t.Row{Spacing: 1, Style: t.Style{Width: t.Flex(1)}, Children: []t.Widget{
 			t.Text{Content: kind, Style: t.Style{Bold: true, ForegroundColor: theme.Text}},
-			t.Spacer{Width: t.Flex(1)},
+			t.Text{ID: "anchor-" + thread.ID, Content: rangeLabel, Wrap: t.WrapSoft, Click: func(t.MouseEvent) { c.app.focusComment(thread.ID) }, Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: border}},
 			t.Text{Content: " " + status + " ", Style: t.Style{Bold: true, ForegroundColor: color, BackgroundColor: theme.Background}},
 		}},
-		t.Text{ID: "anchor-" + thread.ID, Content: fmt.Sprintf("%s · %s lines %d–%d", singleLine(a.Path), strings.ToUpper(a.Side), a.Start, a.End), Wrap: t.WrapSoft, Click: func(t.MouseEvent) { c.app.focusComment(thread.ID) }, Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: border}},
 	}
 	if a.Snapshot != c.app.review.Current {
 		children = append(children,
@@ -203,10 +206,8 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 			t.Text{Content: safeText(a.Quote), Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), Padding: t.EdgeInsetsXY(1, 0), BackgroundColor: theme.Background, ForegroundColor: theme.TextMuted}},
 		)
 	}
-	for i, message := range thread.Messages {
-		if i > 0 {
-			children = append(children, t.Spacer{Height: t.Cells(1)})
-		}
+	for _, message := range thread.Messages {
+		children = append(children, t.Spacer{Height: t.Cells(1)})
 		children = append(children,
 			t.Text{Content: safeText(message.Author), Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: theme.Secondary}},
 			t.Text{Content: safeText(message.Body), Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), ForegroundColor: theme.Text}},
@@ -238,7 +239,7 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 	if c.app.editing.Get() && c.app.replying && c.app.activeThread == thread.ID {
 		children = append(children, t.Spacer{Height: t.Cells(1)}, inlineComposer{app: c.app})
 	} else {
-		children = append(children, t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: actions})
+		children = append(children, t.Spacer{Height: t.Cells(1)}, t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: actions})
 		if !thread.Submitted {
 			children = append(children, shortcutButton{Button: t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "f", Key: "f"})
 		}

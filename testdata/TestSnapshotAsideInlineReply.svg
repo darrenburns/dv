@@ -1436,6 +1436,9 @@
   <text x="251.6" y="223.6" fill="#5CC8FF">│</text>
   <text x="268.4" y="223.6" class="bold" fill="#F5F5F6">Review</text>
   <text x="327.2" y="223.6" class="bold" fill="#F5F5F6">finding</text>
+  <text x="394.4" y="223.6" class="bold" fill="#5CC8FF">·</text>
+  <text x="411.2" y="223.6" class="bold" fill="#5CC8FF">NEW</text>
+  <text x="444.8" y="223.6" class="bold" fill="#5CC8FF">4–5</text>
   <text x="864.8" y="223.6" class="bold" fill="#7AC7FF">OPEN</text>
   <text x="915.2" y="223.6" fill="#5CC8FF">│</text>
   <text x="923.6" y="223.6" fill="#1B3142">╱</text>
@@ -1552,11 +1555,6 @@
   <text x="234.8" y="243.2" fill="#3F4F62">│</text>
   <text x="243.2" y="243.2" fill="#222C3A">╱</text>
   <text x="251.6" y="243.2" fill="#5CC8FF">│</text>
-  <text x="268.4" y="243.2" class="bold" fill="#5CC8FF">main.go</text>
-  <text x="335.6" y="243.2" class="bold" fill="#5CC8FF">·</text>
-  <text x="352.4" y="243.2" class="bold" fill="#5CC8FF">NEW</text>
-  <text x="386.0" y="243.2" class="bold" fill="#5CC8FF">lines</text>
-  <text x="436.4" y="243.2" class="bold" fill="#5CC8FF">4–5</text>
   <text x="915.2" y="243.2" fill="#5CC8FF">│</text>
   <text x="923.6" y="243.2" fill="#1B3142">╱</text>
   <rect x="8.0" y="262.8" width="8.4" height="19.6" fill="#0B111A"/>
