@@ -117,6 +117,7 @@ func (c reviewContent) OnLayout(_ t.BuildContext, metrics t.LayoutMetrics) {
 	}
 }
 func (a *Aside) buildReviewContent() t.Widget {
+	ranges := a.commentRanges()
 	children := make([]t.Widget, 0, len(a.sections))
 	for i, section := range a.sections {
 		if section.Composer {
@@ -124,11 +125,11 @@ func (a *Aside) buildReviewContent() t.Widget {
 			continue
 		}
 		if section.Thread != nil {
-			children = append(children, reviewCard{app: a, thread: *section.Thread})
+			children = append(children, reviewCard{app: a, thread: *section.Thread, connected: i > 0 && a.sectionEndsAt(a.sections[i-1], section.Thread.Anchor)})
 			continue
 		}
 		state := section.Code
-		children = append(children, DiffView{ID: fmt.Sprintf("%s-%d", viewerID, i), State: state, Embedded: true, OnSelectionStart: func() { a.selectCode(state) }, LayoutMode: a.mode.Get(), HardWrap: a.hardWrap.Get(), HideChangeSigns: a.hideSigns.Get(), IntralineStyle: a.intra, Width: t.Flex(1), Height: t.Auto})
+		children = append(children, DiffView{ID: fmt.Sprintf("%s-%d", viewerID, i), State: state, CommentRanges: ranges, Embedded: true, OnSelectionStart: func() { a.selectCode(state) }, LayoutMode: a.mode.Get(), HardWrap: a.hardWrap.Get(), HideChangeSigns: a.hideSigns.Get(), IntralineStyle: a.intra, Width: t.Flex(1), Height: t.Auto})
 	}
 	return reviewContent{Column: t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto}, Children: children}, app: a}
 }
@@ -149,8 +150,9 @@ func (a *Aside) clearSelection() {
 }
 
 type reviewCard struct {
-	app    *Aside
-	thread ReviewThread
+	app       *Aside
+	thread    ReviewThread
+	connected bool
 }
 
 func (c reviewCard) WidgetID() string { return "thread-" + c.thread.ID }
@@ -166,10 +168,8 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 		status = "DRAFT"
 		color = theme.Warning
 	}
-	border := theme.Border
-	if c.app.activeThread == thread.ID {
-		border = theme.Primary
-	}
+	focused := c.app.activeThread == thread.ID
+	border := commentAnchorColor(theme, focused)
 	kind := "Feedback"
 	if thread.Kind == "finding" {
 		kind = "Review finding"
@@ -183,7 +183,7 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 			t.Spacer{Width: t.Flex(1)},
 			t.Text{Content: " " + status + " ", Style: t.Style{Bold: true, ForegroundColor: color, BackgroundColor: theme.Background}},
 		}},
-		t.Text{Content: fmt.Sprintf("%s · %s lines %d–%d", singleLine(a.Path), a.Side, a.Start, a.End), Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), ForegroundColor: theme.TextMuted}},
+		t.Text{ID: "anchor-" + thread.ID, Content: fmt.Sprintf("%s · %s lines %d–%d", singleLine(a.Path), strings.ToUpper(a.Side), a.Start, a.End), Wrap: t.WrapSoft, Click: func(t.MouseEvent) { c.app.focusComment(thread.ID) }, Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: border}},
 	}
 	if a.Snapshot != c.app.review.Current {
 		children = append(children,
@@ -229,7 +229,7 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 			children = append(children, t.Spacer{Height: t.Cells(1)}, shortcutButton{Button: t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "f", Key: "f"})
 		}
 	}
-	return hatchedFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children})
+	return c.app.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children}, a, focused, c.connected)
 }
 
 // inlineComposer is shared by new code comments and replies within a thread.
@@ -262,7 +262,7 @@ func (c inlineComposer) Build(ctx t.BuildContext) t.Widget {
 	}}
 	var child t.Widget = content
 	if c.standalone {
-		child = hatchedFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), BackgroundColor: theme.Surface, Border: t.RoundedBorder(theme.Primary)}, Children: []t.Widget{content}})
+		child = a.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), BackgroundColor: theme.Surface, Border: t.RoundedBorder(theme.Primary)}, Children: []t.Widget{content}}, a.pending, true, true)
 	}
 	return t.FocusTrap{ID: "aside-compose-trap", Active: true, Child: child}
 }

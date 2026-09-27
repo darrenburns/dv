@@ -13,6 +13,8 @@ import (
 
 // DiffView is a purpose-built diff renderer with fixed gutter and scroll support.
 type DiffView struct {
+	CommentRanges    []DiffCommentRange
+	commentTheme     t.ThemeData
 	Embedded         bool // The parent owns scrolling and positions this code section.
 	OnSelectionStart func()
 	ID               string
@@ -33,6 +35,7 @@ const selectionAutoScrollInset = 1
 
 func (d DiffView) Build(ctx t.BuildContext) t.Widget {
 	d.Palette = NewThemePalette(ctx.Theme())
+	d.commentTheme = ctx.Theme()
 	return d
 }
 
@@ -1029,6 +1032,16 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 			bg := lineStyle.BackgroundColor.ColorAt(ctx.Width, 1, 0, 0)
 			ctx.FillRect(0, row, ctx.Width, 1, bg)
 		}
+		for _, side := range []string{"old", "new"} {
+			number := line.NewLine
+			if side == "old" {
+				number = line.OldLine
+			}
+			if bg, ok := d.commentLineBackground(side, number, line.Kind); ok {
+				ctx.FillRect(0, row, ctx.Width, 1, bg)
+				break
+			}
+		}
 		if gutterStyle, ok := d.Palette.GutterStyleForKind(line.Kind); ok && gutterStyle.BackgroundColor != nil && gutterStyle.BackgroundColor.IsSet() {
 			gutterBg := gutterStyle.BackgroundColor.ColorAt(gutterWidth, 1, 0, 0)
 			gutterCols := gutterWidth
@@ -1046,6 +1059,8 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 			gutterLine.Prefix = " "
 		}
 		d.renderGutterLine(ctx, rendered, row, gutterLine)
+		d.renderCommentGutter(ctx, row, 0, rendered.OldNumWidth, "old", line.OldLine, continuation)
+		d.renderCommentGutter(ctx, row, rendered.OldNumWidth+1, rendered.NewNumWidth, "new", line.NewLine, continuation)
 		d.renderContentLine(ctx, row, lineIdx, gutterWidth, line, contentScrollX)
 	}
 }
@@ -1323,6 +1338,12 @@ func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, rowIdx int, pane
 		}
 	}
 
+	if cell != nil {
+		if bg, ok := d.commentLineBackground(sideName(isLeft), cell.LineNumber, cell.Kind); ok {
+			ctx.FillRect(paneX, row, paneWidth, 1, bg)
+		}
+	}
+
 	gutterCols := gutterWidth
 	if gutterCols > paneWidth {
 		gutterCols = paneWidth
@@ -1348,6 +1369,8 @@ func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, rowIdx int, pane
 		cellRows = wrappedSideCellRowCount(cell, visibleWidth)
 	}
 	if wrapRow >= cellRows {
+		// Keep the range rail continuous through padding beneath a shorter pane.
+		d.renderCommentGutter(ctx, row, paneX, numWidth, sideName(isLeft), cell.LineNumber, true)
 		return
 	}
 
@@ -1382,6 +1405,7 @@ func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, rowIdx int, pane
 		}
 	}
 
+	d.renderCommentGutter(ctx, row, paneX, numWidth, sideName(isLeft), cell.LineNumber, continuation)
 	contentScrollX := scrollX
 	if d.HardWrap {
 		contentScrollX = wrapRow * visibleWidth

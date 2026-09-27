@@ -21,10 +21,10 @@ func (v viewerEmptySpaceHatch) Render(ctx *t.RenderContext) {
 		}
 	}
 }
-func hatchedFrame(theme t.ThemeData, card t.Widget) t.Widget {
+func hatchedFrame(theme t.ThemeData, card t.Widget, lead t.Widget) t.Widget {
 	return t.Stack{Style: t.Style{Width: t.Flex(1), Height: t.Auto}, Children: []t.Widget{
 		t.PositionedFill(viewerEmptySpaceHatch{Style: t.Style{BackgroundColor: theme.Background}, Foreground: t.NewGradient(theme.Background.Blend(theme.TextDisabled, .28), theme.Background.Blend(theme.Primary, .18)).WithAngle(45)}),
-		t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1)}, Children: []t.Widget{card}},
+		t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto}, Children: []t.Widget{lead, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 0)}, Children: []t.Widget{card}}, t.Spacer{Height: t.Cells(1)}}},
 	}}
 }
 

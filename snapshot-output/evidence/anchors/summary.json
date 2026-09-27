@@ -1,0 +1,31 @@
+{
+  "test_cases_passed": 202,
+  "failures": [],
+  "snapshot_tests_passed": [
+    "TestSnapshotAsideCommandPalette",
+    "TestSnapshotAsideSeenFiles",
+    "TestSnapshotAsideDraftNarrow",
+    "TestSnapshotAsideUnified",
+    "TestSnapshotAsideSplitFinding",
+    "TestSnapshotAsideComposer",
+    "TestSnapshotAsideOutdatedNarrow",
+    "TestSnapshotAsideEmpty",
+    "TestSnapshotAsideSplitOldAnchor",
+    "TestSnapshotAsideSplitAnchorReplyNarrow",
+    "TestSnapshotAsideOverlappingAnchors",
+    "TestSnapshotAsideInlineReply"
+  ],
+  "vet": "passed (no diagnostics)",
+  "visual_inspection": "All 8 changed/new goldens rendered with rsvg-convert and inspected",
+  "browser_checks": [
+    "New-side range 6\u20137: gutter marks, highlighted code, right-side connector",
+    "Old-side range 3\u20134: marks/highlight only on old side, left-side connector",
+    "Clicked range label: Highlighted OLD lines 3\u20134 displayed",
+    "Reply editor open with typed draft at narrow width; exact range still visible",
+    "Escape cancels reply; incoming second comment appears afterward",
+    "Ctrl+L shifts split divider and right-side connector together",
+    "Unified layout keeps the old-number gutter marked",
+    "Stacked comment at the same endpoint does not draw a misleading connector from the previous card"
+  ],
+  "cleanup": "Temporary tabs closed; both launchers stopped; viewport override reset"
+}
