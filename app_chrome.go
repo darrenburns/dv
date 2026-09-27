@@ -9,10 +9,10 @@ func (a *Aside) Build(ctx t.BuildContext) t.Widget {
 	_ = a.version.Get()
 	theme := ctx.Theme()
 	content := a.buildReviewContent()
-	right := t.Dock{Top: []t.Widget{a.viewerTitle(theme)}, Body: t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Children: []t.Widget{
+	right := t.Dock{Top: []t.Widget{a.viewerTitle(theme)}, Body: reviewViewport{Column: t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Children: []t.Widget{
 		t.Scrollable{ID: viewerScrollID, State: a.scroll, Focusable: true, Style: t.Style{Width: t.Flex(1), Height: t.Auto, MaxHeight: t.Percent(100)}, Child: content},
 		viewerEmptySpaceHatch{Style: t.Style{Width: t.Flex(1), Height: t.Flex(1), BackgroundColor: theme.Background}, Foreground: t.NewGradient(theme.Background, theme.PrimaryBg).WithAngle(0)},
-	}}}
+	}}, app: a}}
 	var body t.Widget = right
 	if a.sidebarVisible.Get() {
 		divider := theme.TextDisabled
@@ -32,11 +32,7 @@ func (a *Aside) Build(ctx t.BuildContext) t.Widget {
 			First:                  a.buildSidebar(ctx, theme), Second: right, Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)},
 		}, AllowFocus: a.dividerActive.Get(), EnableKeybinds: dividerFocused}
 	}
-	footer := []t.Widget{t.Text{Content: " " + safeText(a.status.Get()), Style: t.Style{ForegroundColor: theme.Accent}}}
-	// Composers carry their shortcuts in buttons. Avoid a duplicate key legend.
-	if !a.editing.Get() {
-		footer = append(footer, t.Row{Children: []t.Widget{t.Spacer{Width: t.Flex(1)}, t.KeybindBar{}, t.Spacer{Width: t.Flex(1)}}})
-	}
+	footer := []t.Widget{asideStatusBar{app: a}}
 	return t.Stack{Style: t.Style{Width: t.Flex(1), Height: t.Flex(1), BackgroundColor: theme.Background}, Children: []t.Widget{
 		t.Dock{Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Top: []t.Widget{a.buildHeader(theme)}, Bottom: footer, Body: body},
 		t.CommandPalette{ID: paletteID, State: a.palette, Position: t.FloatPositionTopCenter, Offset: t.Offset{Y: 1}, BackdropColor: t.Black.WithAlpha(.05), OnCursorChange: a.previewTheme, OnDismiss: a.dismissPalette},

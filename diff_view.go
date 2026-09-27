@@ -1000,6 +1000,14 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 		return
 	}
 
+	oldNumbers, newNumbers := make([]int, len(rendered.Lines)), make([]int, len(rendered.Lines))
+	for i, line := range rendered.Lines {
+		oldNumbers[i], newNumbers[i] = line.OldLine, line.NewLine
+		if line.OldLine == 0 && line.NewLine == 0 {
+			oldNumbers[i], newNumbers[i] = -1, -1
+		}
+	}
+	oldGaps, newGaps := d.commentGapRails("old", oldNumbers), d.commentGapRails("new", newNumbers)
 	wrapWidth := max(1, ctx.Width-gutterWidth)
 	for row := visibleStart; row < visibleEnd; row++ {
 		contentRow := row
@@ -1059,8 +1067,13 @@ func (d DiffView) Render(ctx *t.RenderContext) {
 			gutterLine.Prefix = " "
 		}
 		d.renderGutterLine(ctx, rendered, row, gutterLine)
-		d.renderCommentGutter(ctx, row, 0, rendered.OldNumWidth, "old", line.OldLine, continuation)
-		d.renderCommentGutter(ctx, row, rendered.OldNumWidth+1, rendered.NewNumWidth, "new", line.NewLine, continuation)
+		d.renderUnifiedCommentGutter(ctx, rendered, row, line, continuation)
+		if mark, ok := oldGaps[lineIdx]; ok {
+			d.renderGapRail(ctx, row, rendered.OldNumWidth, mark)
+		}
+		if mark, ok := newGaps[lineIdx]; ok {
+			d.renderGapRail(ctx, row, rendered.OldNumWidth+1+rendered.NewNumWidth, mark)
+		}
 		d.renderContentLine(ctx, row, lineIdx, gutterWidth, line, contentScrollX)
 	}
 }
@@ -1071,6 +1084,20 @@ func (d DiffView) renderSideBySide(ctx *t.RenderContext, sideBySide *SideBySideR
 	}
 
 	panes := sideBySidePaneLayout(ctx.Width, sideBySide, d.HideChangeSigns, d.sideBySideSplitRatio())
+	oldNumbers, newNumbers := make([]int, len(sideBySide.Rows)), make([]int, len(sideBySide.Rows))
+	for i, row := range sideBySide.Rows {
+		if row.Shared != nil {
+			oldNumbers[i], newNumbers[i] = -1, -1
+			continue
+		}
+		if row.Left != nil {
+			oldNumbers[i] = row.Left.LineNumber
+		}
+		if row.Right != nil {
+			newNumbers[i] = row.Right.LineNumber
+		}
+	}
+	oldGaps, newGaps := d.commentGapRails("old", oldNumbers), d.commentGapRails("new", newNumbers)
 	for row := visibleStart; row < visibleEnd; row++ {
 		contentRow := row
 		if d.VerticalScroll == nil {
@@ -1097,6 +1124,12 @@ func (d DiffView) renderSideBySide(ctx *t.RenderContext, sideBySide *SideBySideR
 		}
 
 		d.renderSidePairedRow(ctx, row, rowIdx, panes, sideBySide, line, wrapRow, scrollX)
+		if mark, ok := oldGaps[rowIdx]; ok {
+			d.renderGapRail(ctx, row, panes.LeftPaneX+sideNumWidthForPane(true, sideBySide), mark)
+		}
+		if mark, ok := newGaps[rowIdx]; ok {
+			d.renderGapRail(ctx, row, panes.RightPaneX+sideNumWidthForPane(false, sideBySide), mark)
+		}
 	}
 
 	if d.State != nil && d.State.SideDividerOverlayVisible() {
@@ -1370,7 +1403,7 @@ func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, rowIdx int, pane
 	}
 	if wrapRow >= cellRows {
 		// Keep the range rail continuous through padding beneath a shorter pane.
-		d.renderCommentGutter(ctx, row, paneX, numWidth, sideName(isLeft), cell.LineNumber, true)
+		d.renderSideCommentGutter(ctx, row, paneX, numWidth, gutterCols, sideName(isLeft), cell, true)
 		return
 	}
 
@@ -1405,7 +1438,7 @@ func (d DiffView) renderSideCell(ctx *t.RenderContext, row int, rowIdx int, pane
 		}
 	}
 
-	d.renderCommentGutter(ctx, row, paneX, numWidth, sideName(isLeft), cell.LineNumber, continuation)
+	d.renderSideCommentGutter(ctx, row, paneX, numWidth, gutterCols, sideName(isLeft), cell, continuation)
 	contentScrollX := scrollX
 	if d.HardWrap {
 		contentScrollX = wrapRow * visibleWidth

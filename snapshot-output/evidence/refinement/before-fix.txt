@@ -1,0 +1,67 @@
+--- FAIL: TestFocusedCommentCoversWholeGutter (0.05s)
+    --- FAIL: TestFocusedCommentCoversWholeGutter/unified (0.03s)
+        review_refinement_test.go:53: 
+            	Error Trace:	/Users/darrenburns/code/aside/review_refinement_test.go:53
+            	Error:      	Not equal: 
+            	            	expected: ansi.RGBColor{R:0x11, G:0x2b, B:0x2b}
+            	            	actual  : ansi.RGBColor{R:0x22, G:0x44, B:0x5a}
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1,5 +1,5 @@
+            	            	 (ansi.RGBColor) {
+            	            	- R: (uint8) 17,
+            	            	- G: (uint8) 43,
+            	            	- B: (uint8) 43
+            	            	+ R: (uint8) 34,
+            	            	+ G: (uint8) 68,
+            	            	+ B: (uint8) 90
+            	            	 }
+            	Test:       	TestFocusedCommentCoversWholeGutter/unified
+            	Messages:   	gap in highlighted gutter at 2
+    --- FAIL: TestFocusedCommentCoversWholeGutter/split (0.01s)
+        review_refinement_test.go:53: 
+            	Error Trace:	/Users/darrenburns/code/aside/review_refinement_test.go:53
+            	Error:      	Not equal: 
+            	            	expected: ansi.RGBColor{R:0x22, G:0x44, B:0x5a}
+            	            	actual  : ansi.RGBColor{R:0x11, G:0x2b, B:0x2b}
+            	            	
+            	            	Diff:
+            	            	--- Expected
+            	            	+++ Actual
+            	            	@@ -1,5 +1,5 @@
+            	            	 (ansi.RGBColor) {
+            	            	- R: (uint8) 34,
+            	            	- G: (uint8) 68,
+            	            	- B: (uint8) 90
+            	            	+ R: (uint8) 17,
+            	            	+ G: (uint8) 43,
+            	            	+ B: (uint8) 43
+            	            	 }
+            	Test:       	TestFocusedCommentCoversWholeGutter/split
+            	Messages:   	gap in highlighted gutter at 52
+--- FAIL: TestOldCommentRailCrossesInsertedRows (0.03s)
+    review_refinement_test.go:84: 
+        	Error Trace:	/Users/darrenburns/code/aside/review_refinement_test.go:84
+        	Error:      	Not equal: 
+        	            	expected: "│"
+        	            	actual  : "╱"
+        	            	
+        	            	Diff:
+        	            	--- Expected
+        	            	+++ Actual
+        	            	@@ -1 +1 @@
+        	            	-│
+        	            	+╱
+        	Test:       	TestOldCommentRailCrossesInsertedRows
+        	Messages:   	the inserted row must not sever the old-side range bracket
+--- FAIL: TestNextSameRangeCommentKeepsCodeAndThreadVisible (0.03s)
+    review_refinement_test.go:111: 
+        	Error Trace:	/Users/darrenburns/code/aside/review_refinement_test.go:111
+        	Error:      	"  ASIDE  Greeting review                                                    2 comments Unified [Rose Pine  t] \n Changes · 1         +2 −1 │ main.go                                                               +2 −1  1/1 \n  main.go            +2 −1 │╱╱│                                                                           │╱╱ \n                           │╱╱│  agent                                                                    │╱╱ \n                           │╱╱│  First review finding.                                                    │╱╱ \n                           │╱╱│                                                                           │╱╱ \n                           │╱╱│  [Reply  e]  [Resolve  x]                                                 │╱╱ \n                           │╱╱│                                                                           │╱╱ \n                           │╱╱╰───────────────────────────────────────────────────────────────────────────╯╱╱ \n                           │╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱▂\n                           │╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱█\n                           │╱╱╭───────────────────────────────────────────────────────────────────────────╮╱╱█\n                           │╱╱│                                                                           │╱╱█\n                           │╱╱│  Review finding                                                    OPEN   │╱╱█\n                           │╱╱│  main.go · NEW lines 4–5                                                  │╱╱█\n                           │╱╱│                                                                           │╱╱█\n                           │╱╱│  agent                                                                    │╱╱█\n                           │╱╱│  Second review finding.                                                   │╱╱█\n                           │╱╱│                                                                           │╱╱█\n                           │╱╱│  [Reply  e]  [Resolve  x]                                                 │╱╱█\n                           │╱╱│                                                                           │╱╱█\n                           │╱╱╰───────────────────────────────────────────────────────────────────────────╯╱╱█\n                           │╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱╱█\n                           │5 6   }                                                                          █\n                                                                                                              \n Comment 2/2                                                                                                  \n" does not contain "// Welcome everyone."
+        	Test:       	TestNextSameRangeCommentKeepsCodeAndThreadVisible
+        	Messages:   	navigating to the next comment must retain its code when both fit
+FAIL
+FAIL	github.com/darrenburns/aside	0.589s
+FAIL

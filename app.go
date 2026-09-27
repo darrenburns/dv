@@ -87,7 +87,12 @@ type Aside struct {
 	copyFeedback       func(string) error
 	sections           []reviewSection
 	threadBounds       map[string]t.Rect
+	codeBounds         map[*DiffViewState]t.Rect
 	pendingScroll      string
+
+	reviewViewportWidth  int
+	reviewViewportHeight int
+	reviewContentHeight  int
 }
 
 func NewAside(store ReviewStore, r *Review, initial AsideInitialState) *Aside {
@@ -347,7 +352,11 @@ func (a *Aside) saveComment() {
 		return
 	}
 	a.editing.Set(false)
+	if !a.replying && len(r.Threads) > 0 {
+		a.activeThread = r.Threads[len(r.Threads)-1].ID
+	}
 	a.apply(r)
+	a.scrollToThread(a.activeThread)
 	if a.replying {
 		a.status.Set("Reply saved to thread")
 	} else {
@@ -386,26 +395,20 @@ func (a *Aside) nextThread(delta int) {
 		a.rebuildFiles()
 	}
 	a.selectFile(thread.Anchor.Path)
-	a.activeThread = thread.ID
-	a.renderActive(false)
-	a.version.Update(func(v int) int { return v + 1 })
-	a.status.Set(fmt.Sprintf("Comment %d/%d", i+1, len(a.review.Threads)))
-	a.scrollToThread(thread.ID)
+	a.focusComment(thread.ID)
 }
 func (a *Aside) scrollToThread(id string) {
+	// Resolve after layout; card promotion and editor growth invalidate old bounds.
 	a.pendingScroll = id
-	if bounds, ok := a.threadBounds[id]; ok {
-		a.scroll.Offset.Set(max(0, bounds.Y-2))
-		a.pendingScroll = ""
-	}
 }
+
 func (a *Aside) setSections(unified *RenderedFile, split *SideBySideRenderedFile) {
 	a.clearSelection()
 	var pending *ReviewAnchor
 	if a.editing.Peek() && !a.replying {
 		pending = &a.pending
 	}
-	a.sections = reviewSections(unified, split, a.review, a.active, a.mode.Peek(), pending)
+	a.sections = reviewSections(unified, split, a.review, a.active, a.mode.Peek(), pending, a.activeThread)
 	a.threadBounds = nil
 	for _, section := range a.sections {
 		if section.Code != nil {
@@ -431,6 +434,7 @@ func (a *Aside) beginReply() {
 			a.replying = true
 			a.editor.SetText("")
 			a.editing.Set(true)
+			a.renderActive(true)
 			a.pendingScroll = thread.ID
 			a.version.Update(func(v int) int { return v + 1 })
 			t.RequestFocus(editorID)

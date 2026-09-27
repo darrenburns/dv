@@ -15,7 +15,7 @@ type reviewSection struct {
 	Composer bool
 }
 
-func reviewSections(unified *RenderedFile, split *SideBySideRenderedFile, review *Review, path string, mode DiffLayoutMode, pending *ReviewAnchor) []reviewSection {
+func reviewSections(unified *RenderedFile, split *SideBySideRenderedFile, review *Review, path string, mode DiffLayoutMode, pending *ReviewAnchor, activeThread string) []reviewSection {
 	count := len(unified.Lines)
 	if mode == DiffLayoutSideBySide {
 		count = len(split.Rows)
@@ -59,6 +59,23 @@ func reviewSections(unified *RenderedFile, split *SideBySideRenderedFile, review
 		position := positionFor(thread.Anchor)
 		after[position] = append(after[position], reviewSection{Thread: thread})
 	}
+	// Promote within the same source position, without changing store order.
+	// The new-comment editor keeps precedence while it owns focus.
+	for position, group := range after {
+		first := 0
+		if len(group) > 0 && group[0].Composer {
+			first = 1
+		}
+		for i := first; i < len(group); i++ {
+			if group[i].Thread != nil && group[i].Thread.ID == activeThread {
+				selected := group[i]
+				copy(group[first+1:i+1], group[first:i])
+				group[first] = selected
+				break
+			}
+		}
+		after[position] = group
+	}
 	sections := []reviewSection{}
 	start := 0
 	for end := 1; end <= count; end++ {
@@ -90,31 +107,26 @@ type reviewContent struct {
 func (c reviewContent) Build(t.BuildContext) t.Widget { return c }
 func (c reviewContent) ChildWidgets() []t.Widget      { return c.Children }
 func (c reviewContent) OnLayout(_ t.BuildContext, metrics t.LayoutMetrics) {
-	c.app.threadBounds = map[string]t.Rect{}
-	for i, section := range c.app.sections {
+	a := c.app
+	a.threadBounds = map[string]t.Rect{}
+	a.codeBounds = map[*DiffViewState]t.Rect{}
+	a.reviewContentHeight = metrics.Box().ContentHeight()
+	for i, section := range a.sections {
+		bounds, ok := metrics.ChildBounds(i)
+		if !ok {
+			continue
+		}
 		if section.Composer {
-			if bounds, ok := metrics.ChildBounds(i); ok {
-				c.app.threadBounds[editorID] = bounds
-			}
+			a.threadBounds[editorID] = bounds
 		}
 		if section.Thread != nil {
-			if bounds, ok := metrics.ChildBounds(i); ok {
-				c.app.threadBounds[section.Thread.ID] = bounds
-			}
+			a.threadBounds[section.Thread.ID] = bounds
+		}
+		if section.Code != nil {
+			a.codeBounds[section.Code] = bounds
 		}
 	}
-	if id := c.app.pendingScroll; id != "" {
-		if bounds, ok := c.app.threadBounds[id]; ok {
-			if c.app.editing.Peek() && c.app.replying && id == c.app.activeThread {
-				// The editor is the last child of the thread. Bring that end into view,
-				// retaining the latest message above it even for long conversations.
-				c.app.scroll.Offset.Set(max(0, bounds.Y+bounds.Height-18))
-			} else {
-				c.app.scroll.Offset.Set(max(0, bounds.Y-2))
-			}
-			c.app.pendingScroll = ""
-		}
-	}
+	a.revealPendingComment()
 }
 func (a *Aside) buildReviewContent() t.Widget {
 	ranges := a.commentRanges()
@@ -191,9 +203,11 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 			t.Text{Content: safeText(a.Quote), Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), Padding: t.EdgeInsetsXY(1, 0), BackgroundColor: theme.Background, ForegroundColor: theme.TextMuted}},
 		)
 	}
-	for _, message := range thread.Messages {
+	for i, message := range thread.Messages {
+		if i > 0 {
+			children = append(children, t.Spacer{Height: t.Cells(1)})
+		}
 		children = append(children,
-			t.Spacer{Height: t.Cells(1)},
 			t.Text{Content: safeText(message.Author), Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: theme.Secondary}},
 			t.Text{Content: safeText(message.Body), Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), ForegroundColor: theme.Text}},
 		)
@@ -224,12 +238,12 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 	if c.app.editing.Get() && c.app.replying && c.app.activeThread == thread.ID {
 		children = append(children, t.Spacer{Height: t.Cells(1)}, inlineComposer{app: c.app})
 	} else {
-		children = append(children, t.Spacer{Height: t.Cells(1)}, t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: actions})
+		children = append(children, t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: actions})
 		if !thread.Submitted {
-			children = append(children, t.Spacer{Height: t.Cells(1)}, shortcutButton{Button: t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "f", Key: "f"})
+			children = append(children, shortcutButton{Button: t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "f", Key: "f"})
 		}
 	}
-	return c.app.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children}, a, focused, c.connected)
+	return c.app.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(1, 0), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children}, a, focused, c.connected)
 }
 
 // inlineComposer is shared by new code comments and replies within a thread.
@@ -249,12 +263,10 @@ func (c inlineComposer) Build(ctx t.BuildContext) t.Widget {
 	}
 	content := t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto}, Children: []t.Widget{
 		t.Text{Content: label, Wrap: t.WrapSoft, Style: t.Style{Width: t.Flex(1), Bold: true, ForegroundColor: theme.Primary}},
-		t.Spacer{Height: t.Cells(1)},
 		t.TextArea{ID: editorID, State: a.editor, Style: t.Style{Width: t.Flex(1), Height: t.Cells(4), Padding: t.EdgeInsetsXY(1, 0), BackgroundColor: theme.Background, Border: t.RoundedBorder(theme.Border)}, Placeholder: "Write feedback…", ExtraKeybinds: []t.Keybind{
 			{Key: "ctrl+s", Name: saveLabel, Hidden: true, Action: a.saveComment},
 			{Key: "escape", Name: "Cancel", Hidden: true, Action: a.cancelComment},
 		}},
-		t.Spacer{Height: t.Cells(1)},
 		t.Row{Spacing: 2, Style: t.Style{Width: t.Flex(1)}, Children: []t.Widget{
 			shortcutButton{Button: t.Button{ID: "aside-save-comment", Label: saveLabel, OnPress: a.saveComment, Click: func(t.MouseEvent) { a.saveComment() }, Variant: t.ButtonPrimary}, Shortcut: "Ctrl+S", Key: "ctrl+s"},
 			shortcutButton{Button: t.Button{ID: "aside-cancel-comment", Label: "Cancel", OnPress: a.cancelComment, Click: func(t.MouseEvent) { a.cancelComment() }}, Shortcut: "Esc", Key: "escape"},
@@ -262,7 +274,7 @@ func (c inlineComposer) Build(ctx t.BuildContext) t.Widget {
 	}}
 	var child t.Widget = content
 	if c.standalone {
-		child = a.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(2, 1), BackgroundColor: theme.Surface, Border: t.RoundedBorder(theme.Primary)}, Children: []t.Widget{content}}, a.pending, true, true)
+		child = a.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(1, 0), BackgroundColor: theme.Surface, Border: t.RoundedBorder(theme.Primary)}, Children: []t.Widget{content}}, a.pending, true, true)
 	}
 	return t.FocusTrap{ID: "aside-compose-trap", Active: true, Child: child}
 }

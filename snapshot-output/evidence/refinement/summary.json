@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-27",
+  "branch": "aside",
+  "platform": "macOS arm64",
+  "passed_test_cases_including_subtests": 215,
+  "passed_top_level_tests": 173,
+  "snapshots_passed_and_visually_inspected": 14,
+  "race": "passed",
+  "vet": "passed",
+  "manual_checks": [
+    "Selected NEW 6\u20137: solid full-width gutter, softer source tint, matching card.",
+    "Navigated to OLD 3\u20134: active card moved directly below source; rail crossed the inserted-row gap.",
+    "At 80 columns \u00d7 32 rows, clicked the other range label: corresponding card was promoted and scrolled into view with its code.",
+    "Previous/next navigation wrapped across three comments and two files in stable store order.",
+    "Typed and saved a reply via Ctrl+S; exact text confirmed in isolated store.",
+    "At 80 columns \u00d7 32 rows, typed an old-side reply with code, card, editor and buttons visible.",
+    "Escape cancelled the narrow reply; exact unsaved text absent from store.",
+    "Mouse wheel moved the review viewport; comment navigation restored source context."
+  ],
+  "notes": [
+    "Used a copied review store; the user\u2019s Ghostty fixture review data was not edited.",
+    "Browser viewport override briefly produced unreliable sizing/input targeting; reset it and completed checks in fresh tabs, using launcher cols/rows for narrow testing.",
+    "Browser PTY exercised the native Aside executable; Ghostty itself was not automated.",
+    "For oversized conversations, navigation shows the code tail and comment start; replying prioritises the editor."
+  ]
+}

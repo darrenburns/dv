@@ -71,26 +71,128 @@ func (d DiffView) commentLineBackground(side string, number int, kind RenderedLi
 	}
 	return bg.Blend(d.commentTheme.Primary, .16), true
 }
+func commentGutterStyle(theme t.ThemeData, focused bool) t.Style {
+	bg := theme.Background.Blend(theme.Primary, .12)
+	fg := commentAnchorColor(theme, false)
+	if focused {
+		bg = theme.Primary
+		// A solid gutter makes selection distinct from syntax and diff colours.
+		fg = t.Black
+		if t.BrightWhite.ContrastRatio(bg) > fg.ContrastRatio(bg) {
+			fg = t.BrightWhite
+		}
+	}
+	return t.Style{ForegroundColor: fg, BackgroundColor: bg, Bold: true}
+}
+func commentRail(anchor DiffCommentRange, number int, continuation bool) string {
+	if number == anchor.Start && !continuation {
+		return "╭"
+	}
+	return "│"
+}
 func (d DiffView) renderCommentGutter(ctx *t.RenderContext, row, x, numWidth int, side string, number int, continuation bool) {
 	anchor, ok := d.commentRange(side, number)
 	if !ok {
 		return
 	}
-	theme := d.commentTheme
-	amount := .10
-	if anchor.Focused {
-		amount = .28
-	}
-	style := t.Style{ForegroundColor: commentAnchorColor(theme, anchor.Focused), BackgroundColor: theme.Background.Blend(theme.Primary, amount), Bold: true}
 	label := lineNumberText(number, numWidth)
 	if continuation {
 		label = strings.Repeat(" ", numWidth)
 	}
-	rail := "│"
-	if number == anchor.Start && !continuation {
-		rail = "╭"
+	ctx.DrawStyledText(x, row, label+commentRail(anchor, number, continuation), commentGutterStyle(d.commentTheme, anchor.Focused))
+}
+func (d DiffView) renderUnifiedCommentGutter(ctx *t.RenderContext, rendered *RenderedFile, row int, line RenderedDiffLine, continuation bool) {
+	// Mark either source column, but fill the entire gutter for the active range.
+	for _, side := range []string{"old", "new"} {
+		number, x, width := line.OldLine, 0, rendered.OldNumWidth
+		if side == "new" {
+			number, x, width = line.NewLine, rendered.OldNumWidth+1, rendered.NewNumWidth
+		}
+		d.renderCommentGutter(ctx, row, x, width, side, number, continuation)
 	}
-	ctx.DrawStyledText(x, row, label+rail, style)
+	for _, side := range []string{"old", "new"} {
+		number, railX := line.OldLine, rendered.OldNumWidth
+		if side == "new" {
+			number, railX = line.NewLine, rendered.OldNumWidth+1+rendered.NewNumWidth
+		}
+		anchor, ok := d.commentRange(side, number)
+		if !ok || !anchor.Focused {
+			continue
+		}
+		oldNumber, newNumber := line.OldLine, line.NewLine
+		prefix := displayLinePrefix(line, d.HideChangeSigns)
+		if continuation {
+			oldNumber, newNumber, prefix = 0, 0, " "
+		}
+		text := lineNumberText(oldNumber, rendered.OldNumWidth) + " " + lineNumberText(newNumber, rendered.NewNumWidth) + " "
+		if !d.HideChangeSigns {
+			text += prefix + " "
+		}
+		cells := []rune(text)
+		cells[railX] = []rune(commentRail(anchor, number, continuation))[0]
+		ctx.DrawStyledText(0, row, string(cells), commentGutterStyle(d.commentTheme, true))
+		break
+	}
+}
+func (d DiffView) renderSideCommentGutter(ctx *t.RenderContext, row, x, numWidth, gutterWidth int, side string, cell *RenderedSideCell, continuation bool) {
+	anchor, ok := d.commentRange(side, cell.LineNumber)
+	if !ok {
+		return
+	}
+	if !anchor.Focused {
+		d.renderCommentGutter(ctx, row, x, numWidth, side, cell.LineNumber, continuation)
+		return
+	}
+	number, prefix := cell.LineNumber, cell.Prefix
+	if continuation {
+		number, prefix = 0, " "
+	}
+	text := lineNumberText(number, numWidth) + commentRail(anchor, cell.LineNumber, continuation)
+	if !d.HideChangeSigns {
+		text += displayLinePrefix(RenderedDiffLine{Kind: cell.Kind, Prefix: prefix}, false) + " "
+	}
+	ctx.DrawStyledText(x, row, ansi.Truncate(text, gutterWidth, ""), commentGutterStyle(d.commentTheme, true))
+}
+
+// Missing cells inside an anchored range are alignment gaps, not breaks in the
+// range. Carry only the rail across them; do not highlight nonexistent code.
+// A negative number is a hunk/header boundary and must interrupt the rail.
+func (d DiffView) commentGapRails(side string, numbers []int) map[int]DiffCommentRange {
+	marks := map[int]DiffCommentRange{}
+	prev := -1
+	for i, number := range numbers {
+		if number < 0 {
+			prev = -1
+			continue
+		}
+		if number == 0 {
+			continue
+		}
+		if prev >= 0 && i > prev+1 {
+			var mark DiffCommentRange
+			found := false
+			for _, anchor := range d.CommentRanges {
+				if anchor.Side == side && numbers[prev] >= anchor.Start && number <= anchor.End {
+					if !found || anchor.Focused {
+						mark, found = anchor, true
+					}
+					if anchor.Focused {
+						break
+					}
+				}
+			}
+			if found {
+				for gap := prev + 1; gap < i; gap++ {
+					marks[gap] = mark
+				}
+			}
+		}
+		prev = i
+	}
+	return marks
+}
+func (d DiffView) renderGapRail(ctx *t.RenderContext, row, x int, anchor DiffCommentRange) {
+	ctx.DrawStyledText(x, row, "│", t.Style{ForegroundColor: commentAnchorColor(d.commentTheme, anchor.Focused), Bold: true})
 }
 
 func (a *Aside) focusComment(id string) {
@@ -102,13 +204,10 @@ func (a *Aside) focusComment(id string) {
 			continue
 		}
 		a.activeThread = id
-		anchor := thread.Anchor
-		if anchor.Snapshot == a.review.Current {
-			a.status.Set(fmt.Sprintf("Highlighted %s lines %d–%d", strings.ToUpper(anchor.Side), anchor.Start, anchor.End))
-		} else {
-			a.status.Set("Outdated comment · original code shown in the card")
-		}
-		a.version.Update(func(v int) int { return v + 1 })
+		a.renderActive(true)
+		a.scrollToThread(id)
+		a.status.Set("")
+		a.bump()
 		return
 	}
 }
