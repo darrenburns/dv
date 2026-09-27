@@ -30,13 +30,16 @@ The sidebar defaults to changed files; `a` includes all tracked and unignored wo
 
 `Ctrl+P` opens the searchable command palette. `t` opens the theme picker with live previews; Escape cancels the preview and Enter accepts it. The palette also exposes the viewing controls and review actions.
 
-Three Aside dark themes are available in the picker or through `--theme`:
+Six Aside dark themes are available in the picker or through `--theme`:
 
 | Theme | Palette |
 | --- | --- |
 | `moonstone` | Slate blue, lavender, sea glass, and peach |
 | `bonsai` | Forest charcoal, sage, jade, and copper |
 | `garnet` | Dark burgundy, rose, lavender, and champagne |
+| `kintsugi` | Glazed charcoal, gold, indigo glaze, and persimmon |
+| `amethyst` | Violet dusk, amethyst, clear sky, and butter yellow |
+| `lantern` | Indigo night, lantern amber, river cyan, and blossom pink |
 
 For example: `aside --theme garnet`. See [theme previews and verification](docs/themes-verification.md).
 

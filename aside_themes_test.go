@@ -62,3 +62,6 @@ func snapshotAsideTheme(tt *testing.T, name string) {
 func TestSnapshotAsideMoonstone(tt *testing.T) { snapshotAsideTheme(tt, themeMoonstone) }
 func TestSnapshotAsideBonsai(tt *testing.T)    { snapshotAsideTheme(tt, themeBonsai) }
 func TestSnapshotAsideGarnet(tt *testing.T)    { snapshotAsideTheme(tt, themeGarnet) }
+func TestSnapshotAsideKintsugi(tt *testing.T)  { snapshotAsideTheme(tt, themeKintsugi) }
+func TestSnapshotAsideAmethyst(tt *testing.T)  { snapshotAsideTheme(tt, themeAmethyst) }
+func TestSnapshotAsideLantern(tt *testing.T)   { snapshotAsideTheme(tt, themeLantern) }
