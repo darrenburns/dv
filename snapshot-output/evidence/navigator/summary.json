@@ -1,0 +1,10 @@
+{
+  "test_cases_passed": 222,
+  "snapshot_tests_passed": 16,
+  "failures": 0,
+  "race": "pass",
+  "vet": "pass",
+  "new_snapshots": 2,
+  "updated_snapshots": 9,
+  "visually_inspected_changed_snapshots": 11
+}

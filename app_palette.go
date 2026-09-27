@@ -47,6 +47,12 @@ func (a *Aside) paletteItems() []t.CommandPaletteItem {
 	add("Comment on selected code", "c", a.beginComment)
 	add("Submit and copy feedback", "f", a.exportFeedback)
 	add("Copy code or file path", "y", a.copySelectionOrPath)
+	if a.reviewList.ItemCount() > 0 {
+		add("Focus review navigator", "o", func() {
+			a.palette.SetNextFocusIDOnClose(reviewListID)
+			a.focusReviewNavigator()
+		})
+	}
 	add("Next comment", "]", func() { a.nextThread(1) })
 	add("Previous comment", "[", func() { a.nextThread(-1) })
 	add("Refresh review", "r", a.refresh)
@@ -65,6 +71,9 @@ func (a *Aside) paletteItems() []t.CommandPaletteItem {
 		a.palette.SetNextFocusIDOnClose("aside-split")
 		t.RequestFocus("aside-split")
 	})
+	if a.reviewList.ItemCount() > 0 {
+		add("Resize review navigator", "", a.resizeReviewNavigator)
+	}
 	add("Toggle split / unified", "v", a.toggleLayout)
 	add("Reset pane split", "50:50", func() { a.diffRatio.Set(.5) })
 	add("Toggle line wrap", "w", a.toggleWrap)

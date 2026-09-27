@@ -58,6 +58,9 @@ func (s asideStatusBar) Render(ctx *t.RenderContext) {
 	if reviewing {
 		hints = []struct{ key, label string }{{"[/]", "comments"}, {"e", "reply"}, {"Ctrl+P", "commands"}}
 	}
+	if !reviewing && a.reviewList.ItemCount() > 0 {
+		hints = append(hints[:1], append([]struct{ key, label string }{{"o", "reviews"}}, hints[1:]...)...)
+	}
 	if a.editing.Get() {
 		hints = nil
 	} // Editing shortcuts are already inside the buttons.

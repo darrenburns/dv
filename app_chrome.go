@@ -131,7 +131,8 @@ func (a *Aside) buildSidebar(ctx t.BuildContext, theme t.ThemeData) t.Widget {
 				{Key: "up", Hidden: true, Action: func() { a.nextFile(-1) }},
 			}})
 	}
-	return t.Dock{Top: top, Body: t.Scrollable{ID: "aside-tree-scroll", State: a.treeScroll, Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Child: fileTree}}
+	files := t.Dock{Top: top, Body: t.Scrollable{ID: "aside-tree-scroll", State: a.treeScroll, Style: t.Style{Width: t.Flex(1), Height: t.Flex(1)}, Child: fileTree}}
+	return a.buildReviewSidebar(ctx, theme, files)
 }
 func (a *Aside) viewerTitle(theme t.ThemeData) t.Widget {
 	bg := t.ColorProvider(theme.Surface)

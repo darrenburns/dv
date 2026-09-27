@@ -40,8 +40,13 @@ The sidebar defaults to changed files; `a` includes all tracked and unignored wo
 | `m` / `M` | Mark a file seen / clear seen marks |
 | `n` / `p` or `Ctrl+J` / `Ctrl+K` | Next / previous file |
 | `J` / `K` | Scroll ten lines down / up |
+| `o` | Focus the current file’s review navigator |
 
 The sidebar shows coloured change totals and seen-file progress. Seen marks and per-file scroll positions last for the current session. A file's seen mark stops applying when its captured content changes. Scroll positions are remembered separately for unified/split and wrapped/unwrapped views. File filtering is fuzzy and highlights matching filename characters; Escape clears a retained filter.
+
+When the current file has comments, the bottom of the sidebar becomes a review navigator. Each entry shows its old/new line range, comment type, a short preview, and any draft, outdated, or resolved status. Click anywhere on an entry, or press `o` and use Up/Down (or `j`/`k`), to show that comment beside its highlighted code. Enter returns focus to the diff. The navigator follows `[`/`]` comment navigation too.
+
+Drag the horizontal divider to allocate space between files and comments; each pane scrolls independently. For keyboard resizing, choose **Resize review navigator** from Ctrl+P, use Up/Down, then Escape. Files without comments use the full sidebar height. The divider position lasts for the session.
 
 See the [dvdev comparison and polish verification](docs/polish-verification.md) for what was restored and what still differs.
 
@@ -96,4 +101,4 @@ go build -o /tmp/aside .
 ASIDE_DATA_DIR=/tmp/aside-test-reviews /tmp/terma-browser -- /tmp/aside --repo /path/to/disposable-fixture --no-config
 ```
 
-Read [the verification report](docs/verification.md) for recorded results, screenshots, edge cases, and limits.
+Read [the review navigator checks](docs/review-navigator-verification.md) and [the original verification report](docs/verification.md) for recorded results, screenshots, edge cases, and limits.

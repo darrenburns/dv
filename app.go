@@ -90,6 +90,12 @@ type Aside struct {
 	codeBounds         map[*DiffViewState]t.Rect
 	pendingScroll      string
 
+	reviewList          *t.ListState[ReviewThread]
+	reviewListScroll    *t.ScrollState
+	reviewListFile      string
+	reviewSplit         *t.SplitPaneState
+	reviewDividerActive t.Signal[bool]
+
 	reviewViewportWidth  int
 	reviewViewportHeight int
 	reviewContentHeight  int
@@ -98,6 +104,10 @@ type Aside struct {
 func NewAside(store ReviewStore, r *Review, initial AsideInitialState) *Aside {
 	a := &Aside{store: store, review: r, tree: t.NewTreeState[DiffTreeNodeData](nil), treeScroll: t.NewScrollState(), scroll: t.NewScrollState(), view: NewDiffViewState(nil), split: t.NewSplitPaneState(.25), editor: t.NewTextAreaState(""), filter: t.NewTextInputState(""), version: t.NewSignal(0), mode: t.NewSignal(initial.LayoutMode), status: t.NewSignal("Select code, then c to comment"), editing: t.NewSignal(false), filtering: t.NewSignal(false), allFiles: t.NewSignal(false), intra: initial.IntralineStyle, copyFeedback: copyToClipboard, diffRatio: t.NewSignal(.5)}
 
+	a.reviewList = t.NewListState[ReviewThread](nil)
+	a.reviewListScroll = t.NewScrollState()
+	a.reviewSplit = t.NewSplitPaneState(.55)
+	a.reviewDividerActive = t.NewSignal(false)
 	a.hardWrap = t.NewSignal(!initial.NoWrap)
 	a.hideSigns = t.NewSignal(initial.HideChangeSigns)
 	a.sidebarVisible = t.NewSignal(!initial.HideSidebar)
@@ -249,6 +259,7 @@ func (a *Aside) Keybinds() []t.Keybind {
 		{Key: "a", Name: "All/changed files", Hidden: true, Action: a.toggleAllFiles},
 		{Key: "]", Name: "Next comment", Hidden: true, Action: func() { a.nextThread(1) }},
 		{Key: "[", Name: "Previous comment", Hidden: true, Action: func() { a.nextThread(-1) }},
+		{Key: "o", Name: "Review navigator", Hidden: true, Action: a.focusReviewNavigator},
 		{Key: "e", Name: "Reply", Hidden: true, Action: a.beginReply},
 		{Key: "x", Name: "Resolve/reopen", Hidden: true, Action: a.toggleResolved},
 	}...)
@@ -410,6 +421,7 @@ func (a *Aside) setSections(unified *RenderedFile, split *SideBySideRenderedFile
 	}
 	a.sections = reviewSections(unified, split, a.review, a.active, a.mode.Peek(), pending, a.activeThread)
 	a.threadBounds = nil
+	a.syncReviewNavigator()
 	for _, section := range a.sections {
 		if section.Code != nil {
 			section.Code.SplitRatio = a.diffRatio
