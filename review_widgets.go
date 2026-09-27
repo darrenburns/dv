@@ -137,7 +137,11 @@ func (a *Aside) buildReviewContent() t.Widget {
 			continue
 		}
 		if section.Thread != nil {
-			children = append(children, reviewCard{app: a, thread: *section.Thread, connected: i > 0 && a.sectionEndsAt(a.sections[i-1], section.Thread.Anchor)})
+			children = append(children, reviewCard{
+				app: a, thread: *section.Thread,
+				connected: i > 0 && a.sectionEndsAt(a.sections[i-1], section.Thread.Anchor),
+				stacked:   i > 0 && (a.sections[i-1].Thread != nil || a.sections[i-1].Composer),
+			})
 			continue
 		}
 		state := section.Code
@@ -165,6 +169,7 @@ type reviewCard struct {
 	app       *Aside
 	thread    ReviewThread
 	connected bool
+	stacked   bool
 }
 
 func (c reviewCard) WidgetID() string { return "thread-" + c.thread.ID }
@@ -244,7 +249,12 @@ func (c reviewCard) Build(ctx t.BuildContext) t.Widget {
 			children = append(children, shortcutButton{Button: t.Button{ID: "submit-" + thread.ID, Label: "Submit feedback", OnPress: c.app.exportFeedback, Click: func(t.MouseEvent) { c.app.exportFeedback() }, Style: t.Style{ForegroundColor: theme.Primary, BackgroundColor: theme.Surface}}, Shortcut: "f", Key: "f"})
 		}
 	}
-	return c.app.anchorFrame(theme, t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(1, 0), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children}, a, focused, c.connected)
+	card := t.Column{Style: t.Style{Width: t.Flex(1), Height: t.Auto, Padding: t.EdgeInsetsXY(1, 0), Border: t.RoundedBorder(border), BackgroundColor: theme.Surface}, Children: children}
+	if c.stacked {
+		// Adjacent cards need no empty connector row between their borders.
+		return hatchedFrame(theme, card, t.Spacer{Height: t.Cells(0)})
+	}
+	return c.app.anchorFrame(theme, card, a, focused, c.connected)
 }
 
 // inlineComposer is shared by new code comments and replies within a thread.
