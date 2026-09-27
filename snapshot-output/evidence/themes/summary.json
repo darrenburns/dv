@@ -1,0 +1,13 @@
+{
+  "passed_test_cases": 229,
+  "aside_snapshots": 19,
+  "new_snapshots": 3,
+  "failures": 0,
+  "vet": "clean",
+  "themes": [
+    "moonstone",
+    "bonsai",
+    "garnet"
+  ],
+  "all_dark": true
+}
